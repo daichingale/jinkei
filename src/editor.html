@@ -21,6 +21,7 @@ header{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1
 header h1{font-size:15px;margin:0 6px 0 0;white-space:nowrap}
 #fname{color:var(--mut)}
 #status{font-size:12px;padding:2px 8px;border-radius:10px;background:#2a2e36;white-space:nowrap}
+#status:empty{display:none}
 #status.err{background:#3a1f22;color:var(--bad)}
 #status.dirty{color:var(--acc)}
 .sp{flex:1}
@@ -168,6 +169,21 @@ details.adv>div{padding:6px 0 2px}
 #modal .mt{font-weight:600;margin-bottom:8px}
 #modal .mb{color:var(--fg);white-space:pre-wrap;margin-bottom:14px}
 #modal .mbt{display:flex;gap:8px;justify-content:flex-end}
+.projectstate[hidden]{display:none}
+.projectstate{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--mut);font-size:11px}
+.project-dialog{width:min(460px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);padding:16px}
+.project-dialog::backdrop{background:#0009}
+.project-dialog h2{font-size:16px;margin:0 0 12px}
+.project-dialog h3{font-size:13px;margin:12px 0 6px}
+.project-dialog label{display:grid;gap:4px;margin:8px 0}
+.project-dialog input,.project-dialog textarea{width:100%;padding:6px}
+.project-dialog textarea{min-height:62px;resize:vertical}
+.project-dialog output{display:block;margin-top:6px;color:var(--acc)}
+.project-dialog footer{display:flex;justify-content:flex-end;margin-top:12px}
+.project-dialog li{margin:6px 0;overflow-wrap:anywhere}
+.project-dialog li button{white-space:normal;text-align:left}
+.project-actions{display:flex;gap:6px;flex-wrap:wrap}
+#localbtns{display:flex;flex-wrap:wrap;gap:4px}
 @media (max-width:760px){
   html,body{height:100dvh}
   header{gap:5px;padding:6px 8px;flex-wrap:wrap;flex:0 0 auto}
@@ -187,8 +203,9 @@ details.adv>div{padding:6px 0 2px}
 </style></head><body>
 <header>
   <h1>陣形エディタ</h1><span id="fname"></span><span id="status">読み込み中</span>
+  <span class="projectstate" id="projectstate" hidden><span id="draftstatus" role="status"></span><span id="syncstatus" role="status"></span></span>
   <span class="sp"></span>
-  <span id="localbtns" style="display:none"><button id="open" title="手元の .jk ファイルを開く（ページへのドラッグ＆ドロップでも可）">開く</button><button id="newfile" title="ひな形から新しく作る">新規</button><input type="file" id="openfile" accept=".jk,text/plain" style="display:none"></span>
+  <span id="localbtns" style="display:none"><button id="open" title="手元の .jk ファイルを開く（ページへのドラッグ＆ドロップでも可）">開く</button><button id="newfile" title="ひな形から新しく作る">新規</button><button id="drafthistory">下書き履歴</button><button id="projectsync">端末間同期</button><input type="file" id="openfile" accept=".jk,text/plain" style="display:none"></span>
   <button id="undo" title="元に戻す (Ctrl+Z)">↶</button><button id="redo" title="やり直す (Ctrl+Shift+Z)">↷</button>
   <button id="preview" title="2D/3Dプレビューを新しいタブで開く">プレビュー</button>
   <select id="vcam" title="動画のカメラ"><option value="audience">客席から</option><option value="orbit">回り込み</option><option value="top">真上</option><option value="low">目線</option></select>
@@ -244,6 +261,48 @@ details.adv>div{padding:6px 0 2px}
 </main>
 <div id="ctx"></div>
 <div id="modalbg"><div id="modal"><div class="mt" id="modalt"></div><div class="mb" id="modalb"></div><div class="mbt" id="modalbt"></div></div></div>
+<dialog id="syncdialog" class="project-dialog" aria-labelledby="synctitle">
+  <h2 id="synctitle">端末間同期</h2>
+  <div id="syncsetup">
+    <form id="syncjoin">
+      <label>別の端末で発行した同期コード<textarea id="syncjoincode" spellcheck="false" required></textarea></label>
+      <button type="submit" class="pri">この端末で開く</button><output role="status"></output>
+    </form>
+    <details>
+      <summary>現在のショーを同期する</summary>
+      <form id="synccreate">
+        <label>同期サーバーのURL<input id="syncurl" type="url" placeholder="https://…" required></label>
+        <label>作成キー<input id="synccreatekey" type="password" autocomplete="off" required></label>
+        <button type="submit" class="pri">同期を開始</button><output role="status"></output>
+      </form>
+    </details>
+  </div>
+  <div id="syncactive" hidden>
+    <label>別の端末で開くための同期コード<textarea id="synccode" readonly></textarea></label>
+    <p>このコードを持っている人は、このショーを閲覧・編集できます。</p>
+    <div class="project-actions">
+      <button id="synccopy">コードをコピー</button><button id="syncnow">今すぐ同期</button>
+      <button id="syncdisconnect">この端末の接続を解除</button>
+    </div>
+    <output role="status"></output>
+  </div>
+  <div id="syncconflict" hidden>
+    <h3>この端末とクラウドに異なる変更があります</h3>
+    <p>採用しなかった版は、この端末の下書き履歴に残ります。</p>
+    <div class="project-actions">
+      <button id="syncusemine">クラウドをこの端末の版に更新</button>
+      <button id="syncuseremote">クラウド版を開く</button>
+    </div>
+    <output role="status"></output>
+  </div>
+  <form method="dialog"><footer><button>閉じる</button></footer></form>
+</dialog>
+<dialog id="historydialog" class="project-dialog" aria-labelledby="historytitle">
+  <h2 id="historytitle">下書き履歴</h2>
+  <p>選んだ下書きをこの端末で開きます。</p>
+  <ul></ul><output role="status"></output>
+  <form method="dialog"><footer><button>閉じる</button></footer></form>
+</dialog>
 <script>__FIELD2D__</script>
 <script>__PRINTER__</script>
 <script>__MOTION__</script>
@@ -276,18 +335,30 @@ function numOf(v) {
 // ================= サーバとのやりとり =================
 async function compile(source, adopt) {
   const id = ++reqId;
+  src = source;
   let res;
   try { res = await fetch('/api/compile', {method: 'POST', body: source}).then(r => r.json()); }
   catch (e) { setStatus('エンジンに接続できません（jinkei edit を起動してください）', 'err'); return; }
   if (id !== reqId) return;
-  src = source;
   if (res.ok) { R = res; lastErr = null; if (adopt) M = res.model; }
   else { lastErr = res.error; if (adopt && res.model) M = res.model; }
-  if (adopt) { curSet = Math.min(curSet, M.sets.length - 1); curStmt = -1; }
-  if (!document.activeElement || document.activeElement.id !== 'code') $('code').value = source;
+  if (adopt && M) { curSet = Math.min(curSet, M.sets.length - 1); curStmt = -1; }
+  if (!codeTimer && document.activeElement?.id !== 'code') $('code').value = source;
+  $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : '';
+  if (!M) $('errbanner').style.display = 'none';
   refresh(adopt);
 }
-let pending = null, timer = null;
+let pending = null, timer = null, codeTimer = null;
+const currentSource = () => codeTimer !== null ? $('code').value : pending ?? src;
+function clearEditTimers() {
+  clearTimeout(timer); clearTimeout(codeTimer);
+  pending = timer = codeTimer = null;
+}
+function recordEdit(source) {
+  dirty = source !== savedSrc;
+  window.JK_PROJECT?.edit($('fname').textContent, source);
+  setStatusFromState();
+}
 // 属性だけの文（pose/face…）は、同じセットの位置を決める文より後ろに置かないと無視されるので、最後にまとめる
 function normalizeAttrs() {
   M.sets.forEach((set, k) => {
@@ -302,25 +373,47 @@ function edited(structural) {
   if (playT !== null || playing) { stopPlay(); playT = null; }
   normalizeAttrs();
   const s = printModel(M);
-  if (s === src) { if (structural) renderPanels(); return; }
-  dirty = s !== savedSrc;
-  if (!busy()) pushUndo(src);
+  const previous = currentSource();
+  if (s === previous) { if (structural) renderPanels(); return; }
+  clearTimeout(codeTimer); codeTimer = null;
+  if (!busy()) pushUndo(previous);
   pending = s;
+  recordEdit(s);
   if (!timer) timer = setTimeout(() => { timer = null; const p = pending; pending = null; compile(p, false); }, busy() ? 30 : 60);
   if (structural) renderPanels();
-  setStatusFromState();
 }
 function pushUndo(s) { if (s && undoStack[undoStack.length - 1] !== s) { undoStack.push(s); if (undoStack.length > 200) undoStack.shift(); redoStack = []; } }
-function undo() { if (!undoStack.length) return; stopPlay(); playT = null; redoStack.push(src); const s = undoStack.pop(); dirty = s !== savedSrc; compile(s, true); }
-function redo() { if (!redoStack.length) return; stopPlay(); playT = null; undoStack.push(src); const s = redoStack.pop(); dirty = s !== savedSrc; compile(s, true); }
+function undo() {
+  if (!undoStack.length) return;
+  stopPlay(); playT = null; redoStack.push(currentSource());
+  const source = undoStack.pop();
+  clearEditTimers(); recordEdit(source); compile(source, true);
+}
+function redo() {
+  if (!redoStack.length) return;
+  stopPlay(); playT = null; undoStack.push(currentSource());
+  const source = redoStack.pop();
+  clearEditTimers(); recordEdit(source); compile(source, true);
+}
+let saving = false;
 async function save() {
-  const s = src;
-  const r = await fetch('/api/save', {method: 'POST', body: s}).then(r => r.json());
-  if (r.ok) { savedSrc = s; dirty = false; setStatusFromState(); } else setStatus('保存できません: ' + r.error, 'err');
+  if (saving) return;
+  const source = currentSource();
+  saving = true;
+  try {
+    const r = await fetch('/api/save', {method: 'POST', body: source}).then(r => r.json());
+    if (!r.ok) { setStatus('保存できません: ' + r.error, 'err'); return; }
+    savedSrc = source;
+    dirty = currentSource() !== savedSrc;
+    setStatusFromState();
+  } catch {
+    setStatus('ファイルを保存できません', 'err');
+  } finally { saving = false; }
 }
 function setStatus(t, cls) { $('status').textContent = t; $('status').className = cls || ''; }
 function setStatusFromState() {
   if (lastErr) setStatus(`エラー ${lastErr.line ? lastErr.line + '行: ' : ''}${lastErr.msg}`, 'err');
+  else if (window.JK_PROJECT) setStatus('');
   else if (dirty) setStatus('● 未保存', 'dirty');
   else setStatus('保存済み');
 }
@@ -1889,15 +1982,14 @@ function importXml(i) {
 }
 
 // ---- コード（上級） ----
-let codeTimer = null;
 $('code').addEventListener('input', () => {
-  clearTimeout(codeTimer);
-  codeTimer = setTimeout(async () => {
-    const s = $('code').value;
-    pushUndo(src);
-    dirty = s !== savedSrc;
-    await compile(s, true);
-    $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : '';
+  const source = $('code').value;
+  if (!codeTimer) pushUndo(pending ?? src);
+  clearEditTimers();
+  recordEdit(source);
+  codeTimer = setTimeout(() => {
+    codeTimer = null;
+    compile(source, true);
   }, 400);
 });
 
@@ -2021,6 +2113,7 @@ $('video').onclick = async () => {
 };
 document.addEventListener('keydown', e => {
   if (modalKey && $('modalbg').style.display === 'flex') { modalKey(e); return; }
+  if (document.querySelector('dialog[open]')) return;
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key === 's') { e.preventDefault(); save(); }
   else if (mod && e.key.toLowerCase() === 'z' && !/TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
@@ -2044,7 +2137,7 @@ document.addEventListener('keydown', e => {
     edited(true);
   }
 });
-window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (dirty && !window.JK_PROJECT?.saved) { e.preventDefault(); e.returnValue = ''; } });
 // 描画中でない時に、スクラブ中の画面をクリックしたら編集に戻る
 svg.addEventListener('pointerdown', e => {
   if (playT !== null || playing) { exitScrub(); e.stopImmediatePropagation(); e.preventDefault(); }
@@ -2052,18 +2145,29 @@ svg.addEventListener('pointerdown', e => {
 
 // ---- ブラウザ版: 開く・新規・ドロップ ----
 function showName(name) { $('fname').textContent = name; document.title = `${name} — 陣形エディタ`; }
-async function loadLocal(text, name, handle, fresh) {
-  if (dirty && !(await ask('保存していない変更があります。破棄して続けますか？', '破棄して続ける'))) return;
+async function adoptLocal(text, name, handle) {
+  clearEditTimers();
   JK_LOCAL.setFile(name, handle); showName(name);
   undoStack = []; redoStack = []; sel.clear(); stopPlay(); playT = null;
-  savedSrc = fresh ? '' : text;
+  M = R = lastErr = null; fieldKey = '';
+  curSet = 0; curStmt = -1;
+  svg.replaceChildren();
+  ['pset', 'pshow', 'psec', 'pscore', 'pwarn', 'tltrack'].forEach(id => $(id).replaceChildren());
+  $('code').value = text;
+  savedSrc = text; dirty = false;
   await compile(text, true);
-  dirty = !!fresh; curSet = 0;
-  if (!R) { showTab('pcode'); $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : ''; }
-  setStatusFromState();
+  if (!R) showTab('pcode');
+}
+async function loadLocal(text, name, handle) {
+  if (saving) return;
+  if (!JK_PROJECT.checkpoint() && !(await ask('現在の下書きを退避できません。切り替えますか？', '切り替える'))) return;
+  JK_PROJECT.replace(name, text);
+  await adoptLocal(text, name, handle);
 }
 if (window.JK_LOCAL) {
   $('localbtns').style.display = '';
+  $('projectstate').hidden = false;
+  $('save').textContent = '.jk を保存';
   $('openfile').onchange = async e => {
     const f = e.target.files[0]; e.target.value = '';
     if (f) loadLocal(await f.text(), f.name, null);
@@ -2075,7 +2179,7 @@ if (window.JK_LOCAL) {
       loadLocal(await (await h.getFile()).text(), h.name, h);
     } catch (e) { if (e.name !== 'AbortError') notice('開けませんでした: ' + e.message); }
   };
-  $('newfile').onclick = () => loadLocal(JK_LOCAL.template, '新しいショー.jk', null, true);
+  $('newfile').onclick = () => loadLocal(JK_LOCAL.template, '新しいショー.jk', null);
   window.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
   window.addEventListener('drop', async e => {
     const f = e.dataTransfer && e.dataTransfer.files[0];
@@ -2090,10 +2194,21 @@ if (window.JK_LOCAL) {
 renderTools();
 (async () => {
   const r = await fetch('/api/source').then(r => r.json());
+  if (window.JK_PROJECT) {
+    JK_PROJECT.start(r.name, r.source, (name, source, handle) => adoptLocal(source, name, handle));
+    await adoptLocal(r.source, r.name, null);
+    JK_PROJECT.bind({
+      local: $('draftstatus'), cloud: $('syncstatus'), sync: $('projectsync'), dialog: $('syncdialog'),
+      historyButton: $('drafthistory'), history: $('historydialog'),
+      canReplace: manual => !busy() && !saving && !modalKey && (manual ||
+        (!document.querySelector('dialog[open]') && !document.activeElement?.matches('input, textarea, select'))),
+    });
+    return;
+  }
   showName(r.name);
   savedSrc = r.source;
   await compile(r.source, true);
-  if (!R) { showTab('pcode'); $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : ''; }
+  if (!R) showTab('pcode');
 })();
 </script>
 </body></html>

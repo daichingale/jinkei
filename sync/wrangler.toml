@@ -1,0 +1,11 @@
+name = "jinkei-sync"
+main = "worker.mjs"
+compatibility_date = "2026-11-20"
+
+[[durable_objects.bindings]]
+name = "PROJECTS"
+class_name = "Project"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Project"]
