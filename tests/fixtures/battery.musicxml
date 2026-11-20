@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Tenor Drums</part-name></score-part>
+    <score-part id="P2"><part-name>Snare Drum</part-name></score-part>
+    <score-part id="P3"><part-name>Bass Drums</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+      <direction><direction-type><dynamics><mf/></dynamics></direction-type></direction>
+      <direction><direction-type><wedge type="crescendo"/></direction-type></direction>
+      <note><unpitched><display-step>F</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+      <note><chord/><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type><lyric><text>R</text></lyric></note>
+      <note><chord/><unpitched><display-step>D</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type><lyric><text>L</text></lyric></note>
+      <direction><direction-type><wedge type="stop"/></direction-type></direction>
+      <direction><direction-type><dynamics><f/></dynamics></direction-type></direction>
+      <note><unpitched><display-step>G</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type><notehead>triangle</notehead></note>
+      <note><unpitched><display-step>A</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+      <direction><direction-type><dynamics><ff/></dynamics></direction-type></direction>
+      <note><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type><notehead>slash</notehead></note>
+      <note><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type><notehead>slash</notehead><notations><articulations><staccato/></articulations></notations></note>
+      <direction><direction-type><wedge type="diminuendo"/></direction-type></direction>
+      <note><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type><notehead>circle-x</notehead></note>
+      <direction><direction-type><dynamics><p/></dynamics></direction-type></direction>
+      <note><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+    </measure>
+  </part>
+  <part id="P3">
+    <measure number="1">
+      <attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+      <note><unpitched><display-step>G</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+      <note><chord/><unpitched><display-step>E</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+      <note><chord/><unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched><duration>1</duration><voice>1</voice><type>quarter</type></note>
+      <note><unpitched><display-step>F</display-step><display-octave>5</display-octave></unpitched><duration>3</duration><voice>1</voice><type>half</type><dot/></note>
+    </measure>
+  </part>
+</score-partwise>

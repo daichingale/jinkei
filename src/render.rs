@@ -2427,7 +2427,7 @@ impl Scratch {
                 let tof = |c: Option<&str>| if c.unwrap_or("play") == "play" { 1.0f32 } else { 0.0 };
                 let (a0, a1) = (tof(st.carry_from.as_deref()), tof(st.carry.as_deref()));
                 let amt = (a0 + (a1 - a0) * st.carry_blend) * (1.0 - look.pose_blend.clamp(0.0, 1.0));
-                hm.apply_strike(&mut pose, sk.fam, &crate::strike::state(sk, t as f32, spc), amt);
+                hm.apply_strike(&mut pose, kind, sk.fam, &crate::strike::state(sk, t as f32, spc, hm.strike.get(kind)), amt);
             }
             // 体格を少しだけ変える（view3d.js と同じ乱数）
             let h1 = ((i as u64).wrapping_mul(2654435761) & 0xffff_ffff) as f32 / 4294967296.0;

@@ -19,6 +19,8 @@ pub struct RNote {
     pub accent: u8,
     pub kind: &'static str,
     pub pad: u8,
+    /// 強弱（0..1。既定 mf = 0.7）。アクセントとは別
+    pub vel: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -48,13 +50,36 @@ pub struct PartBody {
 
 #[derive(Debug, Clone)]
 enum It {
-    Note { dur: f64, hand: char, accent: u8, kind: &'static str, pad: u8 },
+    /// ev = 同時に鳴らす (手, ドラム番号) の並び。和音 R[135] は複数
+    Note { dur: f64, accent: u8, kind: &'static str, ev: Vec<(char, u8)> },
+    /// 強弱記号 pp p mp mf f ff
+    Dyn(f64),
+    /// cresc（+1）/ dim（-1）。次の強弱記号までなめらかに変える
+    Ramp(f64),
     Rest(f64),
     Tie(f64, usize, usize),
     Bar,
 }
 
 const EPS: f64 = 1e-6;
+/// 強弱記号 → 音量（0..1）
+pub const DEFAULT_VEL: f64 = 0.7;
+fn dyn_vel(w: &str) -> Option<f64> {
+    Some(match w {
+        "pp" => 0.25,
+        "p" => 0.4,
+        "mp" => 0.55,
+        "mf" => 0.7,
+        "f" => 0.85,
+        "ff" => 1.0,
+        _ => return None,
+    })
+}
+/// cresc / dim で次の強弱記号がないときの変化量
+const RAMP_OPEN: f64 = 0.25;
+fn r3(v: f64) -> f64 {
+    (v * 1000.0).round() / 1000.0
+}
 const MAX_ITEMS: usize = 200_000;
 
 struct Sc {
@@ -264,6 +289,18 @@ impl Sc {
                             }
                             self.keyword(&w, depth, &mut out)?;
                         }
+                        "cresc" | "decresc" | "dim" => {
+                            for _ in w.chars() {
+                                self.adv();
+                            }
+                            out.push(It::Ramp(if w == "cresc" { 1.0 } else { -1.0 }));
+                        }
+                        _ if dyn_vel(&w).is_some() => {
+                            for _ in w.chars() {
+                                self.adv();
+                            }
+                            out.push(It::Dyn(dyn_vel(&w).unwrap()));
+                        }
                         _ => {
                             let it = self.note()?;
                             self.any = true;
@@ -429,11 +466,16 @@ impl Sc {
                 Some('f') => Some("flam"),
                 Some('d') => Some("diddle"),
                 Some('z') => Some("buzz"),
+                Some('o') => Some("rimshot"),
+                Some('m') => Some("mute"),
+                Some('g') => Some("gock"),
+                Some('s') => Some("scrape"),
+                Some('k') => Some("stickclick"),
                 _ => break,
             };
             if let Some(k) = k {
                 if kind.is_some() {
-                    return Err(self.err("奏法の指定（x / f / d / z）は1音に1つだけです"));
+                    return Err(self.err("奏法の指定（x f d z o m g s k）は1音に1つだけです"));
                 }
                 kind = Some(k);
             }
@@ -452,12 +494,42 @@ impl Sc {
             None => return Err(self.err("音符の手（R / L / B）が必要です")),
         };
         self.adv();
-        let mut pad = 0u8;
-        if let Some(d) = self.peek().filter(|d| d.is_ascii_digit()) {
-            pad = d as u8 - b'0';
+        let mut ev: Vec<(char, u8)> = vec![(hand, 0)];
+        if self.peek() == Some('[') {
+            // 和音: R[135] = 同じ手で複数のドラム、B[12] = 右手が1、左手が2、B[3] = 両手で3
+            let (l, c) = (self.line, self.col);
+            self.adv();
+            let mut pads: Vec<u8> = vec![];
+            loop {
+                match self.peek() {
+                    Some(d) if d.is_ascii_digit() && d != '0' => {
+                        pads.push(d as u8 - b'0');
+                        self.adv();
+                    }
+                    Some(']') => {
+                        self.adv();
+                        break;
+                    }
+                    _ => return Err(Error::at(l, c, "和音 [ ] の中はドラム番号（1〜9）を並べて ']' で閉じてください（例: R[135]、B[12]）")),
+                }
+            }
+            if pads.is_empty() {
+                return Err(Error::at(l, c, "和音 [ ] の中にドラム番号がありません（例: R[135]）"));
+            }
+            ev = if hand == 'B' {
+                match pads.len() {
+                    1 => vec![('B', pads[0])],
+                    2 => vec![('R', pads[0]), ('L', pads[1])],
+                    _ => return Err(Error::at(l, c, "B[ ] は1つ（両手で同じドラム）か2つ（右手・左手）のドラム番号を書いてください")),
+                }
+            } else {
+                pads.iter().map(|p| (hand, *p)).collect()
+            };
+        } else if let Some(d) = self.peek().filter(|d| d.is_ascii_digit()) {
+            ev[0].1 = d as u8 - b'0';
             self.adv();
         }
-        Ok(It::Note { dur: self.slot(), hand, accent: acc, kind: kind.unwrap_or("tap"), pad })
+        Ok(It::Note { dur: self.slot(), accent: acc, kind: kind.unwrap_or("tap"), ev })
     }
 }
 
@@ -508,20 +580,47 @@ pub fn parse_body(src: &str, line: usize, col: usize) -> Result<PartBody> {
     let (mut t, mut bar_start, mut bar_no) = (0.0f64, 0.0f64, 1usize);
     let mut has = false;
     let mut pending: Option<f64> = Some(0.0);
-    let mut last: Option<usize> = None;
+    let mut last: Option<(usize, usize)> = None;
     let open = |pending: &mut Option<f64>, bars: &mut Vec<f64>| {
         if let Some(p) = pending.take() {
             bars.push(p);
         }
     };
+    // 強弱: 現在の音量と、cresc / dim の途中（開始時刻・開始音量・向き・最初の音符の位置）
+    let mut cur = DEFAULT_VEL;
+    let mut ramp: Option<(f64, f64, f64, usize)> = None;
+    fn settle(notes: &mut [RNote], r: (f64, f64, f64, usize), t1: f64, v1: f64) {
+        for n in notes.iter_mut().skip(r.3) {
+            let f = if t1 - r.0 > 1e-9 { ((n.t - r.0) / (t1 - r.0)).clamp(0.0, 1.0) } else { 1.0 };
+            n.vel = r3(r.1 + (v1 - r.1) * f) as f32;
+        }
+    }
     for it in &items {
         match it {
-            It::Note { dur, hand, accent, kind, pad } => {
+            It::Note { dur, accent, kind, ev } => {
                 open(&mut pending, &mut bars);
-                notes.push(RNote { t, dur: *dur, hand: *hand, accent: *accent, kind, pad: *pad });
-                last = Some(notes.len() - 1);
+                let a = notes.len();
+                for (hand, pad) in ev {
+                    notes.push(RNote { t, dur: *dur, hand: *hand, accent: *accent, kind, pad: *pad, vel: r3(cur) as f32 });
+                }
+                last = Some((a, notes.len()));
                 t += dur;
                 has = true;
+            }
+            It::Dyn(v) => {
+                if let Some(r) = ramp.take() {
+                    settle(&mut notes, r, t, *v);
+                }
+                cur = *v;
+            }
+            It::Ramp(sign) => {
+                if let Some(r) = ramp.take() {
+                    // 続けて書いたときは、そこまでの変化を現在の音量で打ち切る
+                    let v = (r.1 + r.2 * RAMP_OPEN).clamp(0.05, 1.0);
+                    settle(&mut notes, r, t, v);
+                    cur = v;
+                }
+                ramp = Some((t, cur, *sign, notes.len()));
             }
             It::Rest(d) => {
                 open(&mut pending, &mut bars);
@@ -530,11 +629,13 @@ pub fn parse_body(src: &str, line: usize, col: usize) -> Result<PartBody> {
                 has = true;
             }
             It::Tie(d, l, c) => {
-                let Some(k) = last else {
+                let Some((a, b)) = last else {
                     return Err(Error::at(*l, *c, "タイ ~ の前に音符がありません（休符や先頭の後には使えません）"));
                 };
                 open(&mut pending, &mut bars);
-                notes[k].dur += d;
+                for n in &mut notes[a..b] {
+                    n.dur += d;
+                }
                 t += d;
                 has = true;
             }
@@ -550,6 +651,10 @@ pub fn parse_body(src: &str, line: usize, col: usize) -> Result<PartBody> {
                 }
             }
         }
+    }
+    // 次の強弱記号がないまま終わった cresc / dim は、パートの終わりまでに少し変える
+    if let Some(r) = ramp.take() {
+        settle(&mut notes, r, t, (r.1 + r.2 * RAMP_OPEN).clamp(0.05, 1.0));
     }
     if has && (t - bar_start - want).abs() > EPS {
         issues.push(BarIssue { bar: bar_no, got: t - bar_start, want, at: bar_start });

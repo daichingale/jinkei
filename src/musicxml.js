@@ -97,10 +97,11 @@ const jkImportMusicXml = (function () {
   const numOf = (n, name) => { const k = kid(n, name); if (!k) return null; const v = Number(k.text.trim()); return k.text.trim() !== '' && Number.isFinite(v) ? v : null; };
   const find = (n, name) => { for (const k of n.kids) { if (k.name === name) return k; const f = find(k, name); if (f) return f; } return null; };
 
+  // テナーは C = ロー … F = ハイ → ドラム 4 … 1（1 が最高音）、G = スポック1
   const PADS = {
-    snare: [1, 2, 3, 1, 1], tenor: [1, 2, 3, 4, 6], bass: [5, 4, 3, 2, 1], cymbal: [2, 3, 1, 4, 1],
+    snare: [1, 2, 3, 1, 1], tenor: [4, 3, 2, 1, 5], bass: [5, 4, 3, 2, 1], cymbal: [2, 3, 1, 4, 1],
   };
-  const padOf = (kit, step) => { const i = 'CDEFG'.indexOf(step); return i < 0 || step.length !== 1 ? 0 : PADS[kit][i]; };
+  const padOf = (kit, step) => { if (step === 'A' && kit === 'tenor') return 6; const i = 'CDEFG'.indexOf(step); return i < 0 || step.length !== 1 ? 0 : PADS[kit][i]; };   // A = スポック2（テナーだけ）
   function kitOf(name) {
     const l = name.toLowerCase();
     const has = (w) => w.some((x) => l.includes(x));
@@ -123,6 +124,11 @@ const jkImportMusicXml = (function () {
   const denOf = (t) => ({whole: 1, half: 2, quarter: 4, eighth: 8, '16th': 16, '32nd': 32, '64th': 64})[t] || 0;
   const sameTup = (a, b) => !!a && !!b && a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 
+  // 強弱記号・cresc / dim を置いてから音符を出す
+  function pushNote(o, e, kit, st) {
+    for (const m of e.marks) o.toks.push(m);
+    o.toks.push(noteTok(e, kit, st));
+  }
   function noteTok(e, kit, st) {
     let h;
     if (e.hand) { st.right = e.hand.toUpperCase() !== 'R'; h = e.hand.toUpperCase(); }
@@ -130,7 +136,15 @@ const jkImportMusicXml = (function () {
     const loud = e.accent > 0 || (e.hand && e.hand === e.hand.toUpperCase());
     let s = '';
     if (e.accent === 2) s += '^';
-    if (e.click) s += 'x'; else if (e.flam) s += 'f'; else if (e.buzz) s += 'z';
+    if (e.pre === 'k') s += 'k'; else if (e.click) s += 'x'; else if (e.pre) s += e.pre; else if (e.flam) s += 'f'; else if (e.buzz) s += 'z';
+    if (e.chord.length) {
+      // 和音: 右手と左手が1つずつなら B[右 左]、そうでなければ同じ手で R[135]
+      const pads = [e.pad, ...e.chord.map((c) => c[0])];
+      const twoHands = pads.length === 2 && !!e.hand && e.hand.toUpperCase() === 'R' && !!e.chord[0][1] && e.chord[0][1].toUpperCase() === 'L';
+      if (twoHands) { h = 'B'; st.right = true; }
+      s += (loud ? h : h.toLowerCase()) + '[' + pads.map((p) => String(Math.min(p, 9))).join('') + ']';
+      return s;
+    }
     s += loud ? h : h.toLowerCase();
     if (e.pad > 1 || (e.pad === 1 && (kit === 'tenor' || kit === 'bass'))) s += String(e.pad);
     return s;
@@ -161,6 +175,7 @@ const jkImportMusicXml = (function () {
     const voice = fn && val(fn, 'voice') ? val(fn, 'voice') : '1';
     const bars = [], barLen = [];
     let flamNext = false;
+    let marks = [];
     for (const m of kidsNamed(part, 'measure')) {
       let cursor = 0, lastEnd = 0;
       const evs = [];
@@ -176,6 +191,13 @@ const jkImportMusicXml = (function () {
             const nt = [Math.max(nn, 1), Math.max(dd, 1)];
             if (!gotTime) { time = nt; gotTime = true; } else if (nt[0] !== time[0] || nt[1] !== time[1]) warn('途中の拍子変更は最初の拍子にそろえました');
           }
+        } else if (it.name === 'direction') {
+          for (const dt of kidsNamed(it, 'direction-type')) {
+            const d = kid(dt, 'dynamics');
+            if (d) for (const k of d.kids) { const t = {pp: 'pp', ppp: 'pp', p: 'p', mp: 'mp', mf: 'mf', f: 'f', ff: 'ff', fff: 'ff'}[k.name]; if (t) marks.push(t); }
+            const w = kid(dt, 'wedge');
+            if (w) { if (w.attrs.type === 'crescendo') marks.push('cresc'); else if (w.attrs.type === 'diminuendo') marks.push('dim'); }
+          }
         } else if (it.name === 'backup' || it.name === 'forward') {
           const d = numOf(it, 'duration') || 0;
           cursor += it.name === 'backup' ? -d : d;
@@ -184,7 +206,16 @@ const jkImportMusicXml = (function () {
           if (kid(it, 'grace')) { flamNext = true; continue; }
           const dur = numOf(it, 'duration') || 0;
           const v = val(it, 'voice') || '1';
-          if (kid(it, 'chord')) { warn('和音は先頭の音だけ読み込みました'); continue; }
+          if (kid(it, 'chord')) {
+            // テナー・バスは和音にする。スネア・シンバルは先頭の音だけ
+            const un2 = kid(it, 'unpitched'), pad2 = un2 ? padOf(kit, val(un2, 'display-step')) : 0;
+            const ly2 = kid(it, 'lyric'), lyric2 = ly2 ? val(ly2, 'text') : '';
+            const hand2 = Array.from(lyric2).length === 1 && 'RLBrlb'.includes(lyric2) ? lyric2 : null;
+            const last = evs[evs.length - 1];
+            if (last && v === voice && (kit === 'tenor' || kit === 'bass') && pad2 > 0 && last.pad > 0) last.chord.push([pad2, hand2]);
+            else warn('和音は先頭の音だけ読み込みました（和音にできるのはテナー・バスのドラム番号が分かる音だけです）');
+            continue;
+          }
           const start = cursor;
           cursor += dur;
           if (v !== voice) continue;
@@ -208,7 +239,10 @@ const jkImportMusicXml = (function () {
           const lyric = ly ? val(ly, 'text') : '';
           const hand = Array.from(lyric).length === 1 && 'RLBrlb'.includes(lyric) ? lyric : null;
           const accent = hasN('strong-accent') ? 2 : hasN('accent') ? 1 : 0;
-          evs.push({start, dur, rest, tieStop, accent, click: val(it, 'notehead') === 'x', buzz: hasN('tremolo'), flam: flamNext, hand, pad, tup});
+          const nh = val(it, 'notehead'), staccato = hasN('staccato');
+          const pre = nh === 'triangle' || nh === 'inverted triangle' ? 'g' : nh === 'slash' ? (staccato ? 'm' : 'o') : nh === 'circle-x' ? 'k' : null;
+          evs.push({start, dur, rest, tieStop, accent, click: nh === 'x', buzz: hasN('tremolo'), flam: flamNext, pre, hand, pad, chord: [], marks: rest ? [] : marks, tup});
+          if (!rest) marks = [];
           flamNext = false;
         }
       }
@@ -226,7 +260,7 @@ const jkImportMusicXml = (function () {
         pieces(units).forEach(([d, dot], k) => {
           setDiv(d, dot);
           if (ev && !ev.rest) {
-            if (k === 0 && !(ev.tieStop && st.prevNote)) { o.toks.push(noteTok(ev, kit, st)); st.prevNote = true; } else o.toks.push('~');
+            if (k === 0 && !(ev.tieStop && st.prevNote)) { pushNote(o, ev, kit, st); st.prevNote = true; } else o.toks.push('~');
           } else { o.toks.push('-'); st.prevNote = false; }
         });
       };
@@ -252,7 +286,7 @@ const jkImportMusicXml = (function () {
               const ev = evs[gi];
               for (let si = 0; si < s; si++) {
                 if (ev.rest) { o.toks.push('-'); st.prevNote = false; }
-                else if (si === 0 && !(ev.tieStop && st.prevNote)) { o.toks.push(noteTok(ev, kit, st)); st.prevNote = true; }
+                else if (si === 0 && !(ev.tieStop && st.prevNote)) { pushNote(o, ev, kit, st); st.prevNote = true; }
                 else o.toks.push('~');
               }
             }

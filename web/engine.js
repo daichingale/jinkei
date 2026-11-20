@@ -181,6 +181,10 @@ function lexFull(src) {
 // ============================================================ 楽譜（part）本文の解析（src/score.rs の移植）
 const SC_EPS = 1e-6;
 const SC_MAX_ITEMS = 200000;
+const SC_DEFAULT_VEL = 0.7;
+const SC_RAMP_OPEN = 0.25;
+const SC_DYN = { pp: 0.25, p: 0.4, mp: 0.55, mf: 0.7, f: 0.85, ff: 1.0 };
+const scR3 = (v) => Math.round(v * 1000) / 1000;
 const isPow2 = (n) => n !== 0 && (n & (n - 1)) === 0;
 const isAlnumC = (c) => reAlnum.test(c);
 
@@ -277,6 +281,12 @@ class Sc {
         if (w === 'meter' || w === '拍子' || w === 'start' || w === '開始' || w === 'repeat' || w === 'くり返し') {
           if (this.tup) throw this.err(NOTUP);
           this.keyword(w, depth, out);
+        } else if (w === 'cresc' || w === 'decresc' || w === 'dim') {
+          for (let q = 0; q < w.length; q++) this.adv();
+          out.push({ k: 'ramp', sign: w === 'cresc' ? 1 : -1 });
+        } else if (Object.prototype.hasOwnProperty.call(SC_DYN, w)) {
+          for (let q = 0; q < w.length; q++) this.adv();
+          out.push({ k: 'dyn', v: SC_DYN[w] });
         } else {
           const it = this.note();
           this.any = true; this.tickTup(); out.push(it);
@@ -374,9 +384,14 @@ class Sc {
       else if (ch === 'f') k = 'flam';
       else if (ch === 'd') k = 'diddle';
       else if (ch === 'z') k = 'buzz';
+      else if (ch === 'o') k = 'rimshot';
+      else if (ch === 'm') k = 'mute';
+      else if (ch === 'g') k = 'gock';
+      else if (ch === 's') k = 'scrape';
+      else if (ch === 'k') k = 'stickclick';
       else break;
       if (k !== null) {
-        if (kind !== null) throw this.err('奏法の指定（x / f / d / z）は1音に1つだけです');
+        if (kind !== null) throw this.err('奏法の指定（x f d z o m g s k）は1音に1つだけです');
         kind = k;
       }
       had = true;
@@ -389,10 +404,28 @@ class Sc {
     else if (ch === null) throw this.err('音符の手（R / L / B）が必要です');
     else throw this.err(had ? '音符の手（R / L / B）が必要です' : `使えない文字です: '${ch}'（音符は R L B r l b。休符 - ・タイ ~）`);
     this.adv();
-    let pad = 0;
-    const d = this.peek();
-    if (d !== null && isDigit(d)) { pad = d.charCodeAt(0) - 48; this.adv(); }
-    return { k: 'note', dur: this.slot(), hand, accent: acc, kind: kind === null ? 'tap' : kind, pad };
+    let ev = [[hand, 0]];
+    if (this.peek() === '[') {
+      const l = this.line, c = this.col;
+      this.adv();
+      const pads = [];
+      for (;;) {
+        const d = this.peek();
+        if (d !== null && isDigit(d) && d !== '0') { pads.push(d.charCodeAt(0) - 48); this.adv(); }
+        else if (d === ']') { this.adv(); break; }
+        else throw at_(l, c, "和音 [ ] の中はドラム番号（1〜9）を並べて ']' で閉じてください（例: R[135]、B[12]）");
+      }
+      if (pads.length === 0) throw at_(l, c, '和音 [ ] の中にドラム番号がありません（例: R[135]）');
+      if (hand === 'B') {
+        if (pads.length === 1) ev = [['B', pads[0]]];
+        else if (pads.length === 2) ev = [['R', pads[0]], ['L', pads[1]]];
+        else throw at_(l, c, 'B[ ] は1つ（両手で同じドラム）か2つ（右手・左手）のドラム番号を書いてください');
+      } else ev = pads.map((p) => [hand, p]);
+    } else {
+      const d = this.peek();
+      if (d !== null && isDigit(d)) { ev[0][1] = d.charCodeAt(0) - 48; this.adv(); }
+    }
+    return { k: 'note', dur: this.slot(), accent: acc, kind: kind === null ? 'tap' : kind, ev };
   }
 }
 
@@ -419,21 +452,40 @@ function scoreParseBody(src, line, col) {
   const notes = [], bars = [], issues = [];
   let t = 0, barStart = 0, barNo = 1, has = false, pending = 0, last = null;
   const open = () => { if (pending !== null) { bars.push(pending); pending = null; } };
+  let cur = SC_DEFAULT_VEL, ramp = null;
+  const settle = (r, t1, v1) => {
+    for (let q = r.from; q < notes.length; q++) {
+      const n = notes[q];
+      const f = t1 - r.t0 > 1e-9 ? Math.min(1, Math.max(0, (n.t - r.t0) / (t1 - r.t0))) : 1;
+      n.vel = scR3(r.v0 + (v1 - r.v0) * f);
+    }
+  };
   for (const it of items) {
     if (it.k === 'note') {
       open();
-      notes.push({ t, dur: it.dur, hand: it.hand, accent: it.accent, kind: it.kind, pad: it.pad });
-      last = notes.length - 1; t += it.dur; has = true;
+      const a = notes.length;
+      for (const [hand, pad] of it.ev) notes.push({ t, dur: it.dur, hand, accent: it.accent, kind: it.kind, pad, vel: scR3(cur) });
+      last = [a, notes.length]; t += it.dur; has = true;
+    } else if (it.k === 'dyn') {
+      if (ramp) { settle(ramp, t, it.v); ramp = null; }
+      cur = it.v;
+    } else if (it.k === 'ramp') {
+      if (ramp) {
+        const v = Math.min(1, Math.max(0.05, ramp.v0 + ramp.sign * SC_RAMP_OPEN));
+        settle(ramp, t, v); cur = v;
+      }
+      ramp = { t0: t, v0: cur, sign: it.sign, from: notes.length };
     } else if (it.k === 'rest') {
       open(); last = null; t += it.dur; has = true;
     } else if (it.k === 'tie') {
       if (last === null) throw at_(it.l, it.c, 'タイ ~ の前に音符がありません（休符や先頭の後には使えません）');
-      open(); notes[last].dur += it.dur; t += it.dur; has = true;
+      open(); for (let q = last[0]; q < last[1]; q++) notes[q].dur += it.dur; t += it.dur; has = true;
     } else if (has) {
       if (Math.abs(t - barStart - want) > SC_EPS) issues.push({ bar: barNo, got: t - barStart, want, at: barStart });
       barNo++; barStart = t; has = false; pending = t;
     }
   }
+  if (ramp) settle(ramp, t, Math.min(1, Math.max(0.05, ramp.v0 + ramp.sign * SC_RAMP_OPEN)));
   if (has && Math.abs(t - barStart - want) > SC_EPS) issues.push({ bar: barNo, got: t - barStart, want, at: barStart });
   return { meter: sc.meter, start: sc.start, startPos: sc.startPos, notes, bars, len: t, issues, src: normalizeSrc(sc.cs, sc.cuts) };
 }
@@ -1941,7 +1993,7 @@ function build(a) {
     }
     parts.push({
       name: pa.name, members, meter: b.meter || [4, 4], start: pstart, end: pstart + b.len,
-      notes: b.notes.map((x) => ({ t: pstart + x.t, dur: x.dur, hand: x.hand, accent: x.accent, kind: x.kind, pad: x.pad })),
+      notes: b.notes.map((x) => ({ t: pstart + x.t, dur: x.dur, hand: x.hand, accent: x.accent, kind: x.kind, pad: x.pad, vel: x.vel })),
       bars: b.bars.map((x) => pstart + x),
     });
   }
@@ -2100,7 +2152,7 @@ function dataJson(s, r) {
     warnings: r.warnings.map((w) => ({ set: w.set, kind: w.kind, msg: w.msg, at: N(w.at), who: w.who.slice() })),
     parts: s.parts.map((p) => ({
       name: p.name, members: p.members.slice(), meter: [p.meter[0], p.meter[1]], start: N(p.start), end: N(p.end),
-      bars: p.bars.map(N), notes: p.notes.map((n) => [N(n.t), N(n.dur), n.hand, n.accent, n.kind, n.pad]),
+      bars: p.bars.map(N), notes: p.notes.map((n) => [N(n.t), N(n.dur), n.hand, n.accent, n.kind, n.pad, N(n.vel)]),
     })),
   };
 }

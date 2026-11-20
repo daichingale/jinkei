@@ -193,6 +193,20 @@ function marchingTuba(mb) {
 // ---- 打楽器 ----
 // 手に持つもの（スティック・マレット・シンバルの板）は parts.R / parts.L（手のボーンに付く別メッシュ）に作る。parts が無ければ本体に混ぜる
 const partOf = (mb, parts, k) => (parts ? parts[k] : mb);
+// 打つ動きの記述（strike.js / strike.rs が読む）: 打面 drums = {pad, c: 打面の中心, n: 打面の法線（外向き）, ex: 打面内の左（+x）向き, ez: 打面内の前向き, r: 打面の半径}、
+// 手に持つ棒 sticks = {R, L: {a: 後端, b: 先端の球の中心, rh: 先端の球の半径}}、anchor = 手首の待機位置。座標は構え（hold）のときのモデル座標
+const unit = v => V.norm(v);
+function drumRec(pad, c, n, r, o = {}) {
+  n = unit(n);
+  const ex = unit(o.ex || V.sub([1, 0, 0], V.mul(n, n[0]))), ez = unit(o.ez || V.sub(V.sub([0, 0, 1], V.mul(n, n[2])), V.mul(ex, ex[2])));
+  return {pad, c, n, ex, ez, r, spread: o.spread === undefined ? 1 : o.spread, ...(o.hand ? {hand: o.hand} : {})};
+}
+// 棒の後ろ端を手の後ろへ伸ばして（握りの位置 G は変えない）、実物の長さにする
+function longStick(pm, G, tip, rh, butt, m = M.WOOD, tm = M.WOOD) {
+  const d = unit(V.sub(tip, G)), a = V.madd(G, d, -butt);
+  stick(pm, a, tip, m, tm, rh);
+  return {a, b: tip, rh};
+}
 function snare(mb, parts) {
   const c = [0, 0.93, 0.31], ax = V.norm([0, 1, 0.16]);
   drumAt(mb, c, ax, 0.178, 0.19, {both: true});
@@ -203,11 +217,13 @@ function snare(mb, parts) {
   for (const s of [-1, 1]) mb.tube([s * 0.10, 1.12, 0.15], [s * 0.115, 0.99, 0.25], 0.007, 0.007, M.LEATHER, {N: 6});
   mb.box(V.madd(c, ax, -0.1), [0.06, 0.03, 0.06], M.SILVER); // スナッピー（下側）のつまみ
   const top = V.madd(c, ax, 0.095);
-  stick(partOf(mb, parts, 'R'), [-0.095, 1.085, 0.22], V.add(top, [-0.05, 0.003, 0.06]));
-  stick(partOf(mb, parts, 'L'), [0.095, 1.085, 0.22], V.add(top, [0.05, 0.003, 0.06]));
+  const GR = [-0.095, 1.085, 0.22], GL = [0.095, 1.085, 0.22];
+  const sR = longStick(partOf(mb, parts, 'R'), GR, V.add(top, [-0.05, 0.003, 0.06]), 0.0075, 0.11);
+  const sL = longStick(partOf(mb, parts, 'L'), GL, V.add(top, [0.05, 0.003, 0.06]), 0.0075, 0.11);
   return {
     R: {G: [-0.098, 1.082, 0.225], fd: [0.0, -0.4, 1], pn: [0.0, -1, 0.1], r: 0.006, pole: [-0.6, -1, -0.4]},
     L: {G: [0.098, 1.082, 0.225], fd: [0.0, -0.4, 1], pn: [0.0, -1, 0.1], r: 0.006, pole: [0.6, -1, -0.4]},
+    strike: {drums: [drumRec(1, V.madd(c, ax, 0.095), ax, 0.178)], sticks: {R: sR, L: sL}, anchor: {R: GR, L: GL}, click: [0, 1.20, 0.33]},
   };
 }
 const FLAG_G = [-0.30, 1.05, 0.15];
@@ -245,40 +261,77 @@ function flag(mb) {
 
 // カラーガードの旗: ポールの軸は鉛直、右手の位置 G を通る
 
-// テナードラム: 4つの胴を前の弧に並べ、左端の上にスポック（小さな高音ドラム）。両手にバチ
+// テナードラム（クイント / セクステット）: 主ドラム4つを手前から見て弧に並べ、その上に小さなスポック2つ。
+// 番号は実際のドラムラインの数え方: 1 = 最高音・最小（手前の右）、2 = 手前の左、3 = 外側の右、4 = 外側の左（最大）、5 = スポック1（手前中央の右）、6 = スポック2（左）。
+// サイズは 10・12・13・14 インチ、スポックは 6 インチ。ヘッドは奏者の側へ傾ける
+const TENOR_DRUMS = [
+  {pad: 1, R: 0.127, h: 0.19, c: [-0.140, 1.005, 0.505], n: [0.07, 1, -0.20]},
+  {pad: 2, R: 0.152, h: 0.19, c: [0.165, 1.005, 0.505], n: [-0.07, 1, -0.20]},
+  {pad: 3, R: 0.165, h: 0.20, c: [-0.440, 0.955, 0.385], n: [0.30, 1, -0.17]},
+  {pad: 4, R: 0.178, h: 0.21, c: [0.480, 0.955, 0.375], n: [-0.30, 1, -0.17]},
+  {pad: 5, R: 0.076, h: 0.11, c: [-0.072, 1.19, 0.435], n: [0.06, 1, -0.26]},
+  {pad: 6, R: 0.076, h: 0.11, c: [0.078, 1.19, 0.435], n: [-0.06, 1, -0.26]},
+];
 function tenors(mb, parts) {
   harness(mb);
-  const tilt = V.norm([0, 1, 0.2]), Rs = [0.095, 0.11, 0.12, 0.13];
-  let x = -0.40; const dr = [];
-  Rs.forEach(R => { x += R; dr.push([x, R]); x += R; });
-  const sh = -(dr[0][0] + dr[3][0]) / 2;
-  for (const [x0, R] of dr) { const xx = x0 + sh; drumAt(mb, [xx, 0.93 - (R - 0.075) * 0.3, 0.46 - 1.1 * xx * xx], tilt, R, 0.18, {lugs: 6}); }
-  // スポック（左上）
-  drumAt(mb, [0.30, 1.07, 0.24], V.norm([0.1, 1, 0.3]), 0.07, 0.12, {lugs: 5});
-  mb.tube([-0.38, 0.86, 0.26], [0.38, 0.86, 0.26], 0.01, 0.01, M.LEATHER, {N: 6});
-  for (const s of [-1, 1]) mb.tube([s * 0.10, 1.12, 0.15], [s * 0.11, 0.97, 0.22], 0.007, 0.007, M.LEATHER, {N: 6});
-  stick(partOf(mb, parts, 'R'), [-0.10, 1.12, 0.20], [-0.11, 1.065, 0.42], M.WOOD, M.FELT, 0.012);
-  stick(partOf(mb, parts, 'L'), [0.10, 1.12, 0.20], [0.11, 1.065, 0.42], M.WOOD, M.FELT, 0.012);
+  const recs = [], low = [];
+  for (const d of TENOR_DRUMS) {
+    const n = unit(d.n), sh = V.madd(d.c, n, -d.h / 2);
+    drumAt(mb, sh, n, d.R, d.h, {lugs: d.pad >= 5 ? 5 : 6});
+    recs.push(drumRec(d.pad, d.c, n, d.R));
+    if (d.pad <= 4) low.push(V.madd(d.c, n, -d.h - 0.035));
+  }
+  // キャリア: 主ドラムの下をくぐる弧のレール、各ドラムの胴をつなぐ支柱、ハーネスの板からのアーム、スポックの支柱
+  const rail = [low[2], low[0], low[1], low[3]];
+  mb.sweep(rail, 0.011, M.SILVER, {N: 8, sub: 6});
+  for (const d of TENOR_DRUMS) if (d.pad <= 4) {
+    const n = unit(d.n), bt = V.madd(d.c, n, -d.h - 0.035);
+    mb.tube(bt, V.madd(d.c, n, -d.h * 0.55), 0.008, 0.008, M.SILVER, {N: 6});
+    mb.ellipsoid(V.madd(d.c, n, -d.h * 0.55), [0.012, 0.012, 0.012], M.LEATHER, {N: 8, lat: 4});
+  }
+  for (const s of [-1, 1]) {
+    mb.sweep([[s * 0.085, 1.14, 0.135], [s * 0.11, 1.02, 0.20], [s * 0.10, 0.93, 0.32], V.add(s < 0 ? low[0] : low[1], [0, 0.02, 0.0])], 0.009, M.LEATHER, {N: 6, sub: 5});
+  }
+  for (const d of TENOR_DRUMS) if (d.pad >= 5) {
+    const n = unit(d.n), bt = V.madd(d.c, n, -d.h - 0.01), sx = d.pad === 5 ? -1 : 1, base = [sx * 0.03, 1.02, 0.43];
+    mb.tube(base, bt, 0.007, 0.007, M.SILVER, {N: 6});
+  }
+  mb.tube([-0.03, 1.02, 0.43], [0.03, 1.02, 0.43], 0.008, 0.008, M.SILVER, {N: 6});
+  mb.tube([0, 1.02, 0.43], [0, 0.95, 0.47], 0.009, 0.009, M.SILVER, {N: 6});
+  // 右手・左手のスティック: 構えでは先が主ドラム1・2の打面に載る
+  const GR = [-0.10, 1.118, 0.205], GL = [0.10, 1.118, 0.205];
+  const tipOn = (d, sx) => V.madd(V.add(d.c, V.add(V.mul(d.ex, sx * 0.28 * d.r), V.mul(d.ez, -0.10 * d.r))), d.n, 0.012);
+  const tR = tipOn(recs[0], -1), tL = tipOn(recs[1], 1);
+  const sR = longStick(partOf(mb, parts, 'R'), GR, tR, 0.012, 0.115), sL = longStick(partOf(mb, parts, 'L'), GL, tL, 0.012, 0.115);
+  const fdR = unit(V.sub(tR, GR)), fdL = unit(V.sub(tL, GL));
   return {
-    R: {G: [-0.10, 1.118, 0.205], fd: [0.0, -0.3, 1], pn: [0.0, -1, 0.1], r: 0.006, pole: [-0.6, -1, -0.4]},
-    L: {G: [0.10, 1.118, 0.205], fd: [0.0, -0.3, 1], pn: [0.0, -1, 0.1], r: 0.006, pole: [0.6, -1, -0.4]},
+    R: {G: GR, fd: fdR, pn: [0.0, -1, 0.1], r: 0.006, pole: [-0.6, -1, -0.4]},
+    L: {G: GL, fd: fdL, pn: [0.0, -1, 0.1], r: 0.006, pole: [0.6, -1, -0.4]},
+    strike: {drums: recs, sticks: {R: sR, L: sL}, anchor: {R: GR, L: GL}, click: [0, 1.30, 0.36]},
   };
 }
-// バスドラム（キャリア付き）。胴径 R が大きいほど低音。両手にマレット
+// バスドラム（キャリア付き）。胴径 R が大きいほど低音。胴の軸は左右（ヘッドが体の右と左を向く）。右手のマレットは右のヘッド、左手は左のヘッドを横から打つ
 function bassdrum(mb, R, h, parts) {
   harness(mb, 1.20);
-  const c = [0, 0.66 + R, 0.15 + h / 2];
-  drumAt(mb, c, [0, 0, 1], R, h, {both: true, lugs: 12});
-  for (const s of [-1, 1]) mb.tube([s * 0.09, 1.22, 0.14], [s * 0.12, 1.20, 0.20], 0.008, 0.008, M.LEATHER, {N: 6});
-  const g = {}, zf = c[2] + h / 2;
-  for (const [key, s] of [['L', 1], ['R', -1]]) {
-    const hand = [s * (R + 0.075), c[1] + 0.07, c[2] + 0.02], tip = [s * R * 0.55, c[1] + 0.05, zf + 0.04];
-    const dir = V.norm(V.sub(tip, hand)), pm = partOf(mb, parts, key);
-    pm.tube(V.madd(hand, dir, -0.07), V.madd(tip, dir, -0.025), 0.008, 0.0065, M.WOOD, {N: 6});
-    pm.ellipsoid(V.madd(tip, dir, 0.005), [0.04, 0.04, 0.04], M.FELT, {N: 12, lat: 7});
-    pm.tube(V.madd(hand, dir, -0.07), V.madd(hand, dir, -0.20), 0.009, 0.009, M.WOOD, {N: 6});
-    g[key] = {G: hand, fd: dir, pn: [0, -1, 0.1], r: 0.008, pole: [s * 0.8, -1, -0.2]};
+  const zc = 0.12 + R + 0.05, c = [0, 0.66 + R, zc], rh = 0.04, hr = R - 0.004;
+  drumAt(mb, c, [1, 0, 0], R, h, {both: true, lugs: 12});
+  // キャリアのアーム（板から胴の手前の上・下へ）
+  for (const s of [-1, 1]) {
+    mb.tube([s * 0.09, 1.22, 0.14], [s * h * 0.38, c[1] + R * 0.62, zc - R * 0.78], 0.008, 0.008, M.LEATHER, {N: 6});
+    mb.tube([s * 0.10, 1.00, 0.12], [s * h * 0.38, c[1] - R * 0.62, zc - R * 0.78], 0.008, 0.008, M.LEATHER, {N: 6});
   }
+  const g = {}, recs = [], sticks = {}, anchor = {};
+  for (const [key, s] of [['L', 1], ['R', -1]]) {
+    const headC = [s * (h / 2 + 0.004), c[1], zc], n = [s, 0, 0];
+    recs.push(drumRec(s < 0 ? 1 : 2, headC, n, hr, {ex: [0, 1, 0], ez: [0, 0, 1], spread: 0, hand: key}));
+    const G = [s * (h / 2 + 0.17), c[1] + 0.08, zc - 0.26], tip = [s * (h / 2 + 0.004 + rh), c[1] + 0.02, zc - 0.02];
+    const dir = unit(V.sub(tip, G)), pm = partOf(mb, parts, key), a = V.madd(G, dir, -0.13);
+    pm.tube(a, V.madd(tip, dir, -rh * 0.9), 0.008, 0.0065, M.WOOD, {N: 6});
+    pm.ellipsoid(tip, [rh, rh, rh], M.FELT, {N: 12, lat: 7});
+    sticks[key] = {a, b: tip, rh}; anchor[key] = G;
+    g[key] = {G, fd: dir, pn: [0, -1, 0.1], r: 0.008, pole: [s * 0.8, -1, -0.2]};
+  }
+  g.strike = {drums: recs, sticks, anchor, click: [0, c[1] + R + 0.10, zc]};
   return g;
 }
 // シンバル: 2枚を縦（板面は左右に向き合う）に持つ。mid は胸の高さ、high は頭上に高く掲げる

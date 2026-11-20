@@ -65,10 +65,12 @@ pub struct Note {
     pub hand: char,
     /// 0 = 通常, 1 = アクセント, 2 = 強いアクセント
     pub accent: u8,
-    /// "tap" | "click" | "flam" | "diddle" | "buzz"
+    /// "tap" | "click" | "flam" | "diddle" | "buzz" | "rimshot" | "mute" | "gock" | "scrape" | "stickclick"
     pub kind: &'static str,
-    /// 打面・ドラム番号（0 = 指定なし）
+    /// 打面・ドラム番号（0 = 指定なし）。テナーは 1〜4 = 主ドラム（1 が最高音）、5・6 = スポック。バスは 1 = 最小 … 5 = 最大
     pub pad: u8,
+    /// 強弱 0..1（既定 mf = 0.7。アクセントとは別）
+    pub vel: f32,
 }
 
 /// 楽譜パート（演奏するメンバーと音符）
@@ -821,7 +823,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             meter: b.meter.unwrap_or((4, 4)),
             start,
             end: start + b.len,
-            notes: b.notes.iter().map(|n| Note { t: start + n.t, dur: n.dur, hand: n.hand, accent: n.accent, kind: n.kind, pad: n.pad }).collect(),
+            notes: b.notes.iter().map(|n| Note { t: start + n.t, dur: n.dur, hand: n.hand, accent: n.accent, kind: n.kind, pad: n.pad, vel: n.vel }).collect(),
             bars: b.bars.iter().map(|x| start + x).collect(),
         });
     }

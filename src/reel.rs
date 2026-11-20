@@ -137,7 +137,7 @@ impl Canvas {
         }
     }
 
-    /// ストローク文字（数字と R L B r l b）。cy は文字の縦の中心、h は高さ、wd は線の太さ。anchor: 0 = 中央
+    /// ストローク文字（数字と R L B r l b p m f）。cy は文字の縦の中心、h は高さ、wd は線の太さ。anchor: 0 = 中央
     pub fn text(&mut self, s: &str, cx: f32, cy: f32, h: f32, wd: f32, c: Col) {
         let adv = h * 0.78;
         let total = adv * s.chars().count() as f32 - (adv - h * 0.6);
@@ -192,6 +192,10 @@ fn glyph(c: char) -> Vec<Vec<(f32, f32)>> {
         ],
         'r' => vec![vec![(0.1, 0.3), (0.1, 1.0)], cat(vec![(0.1, 0.6)], arc(0.32, 0.55, 0.22, 0.25, 180.0, 275.0))],
         'l' => vec![vec![(0.3, 0.0), (0.3, 1.0)]],
+        // 強弱記号 p m f（pp mp mf ff の文字）
+        'p' => vec![vec![(0.1, 0.3), (0.1, 1.0)], arc(0.32, 0.55, 0.24, 0.25, 0.0, 360.0)],
+        'm' => vec![vec![(0.05, 0.35), (0.05, 1.0)], arc(0.2, 0.6, 0.15, 0.25, 180.0, 360.0), vec![(0.35, 0.6), (0.35, 1.0)], arc(0.5, 0.6, 0.15, 0.25, 180.0, 360.0), vec![(0.65, 0.6), (0.65, 1.0)]],
+        'f' => vec![vec![(0.52, 0.1), (0.42, 0.0), (0.27, 0.0), (0.2, 0.2), (0.2, 1.0)], vec![(0.0, 0.4), (0.47, 0.4)]],
         'b' => vec![vec![(0.08, 0.0), (0.08, 1.0)], arc(0.32, 0.68, 0.24, 0.31, 0.0, 360.0)],
         _ => vec![],
     }
@@ -252,19 +256,6 @@ const RESTS: [(f64, Rest); 9] = [
     (0.125, Rest::ThirtySecond),
 ];
 
-struct Item {
-    t: f64,
-    d: f64,
-    hand: char,
-    acc: u8,
-    kind: &'static str,
-    pad: u8,
-    x: f32,
-    f: u8,
-    stem: bool,
-    gid: i64,
-}
-
 /// 譜面に出すページ（2 小節ぶん）: (from, to)。再生位置の小節を含むページ
 pub fn staff_page(part: &Part, t: f64) -> (f64, f64) {
     let bl = part.meter.0.max(1) as f64;
@@ -284,16 +275,110 @@ pub fn staff_page(part: &Part, t: f64) -> (f64, f64) {
     (from, to)
 }
 
-/// 1線の打楽器譜を (ox, oy) から w×h に描く。staff.js の jkStaff と同じ配置
+/// 楽器（楽譜の段の形）。src/staff.js の jkStaff.instOf と同じ分け方
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Inst {
+    Line,
+    Snare,
+    Tenor,
+    Bass,
+    Cymbal,
+}
+
+impl Inst {
+    /// テナー・バスは5線
+    pub fn five(self) -> bool {
+        matches!(self, Inst::Tenor | Inst::Bass)
+    }
+    /// 段の左に出す名前（1線の「その他」はパート名を使う）
+    pub fn label(self) -> Option<&'static str> {
+        match self {
+            Inst::Snare => Some("スネア"),
+            Inst::Tenor => Some("テナー"),
+            Inst::Bass => Some("バス"),
+            Inst::Cymbal => Some("シンバル"),
+            Inst::Line => None,
+        }
+    }
+}
+
+/// パートの先頭メンバーの楽器から決める
+pub fn inst_of(show: &Show, part: &Part) -> Inst {
+    let Some(&m) = part.members.first() else { return Inst::Line };
+    match show.sections[show.performers[m].section].instrument.as_str() {
+        "snare" => Inst::Snare,
+        "tenors" => Inst::Tenor,
+        "bass1" | "bass2" | "bass3" | "bass4" | "bass5" | "bass_drum" => Inst::Bass,
+        "cymbals_mid" | "cymbals_high" => Inst::Cymbal,
+        _ => Inst::Line,
+    }
+}
+
+/// 段の名前（スネア / テナー / バス / シンバル、その他はパート名）
+pub fn stave_label(inst: Inst, part: &Part) -> String {
+    inst.label().map(|s| s.to_string()).unwrap_or_else(|| part.name.clone())
+}
+
+/// 段の寸法（sp = 符頭の間隔に対する比）。src/staff.js の CFG と同じ
+struct Cfg {
+    den: f32,
+    line: f32,
+    stem: f32,
+    acc: f32,
+    mar: f32,
+    hand: f32,
+    pad: f32,
+}
+
+fn cfg(inst: Inst) -> Cfg {
+    if inst.five() {
+        Cfg { den: 13.0, line: 8.2, stem: -4.9, acc: -6.7, mar: -6.9, hand: 4.0, pad: 4.7 }
+    } else {
+        Cfg { den: 11.0, line: 7.0, stem: -3.6, acc: -5.5, mar: -5.7, hand: 3.2, pad: 3.8 }
+    }
+}
+
+/// (sp, 音符の左端 x0, 右端 x1)。x0 は重ね表示で全段をそろえるときに指定する
+fn stave_geom(part: &Part, w: f32, h: f32, inst: Inst, x0: Option<f32>) -> (f32, f32, f32) {
+    let sp = h / cfg(inst).den;
+    let mlen = part.meter.0.to_string().len().max(part.meter.1.to_string().len()) as f32;
+    (sp, x0.unwrap_or(sp * (2.6 + 1.9 * mlen + 2.2)), w - sp * 1.2)
+}
+
+struct Head {
+    pad: u8,
+    hand: char,
+    ni: usize,
+    y: f32,
+    off: bool,
+}
+
+struct Item {
+    t: f64,
+    d: f64,
+    acc: u8,
+    kind: &'static str,
+    vel: f64,
+    heads: Vec<Head>,
+    x: f32,
+    f: u8,
+    stem: bool,
+    gid: i64,
+    y_low: f32,
+    y_high: f32,
+}
+
+/// 打楽器譜の1段を (ox, oy) から w×h に描く。staff.js の jkStaff と同じ配置・記号
+/// （スネア・シンバル・その他 = 1線、テナー・バス = 5線。和音・奏法の記号・強弱つき）。x0 は音符の左端（重ね表示でそろえる）
 #[allow(clippy::too_many_arguments)]
-pub fn draw_staff(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part, from: f64, to: f64, ph: Option<f64>, pal: &Pal) {
-    let sp = h / 11.0;
-    let line_y = 7.0 * sp;
+pub fn draw_stave(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part, inst: Inst, x0o: Option<f32>, from: f64, to: f64, ph: Option<f64>, pal: &Pal) {
+    let cf = cfg(inst);
+    let five = inst.five();
+    let (sp, x0, x1) = stave_geom(part, w, h, inst, x0o);
+    let line_y = cf.line * sp;
     let (fg, mu, hi) = (pal.fg, pal.mu, pal.hi);
     let meter = part.meter;
     let mlen = meter.0.to_string().len().max(meter.1.to_string().len()) as f32;
-    let x0 = sp * (2.6 + 1.9 * mlen + 2.2);
-    let x1 = w - sp * 1.2;
     let xf = |t: f64| x0 + ((t - from) / (to - from)) as f32 * (x1 - x0);
     let lw = sp * 0.13;
     // 座標は (ox, oy) からの相対
@@ -301,7 +386,14 @@ pub fn draw_staff(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part,
     let seg = |c: &mut Canvas, xa: f32, ya: f32, xb: f32, yb: f32, wd: f32, col: Col| c.line(ox + xa, oy + ya, ox + xb, oy + yb, wd, col, 1.0);
     let head = |c: &mut Canvas, x: f32, y: f32, k: f32, col: Col| c.ellipse(ox + x, oy + y, 0.64 * sp * k, 0.46 * sp * k, -20f32.to_radians(), col);
 
-    c.rect(ox, oy + line_y - lw / 2.0, ox + w, oy + line_y + lw / 2.0, fg, 1.0);
+    if five {
+        for k in -2..=2 {
+            let y = line_y + k as f32 * sp;
+            c.rect(ox, oy + y - sp * 0.06, ox + w, oy + y + sp * 0.06, fg, 1.0);
+        }
+    } else {
+        c.rect(ox, oy + line_y - lw / 2.0, ox + w, oy + line_y + lw / 2.0, fg, 1.0);
+    }
     // 打楽器記号（太い2本の縦線）と拍子
     c.rect(ox + sp * 0.6, oy + line_y - sp, ox + sp, oy + line_y + sp, fg, 1.0);
     c.rect(ox + sp * 1.3, oy + line_y - sp, ox + sp * 1.7, oy + line_y + sp, fg, 1.0);
@@ -309,8 +401,8 @@ pub fn draw_staff(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part,
     c.text(&meter.0.to_string(), ox + cx, oy + line_y - sp, sp * 1.9, sp * 0.34, fg);
     c.text(&meter.1.to_string(), ox + cx, oy + line_y + sp, sp * 1.9, sp * 0.34, fg);
 
-    let mut notes: Vec<&crate::build::Note> = part.notes.iter().collect();
-    notes.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
+    let mut notes: Vec<(usize, &crate::build::Note)> = part.notes.iter().enumerate().collect();
+    notes.sort_by(|a, b| a.1.t.partial_cmp(&b.1.t).unwrap().then(a.0.cmp(&b.0)));
     let bar_of = |t: f64| {
         let mut b = part.start;
         for x in &part.bars {
@@ -344,7 +436,7 @@ pub fn draw_staff(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part,
         }
     };
     let mut cursor = part.start;
-    for n in &notes {
+    for (_, n) in &notes {
         if n.t - cursor > 0.1 {
             rest_at(c, cursor, n.t - cursor);
         }
@@ -353,16 +445,74 @@ pub fn draw_staff(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part,
     if part.end - cursor > 0.1 && !notes.is_empty() {
         rest_at(c, cursor, part.end - cursor);
     }
-    // 音符
+    // 音符 → 和音（同じ時刻の音を1つにまとめる）。ドラムの位置は楽器ごと
+    let y_of = |pad: u8, ni: usize| -> f32 {
+        match inst {
+            Inst::Tenor => {
+                let p = if pad == 0 { (ni % 4) as f32 + 1.0 } else { pad.min(6) as f32 };
+                if p <= 4.0 { line_y + (p - 2.5) * sp } else { line_y - (p - 2.0) * sp }
+            }
+            Inst::Bass => line_y + (pad.min(5) as f32 - 3.0) * sp,
+            _ => line_y,
+        }
+    };
     let mut items: Vec<Item> = vec![];
-    for n in &notes {
+    for (ni, n) in &notes {
         if n.t < from - 1e-6 || n.t > to {
             continue;
         }
+        let hd = Head { pad: n.pad, hand: n.hand, ni: *ni, y: 0.0, off: false };
+        if let Some(last) = items.last_mut() {
+            if (last.t - n.t).abs() < 1e-6 {
+                last.heads.push(hd);
+                last.acc = last.acc.max(n.accent);
+                continue;
+            }
+        }
         let d = n.dur;
-        items.push(Item { t: n.t, d, hand: n.hand, acc: n.accent, kind: n.kind, pad: n.pad, x: xf(n.t), f: if d >= 2.0 - 1e-6 { 0 } else { flags_of(d) }, stem: d < 4.0 - 1e-6, gid: 0 });
+        items.push(Item { t: n.t, d, acc: n.accent, kind: n.kind, vel: n.vel as f64, heads: vec![hd], x: xf(n.t), f: if d >= 2.0 - 1e-6 { 0 } else { flags_of(d) }, stem: d < 4.0 - 1e-6, gid: 0, y_low: 0.0, y_high: 0.0 });
     }
-    let stem_top = line_y - sp * 3.6;
+    // 各符頭の y と左右のずれ。バスで pad なし = 5 本の線すべて（全員で同時）
+    for it in items.iter_mut() {
+        let mut hs: Vec<Head> = vec![];
+        for h in it.heads.drain(..) {
+            if inst == Inst::Bass && h.pad == 0 && it.kind != "stickclick" {
+                for k in 1..=5u8 {
+                    hs.push(Head { pad: k, hand: h.hand, ni: h.ni, y: 0.0, off: false });
+                }
+            } else {
+                hs.push(h);
+            }
+        }
+        if it.kind == "stickclick" {
+            hs.truncate(1);
+            hs[0].pad = 0;
+        }
+        for h in hs.iter_mut() {
+            h.y = if it.kind == "stickclick" { line_y } else { y_of(h.pad, h.ni) };
+        }
+        // 同じ y の重複は1つに
+        let mut seen: Vec<i64> = vec![];
+        hs.retain(|h| {
+            let k = (h.y * 100.0).round() as i64;
+            if seen.contains(&k) {
+                false
+            } else {
+                seen.push(k);
+                true
+            }
+        });
+        hs.sort_by(|a, b| b.y.partial_cmp(&a.y).unwrap());
+        let mut prev: Option<(f32, bool)> = None;
+        for h in hs.iter_mut() {
+            h.off = matches!(prev, Some((py, po)) if !po && (py - h.y).abs() < sp * 1.05);
+            prev = Some((h.y, h.off));
+        }
+        it.y_low = hs[0].y;
+        it.y_high = hs[hs.len() - 1].y;
+        it.heads = hs;
+    }
+    let stem_top = line_y + cf.stem * sp;
     let hw = sp * 0.59;
     // 連桁
     let mut groups: Vec<Vec<usize>> = vec![];
@@ -435,64 +585,187 @@ pub fn draw_staff(c: &mut Canvas, ox: f32, oy: f32, w: f32, h: f32, part: &Part,
     for e in &trip {
         c.text("3", ox + (e.1 + e.2) / 2.0 + hw, oy + stem_top - sp * 1.25, sp * 1.1, sp * 0.2, fg);
     }
+
+    // 強弱（pp p mp mf f ff）と cresc / dim の開き線
+    const DYN: [(f64, &str); 6] = [(0.25, "pp"), (0.4, "p"), (0.55, "mp"), (0.7, "mf"), (0.85, "f"), (1.0, "ff")];
+    let dyn_name = |v: f64| DYN.iter().find(|d| (d.0 - v).abs() < 0.0015).map(|d| d.1);
+    let dyn_y = line_y + cf.acc * sp;
+    let dir = |a: &Item, b: &Item| -> i32 {
+        if b.vel - a.vel > 0.0015 {
+            1
+        } else if b.vel - a.vel < -0.0015 {
+            -1
+        } else {
+            0
+        }
+    };
+    // 続けて強く（弱く）なる 3 音以上の区間: (開始, 終了, 向き)。区間の途中の音には強弱の文字を出さない
+    let mut runs: Vec<(usize, usize, i32)> = vec![];
+    let mut i = 0;
+    while i + 1 < items.len() {
+        let d0 = dir(&items[i], &items[i + 1]);
+        if d0 == 0 {
+            i += 1;
+            continue;
+        }
+        let mut j = i + 1;
+        while j + 1 < items.len() && dir(&items[j], &items[j + 1]) == d0 {
+            j += 1;
+        }
+        if j - i >= 2 {
+            runs.push((i, j, d0));
+        }
+        i = j;
+    }
+    for (i, it) in items.iter().enumerate() {
+        let changed = if i == 0 { (it.vel - 0.7).abs() > 0.0015 } else { (it.vel - items[i - 1].vel).abs() > 0.0015 };
+        let mid = runs.iter().any(|r| i > r.0 && i < r.1);
+        if let Some(nm) = dyn_name(it.vel) {
+            if (changed || runs.iter().any(|r| r.0 == i)) && !mid && !(i == 0 && !changed) {
+                let hh = sp * 1.5;
+                let adv = hh * 0.78;
+                let total = adv * nm.len() as f32 - (adv - hh * 0.6);
+                c.text(nm, ox + it.x - sp * 0.9 - total / 2.0, oy + dyn_y, hh, sp * 0.2, fg);
+            }
+        }
+    }
+    for r in &runs {
+        let (xa, xb, y, hh) = (items[r.0].x + sp * 0.4, items[r.1].x + sp * 0.2, dyn_y - sp * 1.0, sp * 0.5);
+        if r.2 > 0 {
+            seg(c, xa, y, xb, y - hh, sp * 0.12, fg);
+            seg(c, xa, y, xb, y + hh, sp * 0.12, fg);
+        } else {
+            seg(c, xa, y - hh, xb, y, sp * 0.12, fg);
+            seg(c, xa, y + hh, xb, y, sp * 0.12, fg);
+        }
+    }
+
     for (idx, it) in items.iter().enumerate() {
         let x = it.x;
         let loud = it.acc > 0;
-        if it.kind == "click" {
-            let k = sp * 0.5;
-            seg(c, x - k, line_y - k, x + k, line_y + k, sp * 0.24, fg);
-            seg(c, x - k, line_y + k, x + k, line_y - k, sp * 0.24, fg);
-        } else if it.d >= 4.0 - 1e-6 {
-            c.ellipse(ox + x, oy + line_y, sp * 0.86, sp * 0.5, -10f32.to_radians(), fg);
-            c.ellipse(ox + x, oy + line_y, sp * 0.4, sp * 0.26, -50f32.to_radians(), pal.bg);
-        } else if it.d >= 2.0 - 1e-6 {
-            head(c, x, line_y, 1.0, fg);
-            c.ellipse(ox + x, oy + line_y, sp * 0.46, sp * 0.19, -30f32.to_radians(), pal.bg);
-        } else {
-            head(c, x, line_y, 1.0, fg);
-        }
-        if it.stem {
-            vline(c, x + hw, stem_top, line_y - sp * 0.1, lw, fg);
-            if it.f > 0 && !beamed[idx] {
-                for k in 0..it.f.min(2) {
-                    draw_flag(c, ox + x + hw, oy + stem_top + k as f32 * sp * 0.75, sp, if it.f == 3 { 0.8 } else { 1.0 }, fg);
-                }
-                if it.f == 3 {
-                    draw_flag(c, ox + x + hw, oy + stem_top + 1.5 * sp * 0.75, sp, 0.7, fg);
+        let k = it.kind;
+        let xs = x + hw;
+        let whole_like = it.d >= 4.0 - 1e-6;
+        let half_like = it.d >= 2.0 - 1e-6;
+        // 加線（五線の外の符頭）
+        if five {
+            for h in &it.heads {
+                if h.y < line_y - 2.0 * sp - 1e-3 {
+                    let mut ly = line_y - 3.0 * sp;
+                    while ly >= h.y - 1e-3 {
+                        seg(c, x - sp * 1.0, ly, x + sp * 1.0, ly, sp * 0.12, fg);
+                        ly -= sp;
+                    }
                 }
             }
         }
-        if dotted(it.d) {
-            c.circle(ox + x + sp * 1.2, oy + line_y - sp * 0.5, sp * 0.2, fg);
+        for h in &it.heads {
+            let hx = x + if h.off { 2.0 * hw } else { 0.0 };
+            let hy = h.y;
+            let spock = inst == Inst::Tenor && (h.pad == 5 || h.pad == 6);
+            let cross = |c: &mut Canvas| {
+                let q = sp * 0.5;
+                seg(c, hx - q, hy - q, hx + q, hy + q, sp * 0.24, fg);
+                seg(c, hx - q, hy + q, hx + q, hy - q, sp * 0.24, fg);
+            };
+            if k == "stickclick" {
+                cross(c);
+                c.ring(ox + hx, oy + hy, sp * 0.95, sp * 0.13, fg);
+            } else if k == "gock" {
+                let pts = [(hx, hy - sp * 0.62), (hx - sp * 0.7, hy + sp * 0.5), (hx + sp * 0.7, hy + sp * 0.5)];
+                if half_like {
+                    let mut v: Vec<(f32, f32)> = pts.iter().map(|p| (ox + p.0, oy + p.1)).collect();
+                    v.push(v[0]);
+                    c.poly(&v, sp * 0.15, fg);
+                } else {
+                    c.tri([(ox + pts[0].0, oy + pts[0].1), (ox + pts[1].0, oy + pts[1].1), (ox + pts[2].0, oy + pts[2].1)], fg);
+                }
+            } else {
+                if k == "click" || spock || inst == Inst::Cymbal {
+                    cross(c);
+                } else if whole_like {
+                    c.ellipse(ox + hx, oy + hy, sp * 0.86, sp * 0.5, -10f32.to_radians(), fg);
+                    c.ellipse(ox + hx, oy + hy, sp * 0.4, sp * 0.26, -50f32.to_radians(), pal.bg);
+                } else if half_like {
+                    head(c, hx, hy, 1.0, fg);
+                    c.ellipse(ox + hx, oy + hy, sp * 0.46, sp * 0.19, -30f32.to_radians(), pal.bg);
+                } else {
+                    head(c, hx, hy, 1.0, fg);
+                }
+                if k == "rimshot" || k == "mute" {
+                    // 斜線（符頭の両端から出る）
+                    seg(c, hx - sp * 0.95, hy + sp * 0.95, hx - sp * 0.5, hy + sp * 0.5, sp * 0.15, fg);
+                    seg(c, hx + sp * 0.5, hy - sp * 0.5, hx + sp * 0.95, hy - sp * 0.95, sp * 0.15, fg);
+                }
+                if k == "mute" {
+                    c.circle(ox + hx, oy + hy - sp * 1.25, sp * 0.2, fg);
+                }
+            }
+            if dotted(it.d) {
+                let dy = if inst == Inst::Tenor && (1..=4).contains(&h.pad) { 0.1 } else { -0.5 };
+                c.circle(ox + hx + sp * 1.2, oy + hy + dy * sp, sp * 0.2, fg);
+            }
+        }
+        if it.stem {
+            vline(c, xs, stem_top, it.y_low - sp * 0.1, lw, fg);
+            if it.f > 0 && !beamed[idx] {
+                for q in 0..it.f.min(2) {
+                    draw_flag(c, ox + xs, oy + stem_top + q as f32 * sp * 0.75, sp, if it.f == 3 { 0.8 } else { 1.0 }, fg);
+                }
+                if it.f == 3 {
+                    draw_flag(c, ox + xs, oy + stem_top + 1.5 * sp * 0.75, sp, 0.7, fg);
+                }
+            }
+        }
+        // スクレイプ（波線）
+        if k == "scrape" {
+            let xa = x + sp * 1.3;
+            let xb = (xf(it.t + it.d) - sp * 0.3).max(xa + sp * 2.4);
+            let mut pts: Vec<(f32, f32)> = vec![];
+            let mut px = xa;
+            while px <= xb {
+                pts.push((ox + px, oy + it.y_low + ((px - xa) / (sp * 0.45) * std::f32::consts::PI).sin() * sp * 0.28));
+                px += sp * 0.2;
+            }
+            c.poly(&pts, sp * 0.13, fg);
         }
         // 装飾: フラム（小さな前打音）・ダブル・バズ（幹の斜線）
-        if it.kind == "flam" {
+        if k == "flam" {
             let gx = x - sp * 1.9;
-            head(c, gx, line_y, 0.65, fg);
-            vline(c, gx + hw * 0.65, line_y - sp * 2.4, line_y - sp * 0.1, sp * 0.1, fg);
-            seg(c, gx - sp * 0.1, line_y - sp * 1.9, gx + sp * 0.9, line_y - sp * 2.5, sp * 0.1, fg);
+            let gy = it.y_high;
+            head(c, gx, gy, 0.65, fg);
+            vline(c, gx + hw * 0.65, gy - sp * 2.4, gy - sp * 0.1, sp * 0.1, fg);
+            seg(c, gx - sp * 0.1, gy - sp * 1.9, gx + sp * 0.9, gy - sp * 2.5, sp * 0.1, fg);
         }
-        if (it.kind == "diddle" || it.kind == "buzz") && it.stem {
-            let n = if it.kind == "buzz" { 3 } else { 2 };
-            for k in 0..n {
-                let y = line_y - sp * (1.3 + k as f32 * 0.55);
-                seg(c, x + hw - sp * 0.6, y + sp * 0.35, x + hw + sp * 0.6, y - sp * 0.35, sp * 0.16, fg);
+        if (k == "diddle" || k == "buzz") && it.stem {
+            let n = if k == "buzz" { 3 } else { 2 };
+            for q in 0..n {
+                let y = stem_top + sp * (1.2 + q as f32 * 0.55);
+                seg(c, xs - sp * 0.6, y + sp * 0.35, xs + sp * 0.6, y - sp * 0.35, sp * 0.16, fg);
             }
         }
         if loud {
             // アクセント（>）とマルカート（^）
-            let (ax, ay) = (ox + x + hw * 0.4, oy + line_y - sp * if it.acc >= 2 { 5.7 } else { 5.5 } - sp * 0.45);
+            let (ax, ay) = (ox + x + hw * 0.4, oy + line_y + sp * if it.acc >= 2 { cf.mar } else { cf.acc } - sp * 0.45);
             if it.acc >= 2 {
                 c.poly(&[(ax - sp * 0.55, ay + sp * 0.5), (ax, ay - sp * 0.55), (ax + sp * 0.55, ay + sp * 0.5)], sp * 0.22, hi);
             } else {
                 c.poly(&[(ax - sp * 0.62, ay - sp * 0.5), (ax + sp * 0.62, ay), (ax - sp * 0.62, ay + sp * 0.5)], sp * 0.22, hi);
             }
         }
-        // 手順（強いときは大文字、普通は小文字）
-        let ch = if loud { it.hand } else { it.hand.to_ascii_lowercase() };
-        c.text(&ch.to_string(), ox + x, oy + line_y + sp * 2.55, sp * 1.45, sp * 0.3, if loud { hi } else { fg });
-        if it.pad > 0 {
-            c.text(&it.pad.to_string(), ox + x + sp * 1.0, oy + line_y + sp * 3.45, sp * 0.8, sp * 0.14, mu);
+        // 手順（強いときは大文字、普通は小文字）。和音で手が分かれるときは上の符頭から順に並べる
+        let mut hands: Vec<char> = vec![];
+        for h in it.heads.iter().rev() {
+            if !hands.contains(&h.hand) {
+                hands.push(h.hand);
+            }
+        }
+        let ch: String = hands.iter().map(|h| if loud { *h } else { h.to_ascii_lowercase() }).collect();
+        c.text(&ch, ox + x, oy + line_y + sp * (cf.hand - 0.65), sp * if hands.len() > 1 { 1.15 } else { 1.45 }, sp * 0.3, if loud { hi } else { fg });
+        // ドラム番号は 1 線の楽器だけ（五線は位置で分かる）
+        let pad = it.heads[0].pad;
+        if !five && pad > 0 {
+            c.text(&pad.to_string(), ox + x + sp * 1.0, oy + line_y + sp * (cf.pad - 0.35), sp * 0.8, sp * 0.14, mu);
         }
     }
     if let Some(p) = ph {
@@ -769,11 +1042,20 @@ pub struct Layout {
 }
 
 impl Layout {
+    /// 楽譜 1 段のレイアウト
     pub fn new(w: usize, h: usize) -> Layout {
+        Layout::with_staves(w, h, 1)
+    }
+    /// 楽譜 n 段のレイアウト。段が増えるぶん楽譜の帯を高くし、上の3D・客席側の3D から半分ずつ分ける（グリッドの高さは変えない）。src/reel.js の jkReel.layout と同じ式
+    pub fn with_staves(w: usize, h: usize, n: usize) -> Layout {
         let ev = |v: f64| (v.round() as usize) & !1;
-        let (a, b) = (ev(h as f64 * 0.32), ev(h as f64 * 0.135));
-        let c = ev(h as f64 * 0.30);
-        let hh = [a, b, c, h - a - b - c];
+        let hf = h as f64;
+        let d = h - ev(hf * 0.32) - ev(hf * 0.135) - ev(hf * 0.30);
+        let extra = 0.0825 * (n.max(1) - 1) as f64;
+        let b = ev(hf * (0.135 + extra));
+        let c = ev(hf * (0.30 - extra * 0.5));
+        let a = h - b - c - d;
+        let hh = [a, b, c, d];
         let y = [0, hh[0], hh[0] + hh[1], hh[0] + hh[1] + hh[2]];
         Layout { w, h, y, hh }
     }
@@ -795,16 +1077,61 @@ pub fn pick_part<'a>(show: &'a Show, name: Option<&str>) -> Result<Option<&'a Pa
     Ok(best)
 }
 
-/// 楽譜の段と、段の境目を描く
-pub fn draw_band(c: &mut Canvas, lay: &Layout, part: Option<&Part>, t: f64) {
+/// 楽譜の帯に出す段（パートと楽器）。`--part` 指定ならその 1 パート。指定がなく、楽器の種類が 2 つ以上あれば
+/// 種類ごとに最も人数の多いパートを スネア → テナー → バス → シンバル → その他 の順に最大 3 段。
+/// 種類が 1 つだけなら従来どおり人数が最も多い 1 パート（src/reel.js の jkReel.pickParts と同じ選び方）
+pub fn pick_staves<'a>(show: &'a Show, name: Option<&str>) -> Result<Vec<(&'a Part, Inst)>, String> {
+    if name.is_some() {
+        return Ok(pick_part(show, name)?.map(|p| (p, inst_of(show, p))).into_iter().collect());
+    }
+    let order = [Inst::Snare, Inst::Tenor, Inst::Bass, Inst::Cymbal, Inst::Line];
+    let mut best: Vec<Option<&Part>> = vec![None; order.len()];
+    for p in show.parts.iter().filter(|p| !p.notes.is_empty()) {
+        let k = order.iter().position(|o| *o == inst_of(show, p)).unwrap();
+        if best[k].map(|b| p.members.len() > b.members.len()).unwrap_or(true) {
+            best[k] = Some(p);
+        }
+    }
+    let picked: Vec<(&Part, Inst)> = order.iter().zip(best).filter_map(|(i, p)| p.map(|p| (p, *i))).take(3).collect();
+    if picked.len() >= 2 {
+        return Ok(picked);
+    }
+    Ok(pick_part(show, None)?.map(|p| (p, inst_of(show, p))).into_iter().collect())
+}
+
+/// 帯の左上に出す楽器名（段が 2 つ以上のときだけ）: (名前, x, y, 文字の大きさ)。画素位置は動画の左上が原点
+pub fn band_labels(lay: &Layout, staves: &[(&Part, Inst)]) -> Vec<(String, f32, f32, f32)> {
+    if staves.len() < 2 {
+        return vec![];
+    }
+    let (y0, bh) = (lay.y[1] as f32, lay.hh[1] as f32);
+    let top = bh * 0.3;
+    let hs = (bh - top - bh * 0.02) / staves.len() as f32;
+    staves
+        .iter()
+        .enumerate()
+        .map(|(i, (p, inst))| {
+            let sp = hs / cfg(*inst).den;
+            (stave_label(*inst, p), sp * 0.3, y0 + top + i as f32 * hs + sp * 0.35, sp * 1.8)
+        })
+        .collect()
+}
+
+/// 楽譜の段と、段の境目を描く（段の名前は字幕で重ねる）
+pub fn draw_band(c: &mut Canvas, lay: &Layout, staves: &[(&Part, Inst)], t: f64) {
     let (y0, bh) = (lay.y[1] as f32, lay.hh[1] as f32);
     c.rect(0.0, y0, lay.w as f32, y0 + bh, PAL.bg, 1.0);
-    if let Some(p) = part {
-        let (from, to) = staff_page(p, t);
-        let ph = if t >= from - 1e-9 { Some(t) } else { None };
-        // 上の 36% は題名の場所（ASS で重ねる）
+    if !staves.is_empty() {
+        // 上の 30% は題名の場所（ASS で重ねる）
         let top = bh * 0.3;
-        draw_staff(c, 0.0, y0 + top, lay.w as f32, bh - top - bh * 0.02, p, from, to, ph, &PAL);
+        let hs = (bh - top - bh * 0.02) / staves.len() as f32;
+        // 音符の左端は全段でそろえる
+        let x0 = staves.iter().map(|(p, i)| stave_geom(p, lay.w as f32, hs, *i, None).1).fold(0.0f32, f32::max);
+        for (k, (p, inst)) in staves.iter().enumerate() {
+            let (from, to) = staff_page(p, t);
+            let ph = if t >= from - 1e-9 { Some(t) } else { None };
+            draw_stave(c, 0.0, y0 + top + k as f32 * hs, lay.w as f32, hs, p, *inst, if staves.len() > 1 { Some(x0) } else { None }, from, to, ph, &PAL);
+        }
     }
     // 段の境目の細い線
     for k in [1usize, 2, 3] {
@@ -813,11 +1140,11 @@ pub fn draw_band(c: &mut Canvas, lay: &Layout, part: Option<&Part>, t: f64) {
 }
 
 /// 1フレーム: 2枚の3D画像（幅 w × 各段の高さ）を重ね、楽譜とグリッドを描く
-pub fn compose(show: &Show, lay: &Layout, top: &[u8], front: &[u8], grid: &(Canvas, GridMap), part: Option<&Part>, t: f64) -> Vec<u8> {
+pub fn compose(show: &Show, lay: &Layout, top: &[u8], front: &[u8], grid: &(Canvas, GridMap), staves: &[(&Part, Inst)], t: f64) -> Vec<u8> {
     let mut c = Canvas::new(lay.w, lay.h, [0, 0, 0]);
     c.blit(0, lay.y[0], top, lay.w, lay.hh[0]);
     c.blit(0, lay.y[2], front, lay.w, lay.hh[2]);
-    draw_band(&mut c, lay, part, t);
+    draw_band(&mut c, lay, staves, t);
     let mut g = Canvas { w: grid.0.w, h: grid.0.h, px: grid.0.px.clone() };
     draw_pins(&mut g, show, &grid.1, t);
     c.blit(0, lay.y[3], &g.px, g.w, g.h);
@@ -850,16 +1177,18 @@ pub fn render_reel(
     use crate::render::{base_frame_t, mux_input, mux_output, render_with, venue, Ctx, Scratch};
     use std::io::Write;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    let part = pick_part(show, part_name)?;
-    let lay = Layout::new(w, h);
+    let staves = pick_staves(show, part_name)?;
+    let lay = Layout::with_staves(w, h, staves.len());
+    let labels = band_labels(&lay, &staves);
     let (o_top, o_front) = panel_opts(&lay);
     let total_counts = show.sets.last().map(|s| s.start + s.counts + s.hold).unwrap_or(0.0);
     let secs = crate::render::seconds_at(show, total_counts) / speed;
     let nframes = ((secs * fps).ceil() as usize).max(1) + (fps as usize);
     // 題名（パート名）と、任意で下部のカウント表示を ASS で焼き込む
-    let title = part.map(|p| p.name.clone()).unwrap_or_else(|| show.name.clone());
+    // 段が 1 つならそのパート名、2 つ以上ならショー名を題名にする
+    let title = if staves.len() == 1 { staves[0].0.name.clone() } else { show.name.clone() };
     let ass = if crate::hud::available() {
-        crate::hud::AssFile::write(&crate::hud::reel_ass(show, w, h, speed, &title, lay.y[1], lay.hh[1], nframes as f64 / fps, hud)).ok()
+        crate::hud::AssFile::write(&crate::hud::reel_ass(show, w, h, speed, &title, &labels, lay.y[1], lay.hh[1], nframes as f64 / fps, hud)).ok()
     } else {
         None
     };
@@ -889,7 +1218,7 @@ pub fn render_reel(
     let mut result: Result<(), String> = Ok(());
     std::thread::scope(|scope| {
         for _ in 0..threads {
-            let (tx, next, written, ctx, v_top, v_front, grid, lay, o_top, o_front, fb) = (tx.clone(), &next, &written, &ctx, &v_top, &v_front, &grid, &lay, &o_top, &o_front, &fallback_title);
+            let (tx, next, written, ctx, v_top, v_front, grid, lay, o_top, o_front, fb, staves) = (tx.clone(), &next, &written, &ctx, &v_top, &v_front, &grid, &lay, &o_top, &o_front, &fallback_title, &staves);
             scope.spawn(move || {
                 let (mut s_top, mut s_front) = (Scratch::new(), Scratch::new());
                 loop {
@@ -906,7 +1235,7 @@ pub fn render_reel(
                     let top = render_with(show, ctx, &mut s_top, &b, false, t, o_top, frac);
                     let bf = base_frame_t(show, v_front, o_front, frac, t);
                     let front = render_with(show, ctx, &mut s_front, &bf, false, t, o_front, frac);
-                    let mut img = compose(show, lay, &top, &front, grid, part, t);
+                    let mut img = compose(show, lay, &top, &front, grid, staves, t);
                     if let Some(tt) = fb {
                         // 字幕フィルタがないときは、ASCII だけビットマップ文字で題名を出す
                         if tt.is_ascii() {
@@ -954,17 +1283,18 @@ pub fn render_reel(
 pub fn render_reel_still(show: &Show, path: &str, w: usize, h: usize, t: f64, part_name: Option<&str>, hud: bool) -> Result<(), String> {
     use crate::render::{base_frame_t, render_with, venue, Ctx, Scratch};
     use std::io::Write;
-    let part = pick_part(show, part_name)?;
-    let lay = Layout::new(w, h);
+    let staves = pick_staves(show, part_name)?;
+    let lay = Layout::with_staves(w, h, staves.len());
+    let labels = band_labels(&lay, &staves);
     let (o_top, o_front) = panel_opts(&lay);
     let ctx = Ctx::new(show);
     let b = base_frame_t(show, &venue(show, CamMode::Diag), &o_top, 0.3, t);
     let top = render_with(show, &ctx, &mut Scratch::new(), &b, false, t, &o_top, 0.3);
     let bf = base_frame_t(show, &venue(show, CamMode::Front), &o_front, 0.3, t);
     let front = render_with(show, &ctx, &mut Scratch::new(), &bf, false, t, &o_front, 0.3);
-    let img = compose(show, &lay, &top, &front, &grid_base(show, lay.w, lay.hh[3]), part, t);
-    let title = part.map(|p| p.name.clone()).unwrap_or_else(|| show.name.clone());
-    let ass = if crate::hud::available() { crate::hud::AssFile::write(&crate::hud::reel_still_ass(show, w, h, &title, lay.y[1], lay.hh[1], t, hud)).ok() } else { None };
+    let img = compose(show, &lay, &top, &front, &grid_base(show, lay.w, lay.hh[3]), &staves, t);
+    let title = if staves.len() == 1 { staves[0].0.name.clone() } else { show.name.clone() };
+    let ass = if crate::hud::available() { crate::hud::AssFile::write(&crate::hud::reel_still_ass(show, w, h, &title, &labels, lay.y[1], lay.hh[1], t, hud)).ok() } else { None };
     let mut cmd = std::process::Command::new("ffmpeg");
     cmd.args(["-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", &format!("{}x{}", w, h), "-i", "-"]);
     if let Some(a) = &ass {

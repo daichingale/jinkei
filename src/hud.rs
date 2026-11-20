@@ -147,19 +147,31 @@ fn reel_title(w: usize, band_y: usize, band_h: usize, title: &str, secs: f64) ->
     format!("Dialogue: 2,{},{},Reel,,0,0,0,,{{\\an5\\pos({},{})}}{}\n", ts(0.0), ts(secs), w / 2, band_y + (band_h as f64 * 0.15).round() as usize, clean(title))
 }
 
+/// 楽譜の段の左上に出す楽器名（複数の段を重ねるとき）: (名前, x, y, 文字の大きさ)。x, y は左上の画素位置
+fn reel_labels(labels: &[(String, f32, f32, f32)], secs: f64) -> String {
+    labels
+        .iter()
+        .map(|(name, x, y, fs)| format!("Dialogue: 2,{},{},Reel,,0,0,0,,{{\\an7\\pos({:.0},{:.0})\\fs{:.0}}}{}\n", ts(0.0), ts(secs), x, y, fs, clean(name)))
+        .collect()
+}
+
 /// 縦動画（リール）用の字幕: 楽譜の帯にパート名。hud なら下にカウント表示も
-pub fn reel_ass(show: &Show, w: usize, h: usize, speed: f64, title: &str, band_y: usize, band_h: usize, secs: f64, hud: bool) -> String {
+#[allow(clippy::too_many_arguments)]
+pub fn reel_ass(show: &Show, w: usize, h: usize, speed: f64, title: &str, labels: &[(String, f32, f32, f32)], band_y: usize, band_h: usize, secs: f64, hud: bool) -> String {
     let mut out = header(w, h);
     out.push_str(&reel_title(w, band_y, band_h, title, secs + 1.0));
+    out.push_str(&reel_labels(labels, secs + 1.0));
     if hud {
         out.push_str(&events(show, speed));
     }
     out
 }
 
-pub fn reel_still_ass(show: &Show, w: usize, h: usize, title: &str, band_y: usize, band_h: usize, t: f64, hud: bool) -> String {
+#[allow(clippy::too_many_arguments)]
+pub fn reel_still_ass(show: &Show, w: usize, h: usize, title: &str, labels: &[(String, f32, f32, f32)], band_y: usize, band_h: usize, t: f64, hud: bool) -> String {
     let mut out = header(w, h);
     out.push_str(&reel_title(w, band_y, band_h, title, 10.0));
+    out.push_str(&reel_labels(labels, 10.0));
     if hud {
         out.push_str(&format!("Dialogue: 0,{},{},Default,,0,0,0,,{}\n", ts(0.0), ts(10.0), line_at(show, t)));
     }

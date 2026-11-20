@@ -1,0 +1,7 @@
+show "p" {
+  field gym
+  tempo 132
+  section sn "スネア" 4 instrument snare
+  set 1 hold 8 { sn : line (-3, 0) -> (3, 0) }
+  part "x" for sn { 8: oR ol mr ml gR gl sR ~ sl kB kb >oR ^mL | 16: sR ~ ~ ~ oR }
+}

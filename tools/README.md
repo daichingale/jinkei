@@ -39,3 +39,8 @@
 - ヘッダを読み、blob を `bytemuck` 等で f32/u16/u32 スライスに直接キャストできる。
 - スキニングは4ウェイト線形 (LBS)。bindは単位行列、inverse bind はボーン静止位置の累積から算出。
 - 材質は `mat` を引いて color/rough/metal を取り、tint は部隊色に置換する。
+
+## strike（打楽器の打面の表）
+`human.json` の `strike[楽器名]`（snare / tenors / bass1..5）: `drums`（打面の中心 c・外向き法線 n・面内の左 ex／前 ez・半径 r・pad 番号・バスは hand）、
+`stick.R/L`（手のボーン局所の先端 tip・軸 ax・球の半径 rh）、`anchor`（手首の待機位置）、`click`（stickclick の位置）。構えのモデル座標。
+src/strike.js と src/strike.rs が読み、肩〜手首を IK で解いて先端を打面へ合わせる。

@@ -74,6 +74,7 @@ table.t th{color:var(--mut);font-weight:500;font-size:11px}
 table.t input{width:100%}
 .pcard{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:10px;background:#1a1d23}
 .pcard textarea.score{width:100%;min-height:96px;margin-top:6px;font:12px/1.55 ui-monospace,Menlo,Consolas,monospace;resize:vertical;white-space:pre;tab-size:2}
+.tokpal{display:flex;flex-direction:column;gap:3px;margin-top:6px}.tokpal .pg{display:flex;flex-wrap:wrap;align-items:center;gap:3px}.tokpal i{font-style:normal;color:var(--mu,#8a93a0);font-size:11px;width:44px;flex:none;white-space:nowrap}.tokpal button{padding:2px 8px;min-width:26px;height:24px;white-space:nowrap;font:12px ui-monospace,Menlo,Consolas,monospace}
 .pstaff{overflow-x:auto;background:#101216;border-radius:6px;margin-top:6px}
 .perr{color:#ffb3b3;font-size:12px;margin-top:4px;white-space:pre-wrap}
 #code{width:100%;height:calc(100vh - 190px);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:none;white-space:pre;tab-size:2}
@@ -1878,11 +1879,12 @@ function renderScorePane() {
       <label class="f">拍子<input data-pf="meter" list="meterlist" value="${esc(p.meter || '4/4')}" style="width:52px"></label>
       <label class="f">開始<input data-pf="start" value="${esc(p.start || '')}" placeholder="0 / set 2" style="width:64px"></label></div>
       <textarea class="score" data-pf="src" spellcheck="false" placeholder="例: 16: R r l r R r l r | 8: ^R l r l 3[ R l r ] |">${esc(p.src)}</textarea>
+      ${paletteHtml(i)}
       <div class="perr" data-perr="${i}"></div>
       <div class="row" style="margin:6px 0 0"><button data-play="${i}">▶ 試聴</button><button data-xml="${i}" title="MusicXMLの1パートで、この譜面を置き換えます">MusicXMLから</button><span style="flex:1"></span><button class="ghost" data-delpart="${i}">削除</button></div>
       <div class="pstaff" data-staff="${i}"></div></div>`;
   });
-  h += `<div class="hint" style="margin-top:8px">R/L/B = アクセント付きの右手・左手・両手、r/l/b = 普通の強さ。<code>^</code>強いアクセント <code>x</code>スティック <code>f</code>フラム <code>d</code>ダブル <code>z</code>バズ <code>-</code>休符 <code>~</code>タイ <code>|</code>小節線。<code>16:</code> で音価（4: 8: 16: 32: / <code>8.:</code> 付点）、<code>3[ r l r ]</code> で3連符、<code>R2</code> のように手の後ろの数字で打面（スネア 2=リム 3=スティック、テナー 1〜6、バス 1〜5、シンバル 2=閉 3=開 4=チョーク）。</div>`;
+  h += `<div class="hint" style="margin-top:8px">R/L/B = アクセント付きの右手・左手・両手、r/l/b = 普通の強さ。<code>^</code>強いアクセント <code>x</code>スティック <code>f</code>フラム <code>d</code>ダブル <code>z</code>バズ <code>-</code>休符 <code>~</code>タイ <code>|</code>小節線。<code>16:</code> で音価（4: 8: 16: 32: / <code>8.:</code> 付点）、<code>3[ r l r ]</code> で3連符、<code>R2</code> のように手の後ろの数字で打面（スネア 2=リム 3=スティック、テナー 1〜4=ドラム（1が最高音）5・6=スポック、バス 1〜5=ドラム（1が最小）、シンバル 2=閉 3=開 4=チョーク）。<code>R[135]</code> は同時に複数のドラム、<code>B[12]</code> は右手でドラム1・左手でドラム2。手の前の <code>o</code>リム <code>m</code>ミュート <code>g</code>ゴック <code>s</code>スクレイプ <code>k</code>スティッククリック。強弱は <code>pp p mp mf f ff</code>、<code>cresc</code>/<code>dim</code> は次の強弱記号までだんだん変化。</div></div>`;
   $('pscore').innerHTML = h;
   const P = i => M.parts[i];
   $('pscore').querySelectorAll('[data-pf]').forEach(inp => inp.addEventListener('input', () => {
@@ -1905,9 +1907,38 @@ function renderScorePane() {
     M.parts.splice(i, 1); edited(true);
   });
   $('pscore').querySelectorAll('[data-play]').forEach(b => b.onclick = () => playPart(+b.dataset.play, b));
+  $('pscore').querySelectorAll('.tokpal [data-tok]').forEach(b => {
+    b.onmousedown = e => e.preventDefault(); // 入力欄のカーソルを外さない
+    b.onclick = () => insertToken(+b.closest(".tokpal").dataset.pal, b.dataset.tok, !!b.dataset.dyn);
+  });
   updateScoreView();
 }
 // 楽譜の絵とエラー表示だけを更新（入力欄は触らない）
+// 5線（テナー・バス）は線の本数ぶん高く描く
+function staffH(inst) { return inst === 'tenor' || inst === 'bass' ? 150 : 120; }
+// 楽譜の入力パレット: 押すと選択中の入力欄のカーソル位置に記号を入れる
+const PALETTE = [
+  ['手', [['R', '右（強）'], ['L', '左（強）'], ['r', '右'], ['l', '左'], ['B', '両手（強）'], ['b', '両手'], ['-', '休符'], ['~', 'タイ'], ['|', '小節線']]],
+  ['ドラム', [['1', 'ドラム1（テナー最高音・バス最小）'], ['2', 'ドラム2'], ['3', 'ドラム3'], ['4', 'ドラム4'], ['5', 'テナー=スポック1 / バス=最大'], ['6', 'テナー=スポック2'], ['[]', '和音: 手のあとに [135] のように番号を並べる']]],
+  ['奏法', [['o', 'リムショット'], ['m', 'ミュート'], ['g', 'ゴック'], ['s', 'スクレイプ'], ['k', 'スティッククリック'], ['x', 'スティック'], ['f', 'フラム'], ['d', 'ダブル'], ['z', 'バズ'], ['^', '強いアクセント'], ['>', 'アクセント']]],
+  ['強弱', [['pp', ''], ['p', ''], ['mp', ''], ['mf', ''], ['f', ''], ['ff', ''], ['cresc', 'だんだん強く'], ['dim', 'だんだん弱く']]],
+];
+function paletteHtml(i) {
+  return `<div class="tokpal" data-pal="${i}">` + PALETTE.map(([g, bs]) => `<span class="pg"><i>${g}</i>${bs.map(([t, tip]) => `<button type="button" data-tok="${esc(t)}"${g === '強弱' ? ' data-dyn="1"' : ''}${tip ? ` title="${esc(tip)}"` : ''}>${esc(t)}</button>`).join('')}</span>`).join('') + `</div>`;
+}
+function insertToken(i, tok, dyn) {
+  const ta = $('pscore').querySelector(`.pcard[data-pi="${i}"] textarea.score`); if (!ta) return;
+  const a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+  // 前が文字のとき、記号が前の記号とくっつかないよう、単語（pp/cresc 等）の前後に空白を入れる
+  const word = !!dyn; // 強弱は単語なので前後に空白（f は強弱とフラムで別物）
+  let ins = tok;
+  if (word) ins = (a > 0 && !/\s/.test(v[a - 1]) ? ' ' : '') + tok + ' ';
+  else if (tok === '[]') ins = '[]';
+  ta.value = v.slice(0, a) + ins + v.slice(b);
+  const pos = tok === '[]' ? a + 1 : a + ins.length;
+  ta.focus(); ta.setSelectionRange(pos, pos);
+  ta.dispatchEvent(new Event('input', {bubbles: true}));
+}
 function updateScoreView() {
   if (!M || !$('pscore')) return;
   const D = R && R.data, ok = D && D.parts && D.parts.length === M.parts.length && !lastErr;
@@ -1932,7 +1963,8 @@ function updateScoreView() {
     const dp = D && D.parts && D.parts[i];
     if (dp && !(scorePlay && scorePlay.i === i)) {
       const len = Math.max(dp.end - dp.start, 1);
-      st.innerHTML = dp.notes.length ? jkStaff(dp, dp.start, dp.end, Math.ceil(80 + len * 60), 120, null) : '';
+      const inst = jkStaff.instOf(D, dp);
+      st.innerHTML = dp.notes.length ? jkStaff(dp, dp.start, dp.end, Math.ceil(80 + len * 60), staffH(inst), null, {inst}) : '';
     }
     st.style.opacity = ok ? '' : '0.45';
   });
@@ -1942,7 +1974,7 @@ function playPart(i, btn) {
   stopScore(); stopPlay();
   if (was) { updateScoreView(); return; }
   const D = R && R.data; if (!D || lastErr || !D.parts || !D.parts[i]) return;
-  const p = D.parts[i], D2 = Object.assign({}, D, {parts: [p]});
+  const p = D.parts[i], D2 = Object.assign({}, D, {parts: [p]}), inst = jkStaff.instOf(D, p);
   if (!jkAudio.play(D2, p.start)) return;
   btn.classList.add('on'); btn.textContent = '■ 停止';
   const st = $('pscore').querySelector(`[data-staff="${i}"]`), t0 = performance.now(), s0 = jkAudio.secAt(D2, p.start);
@@ -1952,7 +1984,7 @@ function playPart(i, btn) {
     if (!scorePlay || scorePlay.i !== i) return;
     const c = jkAudio.countAt(D2, s0 + (performance.now() - t0) / 1000);
     if (c > p.end + 1 || !jkAudio.playing) { stopScore(); updateScoreView(); return; }
-    st.innerHTML = jkStaff(p, p.start, p.end, W, 120, c);
+    st.innerHTML = jkStaff(p, p.start, p.end, W, staffH(inst), c, {inst});
     const x = 70 + (c - p.start) / len * (W - 80);
     if (x > st.scrollLeft + st.clientWidth - 40 || x < st.scrollLeft) st.scrollLeft = Math.max(0, x - 60);
     scorePlay.raf = requestAnimationFrame(step);
