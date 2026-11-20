@@ -25,7 +25,9 @@ jobs:
           unzip -q source/jinkei-updated-source.zip -d .import-work
           test -f .import-work/jinkei/Cargo.toml
           test -f .import-work/jinkei/tools/build_browser_app.js
-          rsync -a .import-work/jinkei/ ./
+          rsync -a --exclude='.github/' .import-work/jinkei/ ./
+          mkdir -p docs/ci
+          cp .import-work/jinkei/.github/workflows/release.yml docs/ci/release.yml.example
           rm -rf .import-work source
           mkdir -p docs
           node tools/build_browser_app.js docs/index.html
