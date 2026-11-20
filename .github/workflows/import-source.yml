@@ -1,0 +1,44 @@
+name: Import Jinkei source archive
+
+on:
+  push:
+    paths:
+      - 'source/jinkei-updated-source.zip'
+      - '.github/workflows/import-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Verify and extract full source
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'aece5f89c6f9f37466270d5da07173a4ba7d89ce07a26b6ea1f9f37894f47230  source/jinkei-updated-source.zip' | sha256sum -c -
+          mkdir -p .import-work
+          unzip -q source/jinkei-updated-source.zip -d .import-work
+          test -f .import-work/jinkei/Cargo.toml
+          test -f .import-work/jinkei/tools/build_browser_app.js
+          rsync -a .import-work/jinkei/ ./
+          rm -rf .import-work source
+          mkdir -p docs
+          node tools/build_browser_app.js docs/index.html
+          node tools/build_preview.js examples/snare.jk docs/snare-preview.html
+          touch docs/.nojekyll
+      - name: Commit full source and browser builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: import full Jinkei project and browser previews'
+            git push origin HEAD:main
+          fi
