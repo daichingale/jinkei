@@ -1,0 +1,46 @@
+# 陣形 サンプル: 体育館（会場を書かなければ 30m×30m の演技フロア）
+#   原点 = フロア中心（十字ラインの交点）、+x = 上手、+y = 奥（客席から遠ざかる）
+#   使える名前: FRONT / BACK / KAMI / SHIMO（30mライン）、FRONT20 / BACK20 / KAMI20 / SHIMO20（20mライン）
+show "体育館ドリル — 青の序曲" {
+  tempo 120
+
+  section tp  "トランペット" 8  color "#ffd23f"
+  section hn  "ホルン"       4  color "#ff9f43"
+  section tb  "トロンボーン" 6  color "#ee5253"
+  section bs  "低音"         4  color "#c0392b"
+  section ww  "木管"        10  color "#48dbfb"
+  section pc  "打楽器"       5  color "#c8d6e5"
+
+  # 1: スタンバイ。金管は2列のブロック、木管は前で弧、打楽器はその奥
+  set 1 hold 8 {
+    tp + hn + tb + bs : block (0, -2) cols 11 spacing 1.8 rows 2
+    ww                : arc (0, -4) radius 9 from 200 to 340
+    pc                : line (shimo(2), 1.5) -> (kami(2), 1.5)
+  }
+
+  # 2: 金管は打楽器を囲む円、木管は20mラインの前辺へ
+  set 2 counts 16 {
+    tp + hn + tb + bs : circle (0, 1) radius 6 start 60
+    ww                : line (SHIMO20 + 1, FRONT20) -> (KAMI20 - 1, FRONT20)
+    pc                : block (0, 1) cols 3 spacing 1.5
+  }
+
+  # 3: 円を1人分回す
+  set 3 counts 8 {
+    tp + hn + tb + bs : same rotate 360 / 22
+  }
+
+  # 4: 客席に向かうV字。木管は左右に割れて斜めのライン
+  set 4 counts 16 {
+    tp + hn + tb + bs : poly (shimo(9), 8) -> (0, -3) -> (kami(9), 8)
+    ww                : poly (shimo(12), -6) -> (shimo(6), -11) -> (kami(6), -11) -> (kami(12), -6)
+    pc                : line (shimo(3), 10) -> (kami(3), 10)
+  }
+
+  # 5: フィナーレ。全員で前向きの2本ライン（8カウント保持）
+  set 5 counts 20 hold 8 {
+    tp + hn + tb + bs : line (SHIMO20 - 1, -6) -> (KAMI20 + 1, -6)
+    ww                : line (shimo(9), -9) -> (kami(9), -9)
+    pc                : line (shimo(4), -2) -> (kami(4), -2)
+  }
+}

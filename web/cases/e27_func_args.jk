@@ -1,0 +1,4 @@
+show "x" {
+  section a "A" 3
+  set 1 { a : line (shimo(1, 2), 0) -> (4, 1) }
+}

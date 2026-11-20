@@ -1,0 +1,126 @@
+show "instruments by label" {
+  section qaa "トランペット" 1
+  section qab "Trumpet" 1
+  section qac "コルネット" 1
+  section qad "メロフォン" 1
+  section qae "マーチングホルン" 1
+  section qaf "ホルン" 1
+  section qag "French Horn" 1
+  section qah "トロンボーン" 1
+  section qai "ユーフォニアム" 1
+  section qaj "バリトン" 1
+  section qak "バリトンサックス" 1
+  section qal "Baritone Sax" 1
+  section qam "マーチングバリトン" 1
+  section qan "チューバ" 1
+  section qao "低音" 1
+  section qap "低音パート" 1
+  section qaq "スーザフォン" 1
+  section qar "マーチングチューバ" 1
+  section qas "ピッコロ" 1
+  section qat "フルート" 1
+  section qau "オーボエ" 1
+  section qav "ファゴット" 1
+  section qaw "Bassoon" 1
+  section qax "E♭クラリネット" 1
+  section qay "Esクラ" 1
+  section qaz "クラリネット" 1
+  section qba "アルトクラリネット" 1
+  section qbb "バスクラリネット" 1
+  section qbc "ソプラノサックス" 1
+  section qbd "アルトサックス" 1
+  section qbe "サックス" 1
+  section qbf "テナー" 1
+  section qbg "テナーサックス" 1
+  section qbh "Tenor Sax" 1
+  section qbi "テナードラム" 1
+  section qbj "クワッド" 1
+  section qbk "スネア" 1
+  section qbl "スネアドラム" 1
+  section qbm "バスドラム" 1
+  section qbn "バスドラム1" 1
+  section qbo "バスドラム2" 1
+  section qbp "バスドラム3" 1
+  section qbq "バスドラム4" 1
+  section qbr "バスドラム5" 1
+  section qbs "Bass Drum 3" 1
+  section qbt "シンバル" 1
+  section qbu "シンバル（ハイ）" 1
+  section qbv "Cymbals High" 1
+  section qbw "グロッケン" 1
+  section qbx "ベルリラ" 1
+  section qby "シロフォン" 1
+  section qbz "マリンバ" 1
+  section qca "カラーガード" 1
+  section qcb "Flag" 1
+  section qcc "打楽器" 1
+  section qcd "パーカッション" 1
+  section qce "木管" 1
+  section qcf "金管" 1
+  section qcg "Brass" 1
+  section qch "ほげ" 1
+  section qci "unknown thing" 1
+  set 1 {
+    qaa1 : at (-20, -4)
+    qab1 : at (-18, -4)
+    qac1 : at (-16, -4)
+    qad1 : at (-14, -4)
+    qae1 : at (-12, -4)
+    qaf1 : at (-10, -4)
+    qag1 : at (-8, -4)
+    qah1 : at (-6, -4)
+    qai1 : at (-4, -4)
+    qaj1 : at (-2, -4)
+    qak1 : at (0, -4)
+    qal1 : at (2, -4)
+    qam1 : at (4, -4)
+    qan1 : at (6, -4)
+    qao1 : at (8, -4)
+    qap1 : at (10, -4)
+    qaq1 : at (12, -4)
+    qar1 : at (14, -4)
+    qas1 : at (16, -4)
+    qat1 : at (18, -4)
+    qau1 : at (-20, 0)
+    qav1 : at (-18, 0)
+    qaw1 : at (-16, 0)
+    qax1 : at (-14, 0)
+    qay1 : at (-12, 0)
+    qaz1 : at (-10, 0)
+    qba1 : at (-8, 0)
+    qbb1 : at (-6, 0)
+    qbc1 : at (-4, 0)
+    qbd1 : at (-2, 0)
+    qbe1 : at (0, 0)
+    qbf1 : at (2, 0)
+    qbg1 : at (4, 0)
+    qbh1 : at (6, 0)
+    qbi1 : at (8, 0)
+    qbj1 : at (10, 0)
+    qbk1 : at (12, 0)
+    qbl1 : at (14, 0)
+    qbm1 : at (16, 0)
+    qbn1 : at (18, 0)
+    qbo1 : at (-20, 4)
+    qbp1 : at (-18, 4)
+    qbq1 : at (-16, 4)
+    qbr1 : at (-14, 4)
+    qbs1 : at (-12, 4)
+    qbt1 : at (-10, 4)
+    qbu1 : at (-8, 4)
+    qbv1 : at (-6, 4)
+    qbw1 : at (-4, 4)
+    qbx1 : at (-2, 4)
+    qby1 : at (0, 4)
+    qbz1 : at (2, 4)
+    qca1 : at (4, 4)
+    qcb1 : at (6, 4)
+    qcc1 : at (8, 4)
+    qcd1 : at (10, 4)
+    qce1 : at (12, 4)
+    qcf1 : at (14, 4)
+    qcg1 : at (16, 4)
+    qch1 : at (18, 4)
+    qci1 : at (-20, 8)
+  }
+}

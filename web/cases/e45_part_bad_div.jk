@@ -1,0 +1,12 @@
+show "p" {
+  field gym
+  tempo 100
+  section sn "スネア" 4 instrument snare
+  section bd "バスドラム" 5
+  section cy "シンバル" 2 instrument cymbals_high
+  section tp "トランペット" 3
+  set A hold 4 { sn : line (-3, 0) -> (3, 0)  bd : line (-4, 4) -> (4, 4)  cy : line (-3, 8) -> (3, 8)  tp : line (-3, 12) -> (3, 12) }
+  set 2 counts 12 { sn : line (-3, 2) -> (3, 2) }
+  set "B C" counts 8 hold 4 tempo 80 { sn : line (-3, 3) -> (3, 3) }
+  part "x" for sn { 7: r l }
+}

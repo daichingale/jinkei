@@ -1,0 +1,6 @@
+show "bad pose" {
+  section a "A" 3
+  set 1 {
+    a : line (-6, 0) -> (6, 0) pose dance
+  }
+}

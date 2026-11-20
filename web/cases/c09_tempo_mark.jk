@@ -1,0 +1,16 @@
+show "tempo" {
+  tempo 100
+  section a "A" 6
+  set 1 hold 4 {
+    a : line (-6, 0) -> (6, 0)
+  }
+  set 2 counts 8 tempo 140 hold 4 mark {
+    a : line (-6, 4) -> (6, 4)
+  }
+  set 3 counts 8 {
+    a : line (-6, -4) -> (6, -4) wait 2
+  }
+  set 4 counts 4.5 {
+    a : same shift (1, 0)
+  }
+}

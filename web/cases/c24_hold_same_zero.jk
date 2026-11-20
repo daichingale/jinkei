@@ -1,0 +1,12 @@
+show "zero" {
+  section a "A" 3
+  set 1 {
+    a : line (-3, 0) -> (3, 0)
+  }
+  set 2 counts 0 {
+    a : same
+  }
+  set 3 hold 8 {
+    a : same
+  }
+}

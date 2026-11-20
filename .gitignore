@@ -1,0 +1,4 @@
+target/
+examples/*.html
+examples/*.mp4
+*.bak

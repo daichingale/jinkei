@@ -1,0 +1,18 @@
+show "stage" {
+  field stage 18 x 12 wings 5
+  section a "A" 6
+  section b "B" 4
+  set 1 hold 4 {
+    a : line (SHIMOWING, 3) -> (SHIMOWING, 9)
+    b : line (KAMIWING, 3) -> (KAMIWING, 9)
+  }
+  set 2 counts 16 {
+    a + b : arc (0, 8) radius 6 from 200 to 340
+  }
+  set 3 counts 8 {
+    a + b : line (shimo(8), -2) -> (kami(8), -2)
+  }
+  set 4 counts 8 {
+    a1 : at (30, 30)
+  }
+}

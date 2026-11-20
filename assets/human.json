@@ -1,0 +1,6684 @@
+{
+ "format": "JKH1",
+ "version": 1,
+ "height": 1.7,
+ "bones": [
+  {
+   "name": "root",
+   "parent": -1,
+   "pos": [
+    0,
+    0.95,
+    0
+   ]
+  },
+  {
+   "name": "spine",
+   "parent": 0,
+   "pos": [
+    0,
+    0.11,
+    0
+   ]
+  },
+  {
+   "name": "chest",
+   "parent": 1,
+   "pos": [
+    0,
+    0.16,
+    0
+   ]
+  },
+  {
+   "name": "neck",
+   "parent": 2,
+   "pos": [
+    0,
+    0.2,
+    0
+   ]
+  },
+  {
+   "name": "head",
+   "parent": 3,
+   "pos": [
+    0,
+    0.09,
+    0
+   ]
+  },
+  {
+   "name": "clavL",
+   "parent": 2,
+   "pos": [
+    0.03,
+    0.17,
+    0
+   ]
+  },
+  {
+   "name": "clavR",
+   "parent": 2,
+   "pos": [
+    -0.03,
+    0.17,
+    0
+   ]
+  },
+  {
+   "name": "upperArmL",
+   "parent": 5,
+   "pos": [
+    0.16,
+    -0.015,
+    0
+   ]
+  },
+  {
+   "name": "upperArmR",
+   "parent": 6,
+   "pos": [
+    -0.16,
+    -0.015,
+    0
+   ]
+  },
+  {
+   "name": "foreArmL",
+   "parent": 7,
+   "pos": [
+    0.05102,
+    -0.29563,
+    0
+   ]
+  },
+  {
+   "name": "foreArmR",
+   "parent": 8,
+   "pos": [
+    -0.05102,
+    -0.29563,
+    0
+   ]
+  },
+  {
+   "name": "handL",
+   "parent": 9,
+   "pos": [
+    0.0312,
+    -0.25379,
+    0.04707
+   ]
+  },
+  {
+   "name": "handR",
+   "parent": 10,
+   "pos": [
+    -0.0312,
+    -0.25379,
+    0.04707
+   ]
+  },
+  {
+   "name": "thighL",
+   "parent": 0,
+   "pos": [
+    0.095,
+    -0.02,
+    0
+   ]
+  },
+  {
+   "name": "thighR",
+   "parent": 0,
+   "pos": [
+    -0.095,
+    -0.02,
+    0
+   ]
+  },
+  {
+   "name": "shinL",
+   "parent": 13,
+   "pos": [
+    -0.002,
+    -0.43,
+    0.004
+   ]
+  },
+  {
+   "name": "shinR",
+   "parent": 14,
+   "pos": [
+    0.002,
+    -0.43,
+    0.004
+   ]
+  },
+  {
+   "name": "footL",
+   "parent": 15,
+   "pos": [
+    0,
+    -0.415,
+    -0.004
+   ]
+  },
+  {
+   "name": "footR",
+   "parent": 16,
+   "pos": [
+    0,
+    -0.415,
+    -0.004
+   ]
+  },
+  {
+   "name": "toeL",
+   "parent": 17,
+   "pos": [
+    0,
+    -0.051,
+    0.145
+   ]
+  },
+  {
+   "name": "toeR",
+   "parent": 18,
+   "pos": [
+    0,
+    -0.051,
+    0.145
+   ]
+  },
+  {
+   "name": "prop",
+   "parent": 2,
+   "pos": [
+    0,
+    0.08,
+    0
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "skin",
+   "color": 15114876,
+   "rough": 0.5,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "jacket",
+   "color": 8421504,
+   "rough": 0.82,
+   "metal": 0,
+   "tint": true
+  },
+  {
+   "name": "trim",
+   "color": 14133808,
+   "rough": 0.34,
+   "metal": 0.85,
+   "tint": false
+  },
+  {
+   "name": "sash",
+   "color": 15856110,
+   "rough": 0.72,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "pants",
+   "color": 1054511,
+   "rough": 0.86,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "shoe",
+   "color": 526346,
+   "rough": 0.2,
+   "metal": 0.1,
+   "tint": false
+  },
+  {
+   "name": "glove",
+   "color": 15921908,
+   "rough": 0.75,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "hat",
+   "color": 988198,
+   "rough": 0.8,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "brim",
+   "color": 328967,
+   "rough": 0.16,
+   "metal": 0.15,
+   "tint": false
+  },
+  {
+   "name": "plume",
+   "color": 16448250,
+   "rough": 1,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "hair",
+   "color": 2825493,
+   "rough": 0.55,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "brass",
+   "color": 14724156,
+   "rough": 0.27,
+   "metal": 1,
+   "tint": false
+  },
+  {
+   "name": "silver",
+   "color": 14278115,
+   "rough": 0.2,
+   "metal": 1,
+   "tint": false
+  },
+  {
+   "name": "blackwood",
+   "color": 1184276,
+   "rough": 0.32,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "drumshell",
+   "color": 8421504,
+   "rough": 0.28,
+   "metal": 0.1,
+   "tint": true,
+   "ill": {
+    "color": 16185080,
+    "tint": false
+   }
+  },
+  {
+   "name": "drumhead",
+   "color": 16052712,
+   "rough": 0.55,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "cloth",
+   "color": 8421504,
+   "rough": 0.5,
+   "metal": 0,
+   "tint": true
+  },
+  {
+   "name": "pole",
+   "color": 13225686,
+   "rough": 0.28,
+   "metal": 1,
+   "tint": false
+  },
+  {
+   "name": "eye",
+   "color": 1445901,
+   "rough": 0.25,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "lip",
+   "color": 12085599,
+   "rough": 0.5,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "leather",
+   "color": 921104,
+   "rough": 0.6,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "wood",
+   "color": 13213802,
+   "rough": 0.5,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "felt",
+   "color": 15658730,
+   "rough": 1,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "cloth2",
+   "color": 15987697,
+   "rough": 0.55,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "rosewood",
+   "color": 5908246,
+   "rough": 0.36,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "cane",
+   "color": 14202994,
+   "rough": 0.6,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "darksteel",
+   "color": 3816514,
+   "rough": 0.35,
+   "metal": 0.9,
+   "tint": false
+  },
+  {
+   "name": "tshirt",
+   "color": 16250869,
+   "rough": 0.9,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "ipants",
+   "color": 1842468,
+   "rough": 0.9,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "sneaker",
+   "color": 15987697,
+   "rough": 0.8,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "sole",
+   "color": 1710622,
+   "rough": 0.8,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "sleeve",
+   "color": 8421504,
+   "rough": 0.8,
+   "metal": 0,
+   "tint": true
+  },
+  {
+   "name": "iris",
+   "color": 8413248,
+   "rough": 0.3,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "eyew",
+   "color": 16777215,
+   "rough": 0.4,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "blush",
+   "color": 16095898,
+   "rough": 0.7,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "mouth",
+   "color": 10238779,
+   "rough": 0.5,
+   "metal": 0,
+   "tint": false
+  },
+  {
+   "name": "stripe",
+   "color": 8421504,
+   "rough": 0.28,
+   "metal": 0.1,
+   "tint": true,
+   "ill": {
+    "color": 1513244,
+    "tint": false
+   }
+  }
+ ],
+ "body": {
+  "vertices": 5075,
+  "indices": 27744,
+  "triangles": 9248,
+  "pos": 0,
+  "nor": 60900,
+  "skinIndex": 121800,
+  "skinWeight": 142100,
+  "mat": 223300,
+  "index": 228376
+ },
+ "instruments": {
+  "hair/short": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1159,
+   "indices": 6576,
+   "triangles": 2192,
+   "pos": 542012,
+   "nor": 555920,
+   "mat": 569828,
+   "index": 570988
+  },
+  "hair/bob": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1403,
+   "indices": 8016,
+   "triangles": 2672,
+   "pos": 584140,
+   "nor": 600976,
+   "mat": 617812,
+   "index": 619216
+  },
+  "hair/pony": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1519,
+   "indices": 8700,
+   "triangles": 2900,
+   "pos": 635248,
+   "nor": 653476,
+   "mat": 671704,
+   "index": 673224
+  },
+  "hair/long": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1403,
+   "indices": 8016,
+   "triangles": 2672,
+   "pos": 690624,
+   "nor": 707460,
+   "mat": 724296,
+   "index": 725700
+  },
+  "hair/twin": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1677,
+   "indices": 9624,
+   "triangles": 3208,
+   "pos": 741732,
+   "nor": 761856,
+   "mat": 781980,
+   "index": 783660
+  },
+  "trumpet": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1677,
+   "indices": 9504,
+   "triangles": 3168,
+   "pos": 981408,
+   "nor": 1001532,
+   "mat": 1021656,
+   "index": 1023336
+  },
+  "mellophone": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1677,
+   "indices": 9504,
+   "triangles": 3168,
+   "pos": 1044108,
+   "nor": 1064232,
+   "mat": 1084356,
+   "index": 1086036
+  },
+  "marching_horn": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2185,
+   "indices": 12528,
+   "triangles": 4176,
+   "pos": 1106808,
+   "nor": 1133028,
+   "mat": 1159248,
+   "index": 1161436
+  },
+  "horn": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2907,
+   "indices": 17016,
+   "triangles": 5672,
+   "pos": 1188256,
+   "nor": 1223140,
+   "mat": 1258024,
+   "index": 1260932
+  },
+  "trombone": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1143,
+   "indices": 6114,
+   "triangles": 2038,
+   "pos": 1296728,
+   "nor": 1310444,
+   "mat": 1324160,
+   "index": 1325304
+  },
+  "euphonium": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2283,
+   "indices": 13032,
+   "triangles": 4344,
+   "pos": 1339296,
+   "nor": 1366692,
+   "mat": 1394088,
+   "index": 1396372
+  },
+  "marching_euphonium": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2121,
+   "indices": 12126,
+   "triangles": 4042,
+   "pos": 1424200,
+   "nor": 1449652,
+   "mat": 1475104,
+   "index": 1477228
+  },
+  "tuba": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2283,
+   "indices": 13032,
+   "triangles": 4344,
+   "pos": 1503244,
+   "nor": 1530640,
+   "mat": 1558036,
+   "index": 1560320
+  },
+  "marching_tuba": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 5501,
+   "indices": 32280,
+   "triangles": 10760,
+   "pos": 1588148,
+   "nor": 1654160,
+   "mat": 1720172,
+   "index": 1725676
+  },
+  "sousaphone": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 6584,
+   "indices": 38850,
+   "triangles": 12950,
+   "pos": 1792000,
+   "nor": 1871008,
+   "mat": 1950016,
+   "index": 1956600
+  },
+  "piccolo": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 326,
+   "indices": 1764,
+   "triangles": 588,
+   "pos": 2036064,
+   "nor": 2039976,
+   "mat": 2043888,
+   "index": 2044216
+  },
+  "flute": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 430,
+   "indices": 2316,
+   "triangles": 772,
+   "pos": 2049508,
+   "nor": 2054668,
+   "mat": 2059828,
+   "index": 2060260
+  },
+  "oboe": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 849,
+   "indices": 4626,
+   "triangles": 1542,
+   "pos": 2066656,
+   "nor": 2076844,
+   "mat": 2087032,
+   "index": 2087884
+  },
+  "bassoon": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1572,
+   "indices": 8760,
+   "triangles": 2920,
+   "pos": 2098900,
+   "nor": 2117764,
+   "mat": 2136628,
+   "index": 2138200
+  },
+  "eb_clarinet": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 841,
+   "indices": 4584,
+   "triangles": 1528,
+   "pos": 2157484,
+   "nor": 2167576,
+   "mat": 2177668,
+   "index": 2178512
+  },
+  "clarinet": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 889,
+   "indices": 4836,
+   "triangles": 1612,
+   "pos": 2189444,
+   "nor": 2200112,
+   "mat": 2210780,
+   "index": 2211672
+  },
+  "alto_clarinet": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1853,
+   "indices": 10578,
+   "triangles": 3526,
+   "pos": 2223108,
+   "nor": 2245344,
+   "mat": 2267580,
+   "index": 2269436
+  },
+  "bass_clarinet": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1883,
+   "indices": 10734,
+   "triangles": 3578,
+   "pos": 2292356,
+   "nor": 2314952,
+   "mat": 2337548,
+   "index": 2339432
+  },
+  "soprano_sax": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1823,
+   "indices": 10410,
+   "triangles": 3470,
+   "pos": 2362664,
+   "nor": 2384540,
+   "mat": 2406416,
+   "index": 2408240
+  },
+  "alto_sax": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 4194,
+   "indices": 24642,
+   "triangles": 8214,
+   "pos": 2430824,
+   "nor": 2481152,
+   "mat": 2531480,
+   "index": 2535676
+  },
+  "tenor_sax": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 4242,
+   "indices": 24894,
+   "triangles": 8298,
+   "pos": 2586724,
+   "nor": 2637628,
+   "mat": 2688532,
+   "index": 2692776
+  },
+  "baritone_sax": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 6240,
+   "indices": 36822,
+   "triangles": 12274,
+   "pos": 2744328,
+   "nor": 2819208,
+   "mat": 2894088,
+   "index": 2900328
+  },
+  "snare": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2107,
+   "indices": 11508,
+   "triangles": 3836,
+   "pos": 2975736,
+   "nor": 3001020,
+   "mat": 3026304,
+   "index": 3028412
+  },
+  "snare+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 48,
+   "indices": 264,
+   "triangles": 88,
+   "pos": 3051428,
+   "nor": 3052004,
+   "mat": 3052580,
+   "index": 3052628
+  },
+  "snare+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 48,
+   "indices": 264,
+   "triangles": 88,
+   "pos": 3053156,
+   "nor": 3053732,
+   "mat": 3054308,
+   "index": 3054356
+  },
+  "tenors": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 4476,
+   "indices": 25164,
+   "triangles": 8388,
+   "pos": 3056648,
+   "nor": 3110360,
+   "mat": 3164072,
+   "index": 3168548
+  },
+  "tenors+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 48,
+   "indices": 264,
+   "triangles": 88,
+   "pos": 3218876,
+   "nor": 3219452,
+   "mat": 3220028,
+   "index": 3220076
+  },
+  "tenors+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 48,
+   "indices": 264,
+   "triangles": 88,
+   "pos": 3220604,
+   "nor": 3221180,
+   "mat": 3221756,
+   "index": 3221804
+  },
+  "bass1": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2011,
+   "indices": 11376,
+   "triangles": 3792,
+   "pos": 3224096,
+   "nor": 3248228,
+   "mat": 3272360,
+   "index": 3274372
+  },
+  "bass1+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3297124,
+   "nor": 3298348,
+   "mat": 3299572,
+   "index": 3299676
+  },
+  "bass1+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3300828,
+   "nor": 3302052,
+   "mat": 3303276,
+   "index": 3303380
+  },
+  "bass2": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2011,
+   "indices": 11376,
+   "triangles": 3792,
+   "pos": 3306296,
+   "nor": 3330428,
+   "mat": 3354560,
+   "index": 3356572
+  },
+  "bass2+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3379324,
+   "nor": 3380548,
+   "mat": 3381772,
+   "index": 3381876
+  },
+  "bass2+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3383028,
+   "nor": 3384252,
+   "mat": 3385476,
+   "index": 3385580
+  },
+  "bass3": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2011,
+   "indices": 11376,
+   "triangles": 3792,
+   "pos": 3388496,
+   "nor": 3412628,
+   "mat": 3436760,
+   "index": 3438772
+  },
+  "bass3+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3461524,
+   "nor": 3462748,
+   "mat": 3463972,
+   "index": 3464076
+  },
+  "bass3+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3465228,
+   "nor": 3466452,
+   "mat": 3467676,
+   "index": 3467780
+  },
+  "bass4": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2011,
+   "indices": 11376,
+   "triangles": 3792,
+   "pos": 3470696,
+   "nor": 3494828,
+   "mat": 3518960,
+   "index": 3520972
+  },
+  "bass4+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3543724,
+   "nor": 3544948,
+   "mat": 3546172,
+   "index": 3546276
+  },
+  "bass4+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3547428,
+   "nor": 3548652,
+   "mat": 3549876,
+   "index": 3549980
+  },
+  "bass5": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2011,
+   "indices": 11376,
+   "triangles": 3792,
+   "pos": 3552896,
+   "nor": 3577028,
+   "mat": 3601160,
+   "index": 3603172
+  },
+  "bass5+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3625924,
+   "nor": 3627148,
+   "mat": 3628372,
+   "index": 3628476
+  },
+  "bass5+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 102,
+   "indices": 576,
+   "triangles": 192,
+   "pos": 3629628,
+   "nor": 3630852,
+   "mat": 3632076,
+   "index": 3632180
+  },
+  "cymbals_mid+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 452,
+   "indices": 2676,
+   "triangles": 892,
+   "pos": 3635096,
+   "nor": 3640520,
+   "mat": 3645944,
+   "index": 3646396
+  },
+  "cymbals_mid+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 452,
+   "indices": 2676,
+   "triangles": 892,
+   "pos": 3651748,
+   "nor": 3657172,
+   "mat": 3662596,
+   "index": 3663048
+  },
+  "cymbals_high+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 452,
+   "indices": 2676,
+   "triangles": 892,
+   "pos": 3670164,
+   "nor": 3675588,
+   "mat": 3681012,
+   "index": 3681464
+  },
+  "cymbals_high+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 452,
+   "indices": 2676,
+   "triangles": 892,
+   "pos": 3686816,
+   "nor": 3692240,
+   "mat": 3697664,
+   "index": 3698116
+  },
+  "glockenspiel": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1342,
+   "indices": 5556,
+   "triangles": 1852,
+   "pos": 3705232,
+   "nor": 3721336,
+   "mat": 3737440,
+   "index": 3738784
+  },
+  "glockenspiel+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 66,
+   "indices": 372,
+   "triangles": 124,
+   "pos": 3749896,
+   "nor": 3750688,
+   "mat": 3751480,
+   "index": 3751548
+  },
+  "xylophone": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1880,
+   "indices": 6588,
+   "triangles": 2196,
+   "pos": 3754056,
+   "nor": 3776616,
+   "mat": 3799176,
+   "index": 3801056
+  },
+  "xylophone+R": {
+   "attach": {
+    "bone": "handR",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 66,
+   "indices": 372,
+   "triangles": 124,
+   "pos": 3814232,
+   "nor": 3815024,
+   "mat": 3815816,
+   "index": 3815884
+  },
+  "xylophone+L": {
+   "attach": {
+    "bone": "handL",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 66,
+   "indices": 372,
+   "triangles": 124,
+   "pos": 3816628,
+   "nor": 3817420,
+   "mat": 3818212,
+   "index": 3818280
+  },
+  "guard": {
+   "attach": {
+    "bone": "prop",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1176,
+   "indices": 6168,
+   "triangles": 2056,
+   "pos": 3820788,
+   "nor": 3834900,
+   "mat": 3849012,
+   "index": 3850188
+  }
+ },
+ "illust": {
+  "body": {
+   "vertices": 4575,
+   "indices": 26136,
+   "triangles": 8712,
+   "pos": 283864,
+   "nor": 338764,
+   "skinIndex": 393664,
+   "skinWeight": 411964,
+   "mat": 485164,
+   "index": 489740
+  },
+  "hairs": [
+   "hair/short",
+   "hair/bob",
+   "hair/pony",
+   "hair/long",
+   "hair/twin"
+  ]
+ },
+ "clips": [
+  {
+   "name": "stance/attention",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 802908
+  },
+  {
+   "name": "stance/rest",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 803272
+  },
+  {
+   "name": "stance/wide",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 803636
+  },
+  {
+   "name": "stance/cross",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 804000
+  },
+  {
+   "name": "stance/kneel",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 804364
+  },
+  {
+   "name": "stance/kneel2",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 804728
+  },
+  {
+   "name": "stance/lunge",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 805092
+  },
+  {
+   "name": "stance/crouch",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 805456
+  },
+  {
+   "name": "stance/toe",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 805820
+  },
+  {
+   "name": "walk/glide/0",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 806184
+  },
+  {
+   "name": "walk/glide/0.3",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 813464
+  },
+  {
+   "name": "walk/glide/0.5",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 820744
+  },
+  {
+   "name": "walk/glide/0.75",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 828024
+  },
+  {
+   "name": "walk/jazz/0",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 835304
+  },
+  {
+   "name": "walk/jazz/0.3",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 842584
+  },
+  {
+   "name": "walk/jazz/0.5",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 849864
+  },
+  {
+   "name": "walk/jazz/0.75",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 857144
+  },
+  {
+   "name": "walk/high/0",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 864424
+  },
+  {
+   "name": "walk/high/0.3",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 871704
+  },
+  {
+   "name": "walk/high/0.5",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 878984
+  },
+  {
+   "name": "walk/high/0.75",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 886264
+  },
+  {
+   "name": "walk/back/0",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 893544
+  },
+  {
+   "name": "walk/back/0.3",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 900824
+  },
+  {
+   "name": "walk/back/0.5",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 908104
+  },
+  {
+   "name": "walk/back/0.75",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 915384
+  },
+  {
+   "name": "walk/slideL/0",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 922664
+  },
+  {
+   "name": "walk/slideL/0.3",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 929944
+  },
+  {
+   "name": "walk/slideL/0.5",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 937224
+  },
+  {
+   "name": "walk/slideL/0.75",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 944504
+  },
+  {
+   "name": "walk/slideR/0",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 951784
+  },
+  {
+   "name": "walk/slideR/0.3",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 959064
+  },
+  {
+   "name": "walk/slideR/0.5",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 966344
+  },
+  {
+   "name": "walk/slideR/0.75",
+   "bones": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 973624
+  },
+  {
+   "name": "idle",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 980904
+  },
+  {
+   "name": "behind",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 981156
+  },
+  {
+   "name": "hold/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1042344
+  },
+  {
+   "name": "carry/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1042596
+  },
+  {
+   "name": "up/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1042848
+  },
+  {
+   "name": "style/right/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1043100
+  },
+  {
+   "name": "style/left/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1043352
+  },
+  {
+   "name": "style/front/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1043604
+  },
+  {
+   "name": "style/diag/trumpet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1043856
+  },
+  {
+   "name": "hold/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1105044
+  },
+  {
+   "name": "carry/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1105296
+  },
+  {
+   "name": "up/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1105548
+  },
+  {
+   "name": "style/right/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1105800
+  },
+  {
+   "name": "style/left/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1106052
+  },
+  {
+   "name": "style/front/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1106304
+  },
+  {
+   "name": "style/diag/mellophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1106556
+  },
+  {
+   "name": "hold/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1186492
+  },
+  {
+   "name": "carry/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1186744
+  },
+  {
+   "name": "up/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1186996
+  },
+  {
+   "name": "style/right/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1187248
+  },
+  {
+   "name": "style/left/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1187500
+  },
+  {
+   "name": "style/front/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1187752
+  },
+  {
+   "name": "style/diag/marching_horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1188004
+  },
+  {
+   "name": "hold/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1294964
+  },
+  {
+   "name": "carry/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1295216
+  },
+  {
+   "name": "up/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1295468
+  },
+  {
+   "name": "style/right/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1295720
+  },
+  {
+   "name": "style/left/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1295972
+  },
+  {
+   "name": "style/front/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1296224
+  },
+  {
+   "name": "style/diag/horn",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1296476
+  },
+  {
+   "name": "hold/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1337532
+  },
+  {
+   "name": "carry/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1337784
+  },
+  {
+   "name": "up/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1338036
+  },
+  {
+   "name": "style/right/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1338288
+  },
+  {
+   "name": "style/left/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1338540
+  },
+  {
+   "name": "style/front/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1338792
+  },
+  {
+   "name": "style/diag/trombone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1339044
+  },
+  {
+   "name": "hold/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1422436
+  },
+  {
+   "name": "carry/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1422688
+  },
+  {
+   "name": "up/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1422940
+  },
+  {
+   "name": "style/right/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1423192
+  },
+  {
+   "name": "style/left/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1423444
+  },
+  {
+   "name": "style/front/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1423696
+  },
+  {
+   "name": "style/diag/euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1423948
+  },
+  {
+   "name": "hold/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1501480
+  },
+  {
+   "name": "carry/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1501732
+  },
+  {
+   "name": "up/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1501984
+  },
+  {
+   "name": "style/right/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1502236
+  },
+  {
+   "name": "style/left/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1502488
+  },
+  {
+   "name": "style/front/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1502740
+  },
+  {
+   "name": "style/diag/marching_euphonium",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1502992
+  },
+  {
+   "name": "hold/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1586384
+  },
+  {
+   "name": "carry/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1586636
+  },
+  {
+   "name": "up/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1586888
+  },
+  {
+   "name": "style/right/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1587140
+  },
+  {
+   "name": "style/left/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1587392
+  },
+  {
+   "name": "style/front/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1587644
+  },
+  {
+   "name": "style/diag/tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1587896
+  },
+  {
+   "name": "hold/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1790236
+  },
+  {
+   "name": "carry/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1790488
+  },
+  {
+   "name": "up/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1790740
+  },
+  {
+   "name": "style/right/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1790992
+  },
+  {
+   "name": "style/left/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1791244
+  },
+  {
+   "name": "style/front/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1791496
+  },
+  {
+   "name": "style/diag/marching_tuba",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 1791748
+  },
+  {
+   "name": "hold/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2034300
+  },
+  {
+   "name": "carry/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2034552
+  },
+  {
+   "name": "up/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2034804
+  },
+  {
+   "name": "style/right/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2035056
+  },
+  {
+   "name": "style/left/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2035308
+  },
+  {
+   "name": "style/front/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2035560
+  },
+  {
+   "name": "style/diag/sousaphone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2035812
+  },
+  {
+   "name": "hold/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2047744
+  },
+  {
+   "name": "carry/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2047996
+  },
+  {
+   "name": "up/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2048248
+  },
+  {
+   "name": "style/right/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2048500
+  },
+  {
+   "name": "style/left/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2048752
+  },
+  {
+   "name": "style/front/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2049004
+  },
+  {
+   "name": "style/diag/piccolo",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2049256
+  },
+  {
+   "name": "hold/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2064892
+  },
+  {
+   "name": "carry/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2065144
+  },
+  {
+   "name": "up/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2065396
+  },
+  {
+   "name": "style/right/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2065648
+  },
+  {
+   "name": "style/left/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2065900
+  },
+  {
+   "name": "style/front/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2066152
+  },
+  {
+   "name": "style/diag/flute",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2066404
+  },
+  {
+   "name": "hold/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2097136
+  },
+  {
+   "name": "carry/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2097388
+  },
+  {
+   "name": "up/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2097640
+  },
+  {
+   "name": "style/right/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2097892
+  },
+  {
+   "name": "style/left/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2098144
+  },
+  {
+   "name": "style/front/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2098396
+  },
+  {
+   "name": "style/diag/oboe",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2098648
+  },
+  {
+   "name": "hold/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2155720
+  },
+  {
+   "name": "carry/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2155972
+  },
+  {
+   "name": "up/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2156224
+  },
+  {
+   "name": "style/right/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2156476
+  },
+  {
+   "name": "style/left/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2156728
+  },
+  {
+   "name": "style/front/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2156980
+  },
+  {
+   "name": "style/diag/bassoon",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2157232
+  },
+  {
+   "name": "hold/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2187680
+  },
+  {
+   "name": "carry/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2187932
+  },
+  {
+   "name": "up/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2188184
+  },
+  {
+   "name": "style/right/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2188436
+  },
+  {
+   "name": "style/left/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2188688
+  },
+  {
+   "name": "style/front/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2188940
+  },
+  {
+   "name": "style/diag/eb_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2189192
+  },
+  {
+   "name": "hold/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2221344
+  },
+  {
+   "name": "carry/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2221596
+  },
+  {
+   "name": "up/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2221848
+  },
+  {
+   "name": "style/right/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2222100
+  },
+  {
+   "name": "style/left/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2222352
+  },
+  {
+   "name": "style/front/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2222604
+  },
+  {
+   "name": "style/diag/clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2222856
+  },
+  {
+   "name": "hold/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2290592
+  },
+  {
+   "name": "carry/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2290844
+  },
+  {
+   "name": "up/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2291096
+  },
+  {
+   "name": "style/right/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2291348
+  },
+  {
+   "name": "style/left/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2291600
+  },
+  {
+   "name": "style/front/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2291852
+  },
+  {
+   "name": "style/diag/alto_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2292104
+  },
+  {
+   "name": "hold/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2360900
+  },
+  {
+   "name": "carry/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2361152
+  },
+  {
+   "name": "up/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2361404
+  },
+  {
+   "name": "style/right/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2361656
+  },
+  {
+   "name": "style/left/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2361908
+  },
+  {
+   "name": "style/front/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2362160
+  },
+  {
+   "name": "style/diag/bass_clarinet",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2362412
+  },
+  {
+   "name": "hold/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2429060
+  },
+  {
+   "name": "carry/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2429312
+  },
+  {
+   "name": "up/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2429564
+  },
+  {
+   "name": "style/right/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2429816
+  },
+  {
+   "name": "style/left/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2430068
+  },
+  {
+   "name": "style/front/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2430320
+  },
+  {
+   "name": "style/diag/soprano_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2430572
+  },
+  {
+   "name": "hold/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2584960
+  },
+  {
+   "name": "carry/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2585212
+  },
+  {
+   "name": "up/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2585464
+  },
+  {
+   "name": "style/right/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2585716
+  },
+  {
+   "name": "style/left/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2585968
+  },
+  {
+   "name": "style/front/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2586220
+  },
+  {
+   "name": "style/diag/alto_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2586472
+  },
+  {
+   "name": "hold/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2742564
+  },
+  {
+   "name": "carry/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2742816
+  },
+  {
+   "name": "up/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2743068
+  },
+  {
+   "name": "style/right/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2743320
+  },
+  {
+   "name": "style/left/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2743572
+  },
+  {
+   "name": "style/front/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2743824
+  },
+  {
+   "name": "style/diag/tenor_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2744076
+  },
+  {
+   "name": "hold/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2973972
+  },
+  {
+   "name": "carry/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2974224
+  },
+  {
+   "name": "up/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2974476
+  },
+  {
+   "name": "style/right/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2974728
+  },
+  {
+   "name": "style/left/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2974980
+  },
+  {
+   "name": "style/front/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2975232
+  },
+  {
+   "name": "style/diag/baritone_sax",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 2975484
+  },
+  {
+   "name": "hold/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3054884
+  },
+  {
+   "name": "carry/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3055136
+  },
+  {
+   "name": "up/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3055388
+  },
+  {
+   "name": "style/right/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3055640
+  },
+  {
+   "name": "style/left/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3055892
+  },
+  {
+   "name": "style/front/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3056144
+  },
+  {
+   "name": "style/diag/snare",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3056396
+  },
+  {
+   "name": "hold/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3222332
+  },
+  {
+   "name": "carry/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3222584
+  },
+  {
+   "name": "up/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3222836
+  },
+  {
+   "name": "style/right/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3223088
+  },
+  {
+   "name": "style/left/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3223340
+  },
+  {
+   "name": "style/front/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3223592
+  },
+  {
+   "name": "style/diag/tenors",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3223844
+  },
+  {
+   "name": "hold/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3304532
+  },
+  {
+   "name": "carry/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3304784
+  },
+  {
+   "name": "up/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3305036
+  },
+  {
+   "name": "style/right/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3305288
+  },
+  {
+   "name": "style/left/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3305540
+  },
+  {
+   "name": "style/front/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3305792
+  },
+  {
+   "name": "style/diag/bass1",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3306044
+  },
+  {
+   "name": "hold/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3386732
+  },
+  {
+   "name": "carry/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3386984
+  },
+  {
+   "name": "up/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3387236
+  },
+  {
+   "name": "style/right/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3387488
+  },
+  {
+   "name": "style/left/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3387740
+  },
+  {
+   "name": "style/front/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3387992
+  },
+  {
+   "name": "style/diag/bass2",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3388244
+  },
+  {
+   "name": "hold/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3468932
+  },
+  {
+   "name": "carry/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3469184
+  },
+  {
+   "name": "up/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3469436
+  },
+  {
+   "name": "style/right/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3469688
+  },
+  {
+   "name": "style/left/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3469940
+  },
+  {
+   "name": "style/front/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3470192
+  },
+  {
+   "name": "style/diag/bass3",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3470444
+  },
+  {
+   "name": "hold/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3551132
+  },
+  {
+   "name": "carry/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3551384
+  },
+  {
+   "name": "up/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3551636
+  },
+  {
+   "name": "style/right/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3551888
+  },
+  {
+   "name": "style/left/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3552140
+  },
+  {
+   "name": "style/front/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3552392
+  },
+  {
+   "name": "style/diag/bass4",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3552644
+  },
+  {
+   "name": "hold/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3633332
+  },
+  {
+   "name": "carry/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3633584
+  },
+  {
+   "name": "up/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3633836
+  },
+  {
+   "name": "style/right/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3634088
+  },
+  {
+   "name": "style/left/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3634340
+  },
+  {
+   "name": "style/front/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3634592
+  },
+  {
+   "name": "style/diag/bass5",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3634844
+  },
+  {
+   "name": "hold/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3668400
+  },
+  {
+   "name": "carry/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3668652
+  },
+  {
+   "name": "up/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3668904
+  },
+  {
+   "name": "style/right/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3669156
+  },
+  {
+   "name": "style/left/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3669408
+  },
+  {
+   "name": "style/front/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3669660
+  },
+  {
+   "name": "style/diag/cymbals_mid",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3669912
+  },
+  {
+   "name": "hold/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3703468
+  },
+  {
+   "name": "carry/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3703720
+  },
+  {
+   "name": "up/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3703972
+  },
+  {
+   "name": "style/right/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3704224
+  },
+  {
+   "name": "style/left/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3704476
+  },
+  {
+   "name": "style/front/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3704728
+  },
+  {
+   "name": "style/diag/cymbals_high",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3704980
+  },
+  {
+   "name": "hold/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3752292
+  },
+  {
+   "name": "carry/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3752544
+  },
+  {
+   "name": "up/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3752796
+  },
+  {
+   "name": "style/right/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3753048
+  },
+  {
+   "name": "style/left/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3753300
+  },
+  {
+   "name": "style/front/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3753552
+  },
+  {
+   "name": "style/diag/glockenspiel",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3753804
+  },
+  {
+   "name": "hold/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3819024
+  },
+  {
+   "name": "carry/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3819276
+  },
+  {
+   "name": "up/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3819528
+  },
+  {
+   "name": "style/right/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3819780
+  },
+  {
+   "name": "style/left/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3820032
+  },
+  {
+   "name": "style/front/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3820284
+  },
+  {
+   "name": "style/diag/xylophone",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3820536
+  },
+  {
+   "name": "guard/hold",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3862524
+  },
+  {
+   "name": "guard/carry",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3862776
+  },
+  {
+   "name": "style/right/guard",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3863028
+  },
+  {
+   "name": "style/left/guard",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3863280
+  },
+  {
+   "name": "style/front/guard",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3863532
+  },
+  {
+   "name": "style/diag/guard",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 1,
+   "counts": 0,
+   "off": 3863784
+  },
+  {
+   "name": "guard/spin",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 3864036
+  },
+  {
+   "name": "guard/swing",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 20,
+   "counts": 2,
+   "off": 3869076
+  },
+  {
+   "name": "guard/toss",
+   "bones": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    21
+   ],
+   "frames": 40,
+   "counts": 4,
+   "off": 3874116
+  }
+ ],
+ "groups": {
+  "lower": [
+   "root",
+   "spine",
+   "chest",
+   "neck",
+   "head",
+   "thighL",
+   "thighR",
+   "shinL",
+   "shinR",
+   "footL",
+   "footR",
+   "toeL",
+   "toeR"
+  ],
+  "upper": [
+   "clavL",
+   "clavR",
+   "upperArmL",
+   "upperArmR",
+   "foreArmL",
+   "foreArmR",
+   "handL",
+   "handR",
+   "prop"
+  ]
+ },
+ "strides": [
+  0,
+  0.3,
+  0.5,
+  0.75
+ ]
+}

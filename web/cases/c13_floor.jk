@@ -1,0 +1,17 @@
+show "floor" {
+  field floor 20 x 14
+  tempo 96
+  section a "A" 6
+  set 1 {
+    a : line (LEFT + 2, 2) -> (RIGHT - 2, 2)
+  }
+  set 2 counts 12 {
+    a : circle (0, MID) radius 4
+  }
+  set 3 counts 12 {
+    a : line (LEFT, BACK) -> (RIGHT, BACK)
+  }
+  set 4 counts 12 {
+    a : line (LEFT - 3, FRONT) -> (RIGHT + 3, FRONT)
+  }
+}

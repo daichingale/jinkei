@@ -1,0 +1,64 @@
+show "instruments by id" {
+  section tp 1
+  section bd 1
+  section cg 1
+  section tb 1
+  section bar 1
+  section tu 1
+  section sou 1
+  section fl 1
+  section pic 1
+  section ob 1
+  section fg 1
+  section cl 1
+  section bcl 1
+  section sx 1
+  section ts 1
+  section bs 1
+  section sn 1
+  section td 1
+  section cy 1
+  section gl 1
+  section xy 1
+  section gd 1
+  section pc 1
+  section ww 1
+  section hn 1
+  section mel 1
+  section eu 1
+  section xx 1
+  section BD 1
+  section TP 1
+  set 1 {
+    tp1 : at (-14, -4)
+    bd1 : at (-12, -4)
+    cg1 : at (-10, -4)
+    tb1 : at (-8, -4)
+    bar1 : at (-6, -4)
+    tu1 : at (-4, -4)
+    sou1 : at (-2, -4)
+    fl1 : at (0, -4)
+    pic1 : at (2, -4)
+    ob1 : at (4, -4)
+    fg1 : at (6, -4)
+    cl1 : at (8, -4)
+    bcl1 : at (10, -4)
+    sx1 : at (12, -4)
+    ts1 : at (14, -4)
+    bs1 : at (-14, 0)
+    sn1 : at (-12, 0)
+    td1 : at (-10, 0)
+    cy1 : at (-8, 0)
+    gl1 : at (-6, 0)
+    xy1 : at (-4, 0)
+    gd1 : at (-2, 0)
+    pc1 : at (0, 0)
+    ww1 : at (2, 0)
+    hn1 : at (4, 0)
+    mel1 : at (6, 0)
+    eu1 : at (8, 0)
+    xx1 : at (10, 0)
+    BD1 : at (12, 0)
+    TP1 : at (14, 0)
+  }
+}

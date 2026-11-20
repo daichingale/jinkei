@@ -1,0 +1,5 @@
+show "x" {
+  look cartoon
+  section a "A" 2
+  set 1 hold 4 { a : line (-2, 0) -> (2, 0) }
+}

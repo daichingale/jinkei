@@ -1,0 +1,13 @@
+show "ff" {
+  field football
+  section a "A" 12
+  set 1 {
+    a : line (s1(30), FH) -> (s2(30), FH)
+  }
+  set 2 counts 32 {
+    a : follow (s2(30), FH) -> (s2(30), BH) -> (s1(30), BH) -> (s1(30), FH + 10)
+  }
+  set 3 counts 16 {
+    a : curve (s1(30), FH) -> (0, BH) -> (s2(30), FH) bend 10
+  }
+}

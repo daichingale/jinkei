@@ -1,0 +1,9 @@
+show "bad pose attr" {
+  section a "A" 3
+  set 1 {
+    a : line (-6, 0) -> (6, 0)
+  }
+  set 2 counts 4 {
+    a : pose
+  }
+}

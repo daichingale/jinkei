@@ -1,0 +1,12 @@
+show "collide" {
+  section a "A" 6
+  section b "B" 6
+  set 1 {
+    a : line (-9, -3) -> (9, -3)
+    b : line (-9, 3) -> (9, 3)
+  }
+  set 2 counts 8 {
+    a : line (-9, 3) -> (9, 3) assign keep
+    b : line (-9, -3) -> (9, -3) assign keep
+  }
+}

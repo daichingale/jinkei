@@ -1,0 +1,16 @@
+show "single" {
+  section a "A" 1
+  section b "B" 2
+  set 1 {
+    a : block (0, 0) cols 1
+    b : curve (-2, 3) -> (2, 3)
+  }
+  set 2 counts 8 {
+    a : arc (0, 0) radius 3 from 10 to 80
+    b : poly (-2, -3) -> (2, -3)
+  }
+  set 3 counts 8 {
+    a : circle (0, 0) radius 3
+    b : line (-1, 1) -> (-1, 1)
+  }
+}

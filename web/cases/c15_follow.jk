@@ -1,0 +1,16 @@
+show "follow" {
+  section a "A" 8
+  section b "B" 4
+  set 1 {
+    a : line (-9, -8) -> (9, -8)
+    b : line (-4, -4) -> (4, -4)
+  }
+  set 2 counts 24 {
+    a : follow (9, -8) -> (9, 8) -> (-9, 8)
+    b : same
+  }
+  set 3 counts 24 {
+    a : follow (0, 0) -> (-6, 4) -> (6, 4) spacing 1.5 assign keep
+    b : follow (-4, 0) -> (4, 0) -> (4, -8)
+  }
+}

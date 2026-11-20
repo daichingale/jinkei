@@ -1,0 +1,12 @@
+show "expr" {
+  section a "A" 5
+  set 1 {
+    a : line (-(3 + 2) * 2, 10 / 2 - 1) -> ((1 + 2) * (3 - 4), -(2 - 3)) 
+  }
+  set 2 counts 8 {
+    a : arc (1 - (2 - 3), 0) radius 2 * (3 + 1) from 0 - 180 to -(-90) rotate 10 / (2 * 5) shift (2 / (4 / 2), 1.5 - 0.25)
+  }
+  set 3 counts 8 {
+    a : circle (0, 0) radius 1.5 * 2 start 360 / 22
+  }
+}

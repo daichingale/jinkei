@@ -1,0 +1,15 @@
+show "gymc" {
+  field gym 24 x 20
+  clearance 0.8
+  maxstep 0.5
+  section a "A" 6
+  set 1 {
+    a : line (SHIMO, FRONT) -> (KAMI, BACK)
+  }
+  set 2 counts 4 {
+    a : line (SHIMO20, FRONT20) -> (KAMI20, FRONT20)
+  }
+  set 3 counts 8 {
+    a : line (mae(5), oku(5)) -> (kami(5), shimo(5))
+  }
+}

@@ -1,0 +1,62 @@
+# GitHub に置くと、Mac / Windows / Linux 用の jinkei を自動でビルドします。
+#   ・push のたび: テストを実行し、各OS用の実行ファイルを「Artifacts」に置く
+#   ・v1.0 のようなタグを push: リリースページに zip を添付（ダウンロードしてすぐ使える）
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: jinkei-mac-apple-silicon
+          - os: macos-13
+            target: x86_64-apple-darwin
+            name: jinkei-mac-intel
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: jinkei-windows
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: jinkei-linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: テスト
+        run: cargo test --release
+      - name: ビルド
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: 往復テスト（エディタの書き戻し）
+        if: runner.os != 'Windows'
+        run: node tests/roundtrip.js target/${{ matrix.target }}/release/jinkei examples/*.jk
+      - name: まとめる
+        shell: bash
+        run: |
+          mkdir -p dist/${{ matrix.name }}
+          if [ "${{ runner.os }}" = "Windows" ]; then cp target/${{ matrix.target }}/release/jinkei.exe dist/${{ matrix.name }}/; else cp target/${{ matrix.target }}/release/jinkei dist/${{ matrix.name }}/; fi
+          cp -r examples README.md dist/${{ matrix.name }}/
+          rm -f dist/${{ matrix.name }}/examples/*.html dist/${{ matrix.name }}/examples/*.mp4
+          cd dist && 7z a ../${{ matrix.name }}.zip ${{ matrix.name }} > /dev/null || zip -qr ../${{ matrix.name }}.zip ${{ matrix.name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}.zip
+      - name: リリースに添付
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.name }}.zip

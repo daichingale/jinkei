@@ -1,0 +1,15 @@
+show "crowd" {
+  section a "A" 10
+  section b "B" 10
+  set 1 {
+    a : block (-4, 0) cols 5 spacing 0.5
+    b : block (4, 0) cols 5 spacing 0.5
+  }
+  set 2 counts 8 {
+    a : block (4, 0) cols 5 spacing 0.5 assign keep
+    b : block (-4, 0) cols 5 spacing 0.5 assign keep
+  }
+  set 3 counts 2 {
+    a + b : circle (0, 0) radius 2
+  }
+}

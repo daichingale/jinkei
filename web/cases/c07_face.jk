@@ -1,0 +1,26 @@
+show "face" {
+  section a "A" 4
+  section b "B" 4
+  section c "C" 4
+  section d "D" 4
+  set 1 {
+    a : line (-8, 0) -> (8, 0) face front
+    b : line (-8, 3) -> (8, 3) face 客席
+    c : line (-8, 6) -> (8, 6) face 45
+    d : line (-8, 9) -> (8, 9) face toward (0, 0)
+  }
+  set 2 counts 8 {
+    a : line (-8, 1) -> (8, 1) face back
+    b : line (-8, 4) -> (8, 4) face kami
+    c : line (-8, 7) -> (8, 7) face shimo
+    d : line (-8, 10) -> (8, 10) face center
+  }
+  set 3 counts 8 {
+    a : circle (0, 0) radius 4 face out
+    b : line (-8, 4) -> (8, 4) face travel
+    c : line (-8, 7) -> (8, 7) face -(30)
+    d : same
+  }
+  set 4 counts 8 {
+  }
+}

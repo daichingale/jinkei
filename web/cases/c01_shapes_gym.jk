@@ -1,0 +1,22 @@
+# 全図形（体育館）
+show "shapes" {
+  section a "A" 6
+  section b "B" 5
+  section c "C" 4
+  section d "D" 6
+  section e "E" 1
+  set 1 hold 4 {
+    a : line (-8, -8) -> (8, -8)
+    b : arc (0, 0) radius 5 from 200 to 340
+    c : block (0, 6) cols 2 spacing 1.2
+    d : circle (-8, 8) radius 3
+    e : at (9, 9)
+  }
+  set 2 counts 12 {
+    a : curve (-8, 0) -> (0, 4) -> (8, 0)
+    b : poly (-6, 6) -> (0, 9) -> (6, 6)
+    c : same
+    d : circle (8, -4) radius 3 start 90
+    e : at (-9, -9)
+  }
+}

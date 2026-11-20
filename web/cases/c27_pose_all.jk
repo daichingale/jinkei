@@ -1,0 +1,23 @@
+show "poses" {
+  section a "A" 9
+  section b "B" 4
+  set 1 {
+    a1 : at (-8, 0) pose attention
+    a2 : at (-6, 0) pose rest
+    a3 : at (-4, 0) pose wide
+    a4 : at (-2, 0) pose cross
+    a5 : at (0, 0) pose kneel
+    a6 : at (2, 0) pose kneel2
+    a7 : at (4, 0) pose lunge
+    a8 : at (6, 0) pose crouch
+    a9 : at (8, 0) pose toe
+    b : line (-6, 4) -> (6, 4)
+  }
+  set 2 counts 8 {
+    a : line (-8, 3) -> (8, 3) pose rest step glide action spin
+    b : same
+  }
+  set 3 counts 8 {
+    a1 : same pose wide
+  }
+}

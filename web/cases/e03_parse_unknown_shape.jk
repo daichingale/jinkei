@@ -1,0 +1,4 @@
+show "bad" {
+  section a "A" 3
+  set 1 { a : triangle (0,0) }
+}

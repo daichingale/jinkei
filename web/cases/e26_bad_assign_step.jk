@@ -1,0 +1,4 @@
+show "x" {
+  section a "A" 3
+  set 1 { a : line (0, 0) -> (4, 1) step foo }
+}

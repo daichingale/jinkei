@@ -1,0 +1,20 @@
+show "stepact" {
+  section a "A" 4
+  section b "B" 4
+  set 1 {
+    a : line (-8, 0) -> (8, 0) step high
+    b : line (-8, 3) -> (8, 3) action spin
+  }
+  set 2 counts 8 {
+    a : line (-8, 4) -> (8, 4) step glide action toss
+    b : line (-8, 7) -> (8, 7) step slide action swing
+  }
+  set 3 counts 8 {
+    a : line (-8, 0) -> (8, 0) step back action rest
+    b : line (-8, 3) -> (8, 3) step jazz bend 20
+  }
+  set 4 counts 8 {
+    a : same step バック action スピン
+    b : same step ハイ
+  }
+}

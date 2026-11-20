@@ -1,0 +1,2099 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>陣形エディタ</title>
+<style>
+:root{--bg:#14161a;--panel:#1c1f25;--panel2:#23272f;--line:#2e333c;--fg:#e8e9ec;--mut:#99a0ab;--acc:#ffd23f;--bad:#ff6b6b;--ok:#6fdc8c;--blue:#5b8def}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 "Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+button,select,input,textarea{font:inherit;color:var(--fg)}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:#556}
+button.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+button.ghost{background:none;border-color:transparent;color:var(--mut);padding:2px 6px}
+button.ghost:hover{color:var(--fg);border-color:var(--line)}
+button[disabled]{opacity:.35;cursor:default}
+input,select,textarea{background:#12141a;border:1px solid var(--line);border-radius:5px;padding:3px 6px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
+input.num{width:64px}
+label.f{display:flex;flex-direction:column;gap:2px;color:var(--mut);font-size:11px}
+header{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;margin:0 6px 0 0;white-space:nowrap}
+#fname{color:var(--mut)}
+#status{font-size:12px;padding:2px 8px;border-radius:10px;background:#2a2e36;white-space:nowrap}
+#status.err{background:#3a1f22;color:var(--bad)}
+#status.dirty{color:var(--acc)}
+.sp{flex:1}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;min-height:0}
+#right{background:var(--panel);overflow:auto;min-height:0;border-left:1px solid var(--line);display:flex;flex-direction:column}
+.sec-h{display:flex;align-items:center;justify-content:space-between;padding:10px 10px 6px;color:var(--mut);font-size:11px;font-weight:600;letter-spacing:.05em}
+#center{display:flex;flex-direction:column;min-width:0;min-height:0}
+#canvaswrap{flex:1;position:relative;min-height:0}
+#svg{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);touch-action:none;user-select:none;-webkit-user-select:none}
+#svg.drawing{cursor:crosshair}
+#cbar{display:flex;gap:8px;align-items:center;padding:6px 10px;border-top:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--mut)}
+#cbar label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+#info{flex:1;color:var(--fg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.tabs{display:flex;align-items:stretch;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.tabs button{flex:1;border:none;border-radius:0;background:none;padding:8px 2px;color:var(--mut);border-bottom:2px solid transparent}
+.tabs button.on{color:var(--fg);border-bottom-color:var(--blue)}
+.tabs .tsep{display:flex;align-items:center;padding:0 6px 0 8px;margin-left:4px;border-left:1px solid var(--line);color:#6b7280;font-size:10px;letter-spacing:.08em}
+.tabs button.adv{flex:0 0 auto;padding:8px 10px}
+.pane{display:none;padding:10px;flex:1;min-height:0}
+.pane.on{display:block}
+.row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}
+.card.sel{border-color:var(--acc)}
+.card.errc{border-color:var(--bad)}
+.card.attr{border-style:dashed}
+.card .top{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.card .top select{flex:0 0 auto}
+.card .top .cnt{flex:1;color:var(--mut);font-size:11px}
+.card .top input.grp{flex:1;font-weight:600}
+.chips{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.chip{font-size:11px;padding:1px 7px;border-radius:9px;border:1px solid var(--line);cursor:pointer;color:var(--mut)}
+.chip.on{color:#111;border-color:transparent}
+.sum{background:#1a1d23;border-radius:6px;padding:5px 8px;margin-bottom:6px;font-size:12px;line-height:1.55}
+.sum .k{color:var(--mut);margin-right:4px}
+.sum .mut{color:var(--mut)}
+.params{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.params label.f input{width:100%}
+.params .pt{grid-column:span 2;display:flex;gap:4px;align-items:flex-end}
+.params .pt label.f{flex:1}
+.xfc{display:flex;gap:6px;align-items:center;margin-bottom:4px;font-size:12px;background:#2b3140;border-radius:12px;padding:2px 4px 2px 10px}
+.xfc .xl{flex:1}
+.xfc .stp{display:flex;gap:2px}
+.xfc .stp button{padding:0 7px;min-width:24px;line-height:20px;border-radius:10px}
+.xfadd{display:flex;gap:4px;margin-bottom:6px}
+.opts{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+.note{color:#7f8794;font-size:11px;margin-bottom:4px}
+table.t{width:100%;border-collapse:collapse}
+table.t td,table.t th{padding:3px 4px;border-bottom:1px solid var(--line);text-align:left}
+table.t th{color:var(--mut);font-weight:500;font-size:11px}
+table.t input{width:100%}
+.pcard{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:10px;background:#1a1d23}
+.pcard textarea.score{width:100%;min-height:96px;margin-top:6px;font:12px/1.55 ui-monospace,Menlo,Consolas,monospace;resize:vertical;white-space:pre;tab-size:2}
+.pstaff{overflow-x:auto;background:#101216;border-radius:6px;margin-top:6px}
+.perr{color:#ffb3b3;font-size:12px;margin-top:4px;white-space:pre-wrap}
+#code{width:100%;height:calc(100vh - 190px);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:none;white-space:pre;tab-size:2}
+#codeerr{color:var(--bad);font-size:12px;min-height:18px;margin-bottom:6px}
+.warn{font-size:12px;padding:5px 7px;border-radius:5px;margin-bottom:4px;background:#2a1f22;cursor:pointer;border-left:3px solid var(--bad)}
+.warn:hover{background:#3a2629}
+.warn b{color:var(--bad);margin-right:4px}
+#errbanner{position:absolute;left:60px;right:12px;top:10px;background:#3a1f22ee;color:#ffb3b3;border:1px solid var(--bad);border-radius:6px;padding:6px 10px;display:none;z-index:3;font-size:12px}
+#vprog{width:120px;display:none}
+.ind td input{width:64px}
+.indrow{display:flex;gap:6px;align-items:center;padding:3px 4px;border-radius:5px;font-size:12px;cursor:pointer}
+.indrow.on{background:#26324a}
+.indrow b{min-width:34px}
+.indrow .d{flex:1;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hint{color:var(--mut);font-size:11px;line-height:1.6}
+kbd{background:#2a2e36;border-radius:3px;padding:0 4px;font-size:11px}
+details.adv{margin:6px 0 0;border-top:1px solid var(--line);padding-top:4px}
+details.adv>summary{cursor:pointer;color:var(--mut);font-size:12px;padding:2px 0;list-style:none;display:flex;gap:6px;align-items:center}
+details.adv>summary::-webkit-details-marker{display:none}
+details.adv>summary::before{content:"▸";font-size:10px;width:10px}
+details.adv[open]>summary::before{content:"▾"}
+details.adv>summary .dsum{margin-left:auto;color:#7f8794;font-size:11px}
+details.adv>div{padding:6px 0 2px}
+/* 動き（スライダ） */
+.mrow{display:grid;grid-template-columns:62px 1fr 78px 40px;gap:6px;align-items:center;margin-bottom:2px;font-size:12px}
+.mrow .ml{color:var(--mut)}
+.mrow input[type=range]{width:100%;padding:0;background:none;border:none;accent-color:var(--blue)}
+.mrow output{color:var(--fg);font-size:12px;text-align:right;white-space:nowrap}
+.mrow button{padding:0 4px;font-size:11px}
+.mviz{display:flex;gap:10px;align-items:center;margin:4px 0 6px;font-size:11px;color:var(--mut)}
+.mviz svg{display:block}
+/* 向き・姿勢 */
+.compass{display:grid;grid-template-columns:repeat(3,30px);grid-auto-rows:30px;gap:3px}
+.compass button{padding:0;font-size:15px;line-height:1;border-radius:7px}
+.compass button.on,.pal button.on,.seg button.on,.fxx button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.compass .mid{display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:10px}
+.fxrow{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.fxx{display:flex;flex-direction:column;gap:3px}
+.fxx button{padding:1px 8px;font-size:11px;text-align:left}
+.fxl{font-size:11px;color:var(--mut);margin:0 0 3px}
+.pal{display:grid;grid-template-columns:repeat(5,52px);gap:3px}
+.pal button{display:flex;flex-direction:column;align-items:center;gap:0;padding:2px 0 1px;font-size:10px;line-height:1.2;border-radius:7px}
+.pal svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
+.seg button{padding:2px 8px;font-size:11px;border-radius:12px}
+.segl{font-size:11px;color:var(--mut);margin:4px 0 2px}
+/* キャンバス上のUI */
+#tools{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:3px;background:#1c1f25ee;border:1px solid var(--line);border-radius:9px;padding:4px;z-index:3;box-shadow:0 2px 10px #0006}
+#tools button{width:34px;height:34px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;line-height:1.05;border-radius:6px;position:relative}
+#tools button svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#tools button .kb{position:absolute;right:2px;bottom:0;font-size:8px;color:#7f8794}
+#tools button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+#tools button.on .kb{color:#dbe6ff}
+#glabel{position:absolute;display:none;background:#000c;color:#fff;border-radius:5px;padding:2px 7px;font-size:12px;pointer-events:none;z-index:5;white-space:nowrap}
+#selbar{position:absolute;left:56px;right:12px;bottom:10px;margin:0 auto;width:max-content;max-width:calc(100% - 68px);background:#1c1f25f0;border:1px solid var(--blue);border-radius:9px;padding:6px 8px;display:none;flex-direction:column;gap:5px;z-index:4;box-shadow:0 4px 18px #0008}
+#selbar .r{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+#selbar .lbl{color:#cfe0ff;font-size:12px;margin-right:4px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#selbar .gl{color:var(--mut);font-size:11px}
+#selbar .vs{width:1px;height:18px;background:var(--line);margin:0 2px}
+#pop,#whopop,#ctx{position:absolute;display:none;background:#1c1f25;border:1px solid #3a4152;border-radius:9px;padding:8px;z-index:20;box-shadow:0 6px 24px #000a}
+#ctx{position:fixed;min-width:170px;padding:4px}
+#ctx .mi{display:block;width:100%;text-align:left;border:none;background:none;padding:5px 10px;border-radius:5px}
+#ctx .mi:hover{background:#2b3140}
+#ctx .mi[disabled]{opacity:.35}
+#ctx .mh{color:var(--mut);font-size:11px;padding:3px 10px}
+#ctx .ms{height:1px;background:var(--line);margin:3px 0}
+#ctx .arr{display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px;max-width:240px}
+#ctx .pw{padding:4px 8px}
+#whopop{min-width:220px}
+#whopop .chips{margin-bottom:8px}
+#whopop .chip{font-size:12px;padding:2px 9px}
+/* タイムライン */
+#timeline{border-top:1px solid var(--line);background:var(--panel);padding:4px 10px 6px}
+#tlbar{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px;color:var(--mut)}
+#tlbar .vs{width:1px;height:16px;background:var(--line);margin:0 2px}
+#tltime{color:var(--fg);min-width:150px}
+#tltrack{position:relative;height:52px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+#tlruler{position:absolute;left:0;right:0;top:0;height:16px;cursor:col-resize;background:#16181d;border-radius:4px}
+#tlruler .tk{position:absolute;top:2px;font-size:9px;color:#6b7280;border-left:1px solid #444b57;padding-left:2px;height:12px;line-height:12px;pointer-events:none}
+#playhead{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--acc);pointer-events:none;z-index:3}
+#playhead::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top:8px solid var(--acc);border-bottom:0}
+.tlb{position:absolute;top:19px;height:32px;border-radius:5px;background:#2b3140;border:1px solid #3a4152;overflow:hidden;cursor:pointer;padding:1px 6px 0;font-size:11px;line-height:1.3;white-space:nowrap}
+.tlb.cur{border-color:var(--blue);background:#26324a}
+.tlb b{font-size:12px}
+.tlb .m{color:var(--mut);font-size:10px}
+.tlb .w{color:var(--bad);font-size:10px;margin-left:3px}
+.tlb .hold{position:absolute;right:0;top:0;bottom:0;background:repeating-linear-gradient(45deg,#ffffff2e 0 3px,transparent 3px 6px);pointer-events:none}
+.tlb .edge{position:absolute;right:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:2}
+.tlb .edge:hover{background:#5b8def99}
+/* モーダル */
+#modalbg{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:100}
+#modal{background:var(--panel);border:1px solid #3a4152;border-radius:10px;padding:16px 18px;min-width:300px;max-width:460px;box-shadow:0 10px 40px #000c}
+#modal .mt{font-weight:600;margin-bottom:8px}
+#modal .mb{color:var(--fg);white-space:pre-wrap;margin-bottom:14px}
+#modal .mbt{display:flex;gap:8px;justify-content:flex-end}
+@media (max-width:760px){
+  html,body{height:100dvh}
+  header{gap:5px;padding:6px 8px;flex-wrap:wrap;flex:0 0 auto}
+  header h1{font-size:13px}
+  main{display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain}
+  #center{flex:0 0 62dvh;min-height:390px}
+  #right{flex:0 0 auto;min-height:44dvh;border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .tabs{overflow-x:auto;flex-wrap:nowrap}
+  .tabs button{flex:0 0 auto;min-width:48px;font-size:11px}
+  #tlbar,#cbar{flex-wrap:wrap;gap:4px}
+  #tltrack{min-height:52px}
+  #code{height:40dvh}
+  .pane{min-height:200px}
+  .params{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #selbar{max-height:50%;overflow-y:auto}
+}
+</style></head><body>
+<header>
+  <h1>陣形エディタ</h1><span id="fname"></span><span id="status">読み込み中</span>
+  <span class="sp"></span>
+  <span id="localbtns" style="display:none"><button id="open" title="手元の .jk ファイルを開く（ページへのドラッグ＆ドロップでも可）">開く</button><button id="newfile" title="ひな形から新しく作る">新規</button><input type="file" id="openfile" accept=".jk,text/plain" style="display:none"></span>
+  <button id="undo" title="元に戻す (Ctrl+Z)">↶</button><button id="redo" title="やり直す (Ctrl+Shift+Z)">↷</button>
+  <button id="preview" title="2D/3Dプレビューを新しいタブで開く">プレビュー</button>
+  <select id="vcam" title="動画のカメラ"><option value="audience">客席から</option><option value="orbit">回り込み</option><option value="top">真上</option><option value="low">目線</option></select>
+  <button id="video">3D動画を書き出す</button><progress id="vprog" max="1" value="0"></progress>
+  <button id="save" class="pri" title="Ctrl+S">保存</button>
+</header>
+<main>
+  <div id="center">
+    <div id="canvaswrap"><div id="errbanner"></div><svg id="svg"></svg>
+      <div id="tools"></div>
+      <div id="glabel"></div>
+      <div id="selbar">
+        <div class="r"><span class="lbl" id="selinfo"></span>
+          <span class="vs"></span><span class="gl">向き・姿勢</span><button id="selface" title="選んだ人の向きを決める">向き ▾</button><button id="selpose" title="選んだ人の姿勢を決める">姿勢 ▾</button><button id="selcarry" title="選んだ人の楽器の構え（演奏・右手・左手・正面・斜め）を決める">構え ▾</button>
+          <span class="vs"></span><button id="flipx" title="選んだ人を左右に反転（上手と下手を入れ替え）">↔ 左右反転</button><button id="flipy" title="選んだ人を前後に反転（客席側と奥を入れ替え）">↕ 前後反転</button>
+          <button id="selclear" class="ghost" title="選択を解除 (Esc)">✕</button></div>
+        <div class="r"><span class="gl">並べる</span>
+          <button data-arr="line" title="選んだ人を直線に等間隔で並べる">直線</button><button data-arr="curve" title="なめらかな曲線に並べる">曲線</button><button data-arr="arc" title="弧に並べる">弧</button><button data-arr="circle" title="円に並べる">円</button><button data-arr="block" title="ブロック（四角い隊列）に並べる">ブロック</button><button id="mkfollow" title="選んだ人を、先頭の通った道を順にたどる列にする">フォロー</button>
+          <span class="vs"></span><button id="unpin" title="個別に動かした位置を取り消して、元の隊形の位置に戻す">個別の位置を解除</button></div>
+      </div>
+      <div id="pop"></div><div id="whopop"></div>
+    </div>
+    <div id="timeline">
+      <div id="tlbar">
+        <button id="tlplay" title="ショー全体を再生 (Space)">▶ 全体を再生</button>
+        <span id="tltime"></span><span class="sp"></span>
+        <button id="addset" title="今のセットの後ろに追加（全員その場）">＋ セット</button><button id="dupset" title="今のセットを複製">複製</button>
+        <button id="upset" class="ghost" title="前へ">←</button><button id="downset" class="ghost" title="後ろへ">→</button>
+        <button id="delset" class="ghost" title="削除">削除</button>
+      </div>
+      <div id="tltrack"></div>
+    </div>
+    <div id="cbar">
+      <button id="playset" title="前のセットからこのセットへの動きを再生">▶ 動きを再生</button>
+      <label><input type="checkbox" id="showprev" checked> 前のセット</label>
+      <label><input type="checkbox" id="shownames"> 名前</label>
+      <label title="ドラッグ時のマス目（Shift を押しながらで自由に）">吸着 <select id="snap"><option value="0.25">0.25</option><option value="0.5" selected>0.5</option><option value="1">1</option><option value="0">なし</option></select></label>
+      <span id="info"></span>
+    </div>
+  </div>
+  <div id="right">
+    <div class="tabs">
+      <button data-p="pset" class="on">隊形</button><button data-p="psec">セクション</button><button data-p="pshow">ショー</button><button data-p="pscore">楽譜</button><button data-p="pwarn">チェック</button><span class="tsep">上級</span><button data-p="pcode" class="adv">コード</button>
+    </div>
+    <div class="pane on" id="pset"></div>
+    <div class="pane" id="psec"></div>
+    <div class="pane" id="pshow"></div>
+    <div class="pane" id="pcode"><div id="codeerr"></div><textarea id="code" spellcheck="false"></textarea>
+      <div class="hint">ここを直接書き換えると、0.4秒後に画面へ反映されます。</div></div>
+    <div class="pane" id="pscore"></div>
+    <div class="pane" id="pwarn"></div>
+  </div>
+</main>
+<div id="ctx"></div>
+<div id="modalbg"><div id="modal"><div class="mt" id="modalt"></div><div class="mb" id="modalb"></div><div class="mbt" id="modalbt"></div></div></div>
+<script>__FIELD2D__</script>
+<script>__PRINTER__</script>
+<script>__MOTION__</script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+let M = null, R = null, lastErr = null, curSet = 0, curStmt = -1, dirty = false, src = '', savedSrc = '';
+let undoStack = [], redoStack = [], reqId = 0, fieldKey = '', FLD = null, layers = {};
+let dragging = null, pdrag = null, band = null, gdrag = null, tdrag = null, sel = new Set(), dotEls = [];
+let tool = 'select', draw = null, pendingDraw = null, playT = null, playing = false, playRaf = 0, openDet = new Set();
+const svg = $('svg');
+const busy = () => dragging || pdrag || gdrag || tdrag || draw;
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const fmt = v => String(Math.round(v * 100) / 100);
+const f3 = v => String(Math.round(v * 1000) / 1000);
+const fmt1 = v => (Math.round(v * 10) / 10).toFixed(1);
+const rotPt = (p, c, a) => { const s = Math.sin(a), co = Math.cos(a), dx = p[0] - c[0], dy = p[1] - c[1]; return [c[0] + dx * co - dy * s, c[1] + dx * s + dy * co]; };
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+// 数値（式のうち四則演算だけのものも）→ 数。計算できなければ NaN
+function numOf(v) {
+  if (typeof v === 'number') return v;
+  if (v == null) return NaN;
+  const s = String(v).trim();
+  if (s === '') return NaN;
+  if (!/^[-+*/().\d\s]+$/.test(s)) return NaN;
+  try { const r = Function('"use strict";return (' + s + ')')(); return typeof r === 'number' && isFinite(r) ? r : NaN; } catch (e) { return NaN; }
+}
+
+// ================= サーバとのやりとり =================
+async function compile(source, adopt) {
+  const id = ++reqId;
+  let res;
+  try { res = await fetch('/api/compile', {method: 'POST', body: source}).then(r => r.json()); }
+  catch (e) { setStatus('エンジンに接続できません（jinkei edit を起動してください）', 'err'); return; }
+  if (id !== reqId) return;
+  src = source;
+  if (res.ok) { R = res; lastErr = null; if (adopt) M = res.model; }
+  else { lastErr = res.error; if (adopt && res.model) M = res.model; }
+  if (adopt) { curSet = Math.min(curSet, M.sets.length - 1); curStmt = -1; }
+  if (!document.activeElement || document.activeElement.id !== 'code') $('code').value = source;
+  refresh(adopt);
+}
+let pending = null, timer = null;
+// 属性だけの文（pose/face…）は、同じセットの位置を決める文より後ろに置かないと無視されるので、最後にまとめる
+function normalizeAttrs() {
+  M.sets.forEach((set, k) => {
+    if (!set.stmts.some(s => s.shape.kind === 'attr')) return;
+    const cs = k === curSet && curStmt >= 0 ? set.stmts[curStmt] : null;
+    const a = set.stmts.filter(s => s.shape.kind !== 'attr'), b = set.stmts.filter(s => s.shape.kind === 'attr');
+    set.stmts = a.concat(b);
+    if (cs) curStmt = set.stmts.indexOf(cs);
+  });
+}
+function edited(structural) {
+  if (playT !== null || playing) { stopPlay(); playT = null; }
+  normalizeAttrs();
+  const s = printModel(M);
+  if (s === src) { if (structural) renderPanels(); return; }
+  dirty = s !== savedSrc;
+  if (!busy()) pushUndo(src);
+  pending = s;
+  if (!timer) timer = setTimeout(() => { timer = null; const p = pending; pending = null; compile(p, false); }, busy() ? 30 : 60);
+  if (structural) renderPanels();
+  setStatusFromState();
+}
+function pushUndo(s) { if (s && undoStack[undoStack.length - 1] !== s) { undoStack.push(s); if (undoStack.length > 200) undoStack.shift(); redoStack = []; } }
+function undo() { if (!undoStack.length) return; stopPlay(); playT = null; redoStack.push(src); const s = undoStack.pop(); dirty = s !== savedSrc; compile(s, true); }
+function redo() { if (!redoStack.length) return; stopPlay(); playT = null; undoStack.push(src); const s = redoStack.pop(); dirty = s !== savedSrc; compile(s, true); }
+async function save() {
+  const s = src;
+  const r = await fetch('/api/save', {method: 'POST', body: s}).then(r => r.json());
+  if (r.ok) { savedSrc = s; dirty = false; setStatusFromState(); } else setStatus('保存できません: ' + r.error, 'err');
+}
+function setStatus(t, cls) { $('status').textContent = t; $('status').className = cls || ''; }
+function setStatusFromState() {
+  if (lastErr) setStatus(`エラー ${lastErr.line ? lastErr.line + '行: ' : ''}${lastErr.msg}`, 'err');
+  else if (dirty) setStatus('● 未保存', 'dirty');
+  else setStatus('保存済み');
+}
+
+// ================= 会場の言葉（ドットシートと同じ言い方） =================
+const F = () => R.data.field;
+const isFB = () => F().type === 'football';
+const DOT = () => isFB() ? 0.95 : 0.34;
+const HND = () => isFB() ? 1.3 : 0.45;
+const unitLen = v => isFB() ? `${fmt1(v)}歩` : `${fmt1(v)}m`;
+function dX(x) {
+  const f = F();
+  if (f.type === 'football') {
+    if (Math.abs(x) < 0.05) return '50ydライン上';
+    const side = x < 0 ? 'サイド1' : 'サイド2', ax = Math.abs(x), kk = Math.min(10, Math.round(ax / 8)), yl = 50 - 5 * kk;
+    const line = yl <= 0 ? 'ゴールライン' : `${yl}ydライン`, off = ax - 8 * kk;
+    return Math.abs(off) < 0.05 ? `${side} ${line}上` : `${side} ${line}から${off > 0 ? '外' : '内'}へ${fmt1(Math.abs(off))}歩`;
+  }
+  if (Math.abs(x) < 0.05) return 'センター';
+  if (f.type === 'stage' && Math.abs(x) > f.w / 2 + 1e-9) return `${x < 0 ? '下手' : '上手'}袖（センターから${fmt1(Math.abs(x))}m）`;
+  return `${x < 0 ? '下手' : '上手'} ${fmt1(Math.abs(x))}m`;
+}
+function dY(y) {
+  const f = F();
+  if (f.type === 'football') {
+    const refs = [[0, 'フロントサイドライン'], [f.hash, 'フロントハッシュ'], [f.bsl - f.hash, 'バックハッシュ'], [f.bsl, 'バックサイドライン']];
+    const [r, name] = refs.reduce((a, b) => Math.abs(y - b[0]) < Math.abs(y - a[0]) ? b : a), off = y - r;
+    return Math.abs(off) < 0.05 ? `${name}上` : `${name}から${off > 0 ? '後ろ' : '前'}へ${fmt1(Math.abs(off))}歩`;
+  }
+  if (f.type === 'floor') return `客席側の端から奥へ${fmt1(y)}m`;
+  if (f.type === 'stage') return Math.abs(y) < 0.05 ? '舞台前端' : `舞台前端から奥へ${fmt1(y)}m`;
+  if (Math.abs(y) < 0.05) return 'センターライン上';
+  return `センターから${y < 0 ? '手前' : '奥'} ${fmt1(Math.abs(y))}m`;
+}
+const dPt = p => dX(p[0]) + '・' + dY(p[1]);
+const faceNames = {front: '客席', back: '奥', kami: '上手', shimo: '下手', center: '中心へ', out: '外へ', travel: '進行方向'};
+function faceNum(f) { // 向きの文字 → 度（客席 0°、上手 +）。数値で表せないなら null
+  if (f == null || f === '') return null;
+  const s = String(f).trim();
+  if (s === 'front' || s === '客席') return 0;
+  if (s === 'back' || s === '奥') return 180;
+  if (s === 'kami' || s === '上手') return 90;
+  if (s === 'shimo' || s === '下手') return -90;
+  const n = numOf(s);
+  if (!isFinite(n)) return null;
+  const m = ((n + 180) % 360 + 360) % 360 - 180;
+  return m === -180 ? 180 : m;
+}
+function faceName(f) {
+  if (f == null || f === '') return '自動';
+  const s = String(f).trim();
+  if (faceNames[s]) return faceNames[s];
+  if (/^toward/.test(s)) return '点の方へ';
+  const n = faceNum(s);
+  return n == null ? s : `${fmt(n)}°`;
+}
+function faceStrOf(N) {
+  const n = ((N + 180) % 360 + 360) % 360 - 180, m = n === -180 ? 180 : n;
+  if (Math.abs(m) < 0.01) return 'front';
+  if (Math.abs(m - 90) < 0.01) return 'kami';
+  if (Math.abs(m + 90) < 0.01) return 'shimo';
+  if (Math.abs(Math.abs(m) - 180) < 0.01) return 'back';
+  return fmt(m);
+}
+const POSES = [['attention', '気をつけ', '気'], ['rest', '休め', '休'], ['wide', '足開き', '開'], ['cross', 'クロス', '交'], ['kneel', '片膝', '片'], ['kneel2', '膝つき', '膝'], ['lunge', 'ランジ', 'ラ'], ['crouch', 'しゃがみ', 'し'], ['toe', 'つま先', '先']];
+const CARRIES = [['play', '演奏'], ['right', '右手'], ['left', '左手'], ['front', '正面'], ['diag', '斜め']];
+const carryName = c => (CARRIES.find(x => x[0] === c) || [0, c || 'なし'])[1];
+const poseName = p => (POSES.find(x => x[0] === p) || [0, p || 'なし'])[1];
+function poseIcon(name) {
+  const head = (y = 6) => `<circle cx="16" cy="${y}" r="2.8"/>`, floor = '<path d="M4 29.5H28" stroke-width="1" opacity=".4"/>';
+  const P = d => `<path d="${d}"/>`;
+  const body = {
+    attention: head() + P('M16 9V19M16 11L13 18M16 11L19 18M16 19L15 28M16 19L17 28'),
+    rest: head() + P('M16 9V19M16 11L12.5 15.5L16 17M16 11L19.5 15.5L16 17M16 19L12 28M16 19L20 28'),
+    wide: head() + P('M16 9V19M16 11L11 17M16 11L21 17M16 19L8 28M16 19L24 28'),
+    cross: head() + P('M16 9V19M16 11L13 18M16 11L19 18M15 19L19 28M17 19L13 28'),
+    kneel: head() + P('M16 9V19M16 11L13 17M16 11L20 16M16 19L22 21.5L22 28M16 19L13 28L7 28'),
+    kneel2: head(8) + P('M16 11V20M16 13L13 19M16 13L19 19M16 20L14 28L7 28M16 20L18 28L11 28'),
+    lunge: head() + P('M16 9V19M16 11L12 16M16 11L21 15M16 19L24 22L24 28M16 19L7 28'),
+    crouch: head(10) + P('M16 13V21M16 15L11 20M16 15L21 19M16 21L22 23L21 28M16 21L12 24L13 28'),
+    toe: head(4) + P('M16 7V17M16 9L13 15M16 9L19 15M16 17L15 25L14 28M16 17L17 25L18 28')
+  };
+  if (name === '') return '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="9"/><path d="M10 22L22 10"/></svg>';
+  return `<svg viewBox="0 0 32 32">${body[name] || ''}${floor}</svg>`;
+}
+
+// ================= 描画 =================
+function ensureField() {
+  const key = JSON.stringify(R.data.field);
+  if (key === fieldKey) return;
+  fieldKey = key;
+  svg.innerHTML = '';
+  FLD = jkField(svg, R.data.field);
+  for (const k of ['ghost', 'paths', 'dots', 'shape', 'handles', 'draw']) layers[k] = FLD.el('g', {id: 'L' + k});
+}
+function refresh(full) {
+  setStatusFromState();
+  if (!M) return;
+  $('errbanner').style.display = lastErr ? 'block' : 'none';
+  if (lastErr) $('errbanner').textContent = `⚠ ${lastErr.line ? lastErr.line + '行目: ' : ''}${lastErr.msg}（直前の正しい状態を表示しています）`;
+  if (full) renderPanels();
+  else { markCards(); updateInstrAuto(); }
+  if (R) { ensureField(); drawCanvas(); renderWarns(); updateSel(); updateSummaries(); }
+  updateScoreView();
+  renderTimeline();
+}
+
+function secColor(i) { return R.data.sections[R.data.performers[i].sec].color; }
+function drawCanvas(anim) {
+  if (!R || !FLD) return;
+  const {el, Y} = FLD, D = R.data, k = Math.min(curSet, D.sets.length - 1);
+  for (const g of Object.values(layers)) g.innerHTML = '';
+  const cur = D.sets[k].pos, prev = k > 0 ? D.sets[k - 1].pos : null;
+  const mem = !anim && curStmt >= 0 && R.members[k] && R.members[k][curStmt] ? new Set(R.members[k][curStmt]) : null;
+  const bad = new Set(D.warnings.filter(w => w.set === k).flatMap(w => w.who));
+  if (prev && $('showprev').checked) {
+    for (let i = 0; i < prev.length; i++) {
+      el('circle', {cx: prev[i][0], cy: Y(prev[i][1]), r: DOT() * 0.6, fill: 'none', stroke: secColor(i), 'stroke-width': DOT() * 0.15, opacity: 0.45}, layers.ghost);
+      const rt = D.sets[k].route && D.sets[k].route[i];
+      if (rt || Math.hypot(prev[i][0] - cur[i][0], prev[i][1] - cur[i][1]) > 1e-6) {
+        const bd = (D.sets[k].bend || [])[i] || 0, n = bd ? 16 : 1, pts = [];
+        if (rt) rt.forEach(q => pts.push(`${q[0]},${Y(q[1])}`));
+        else for (let j = 0; j <= n; j++) { const q = jkArc(prev[i], cur[i], bd, j / n); pts.push(`${q[0]},${Y(q[1])}`); }
+        el('polyline', {points: pts.join(' '), fill: 'none', stroke: secColor(i), 'stroke-width': DOT() * 0.12, opacity: 0.4}, layers.paths);
+      }
+    }
+  }
+  const pos = anim ? anim.pos : cur;
+  const names = $('shownames').checked, poses = D.sets[k].pose || [];
+  sel = new Set([...sel].filter(i => i < pos.length));
+  dotEls = [];
+  for (let i = 0; i < pos.length; i++) {
+    const dim = mem && !mem.has(i) && !sel.has(i);
+    if (sel.has(i)) el('circle', {cx: pos[i][0], cy: Y(pos[i][1]), r: DOT() * 1.75, fill: '#5b8def', opacity: 0.3, 'pointer-events': 'none'}, layers.dots);
+    const c = el('circle', {cx: pos[i][0], cy: Y(pos[i][1]), r: DOT(), fill: secColor(i), opacity: dim ? 0.35 : 1, 'data-i': i,
+      stroke: sel.has(i) ? '#8fb3ff' : bad.has(i) ? '#ff6b6b' : (mem && mem.has(i) ? '#ffd23f' : '#000'),
+      'stroke-width': (sel.has(i) || bad.has(i) || (mem && mem.has(i))) ? DOT() * 0.38 : DOT() * 0.15, style: 'cursor:move'}, layers.dots);
+    c.addEventListener('pointerdown', e => dotDown(e, i));
+    dotEls[i] = c;
+    const fa = rad(anim ? anim.face[i] : (D.sets[k].face || [])[i] ?? -90);
+    el('line', {x1: pos[i][0], y1: Y(pos[i][1]), x2: pos[i][0] + Math.cos(fa) * DOT() * 1.05, y2: Y(pos[i][1] + Math.sin(fa) * DOT() * 1.05), stroke: '#000', 'stroke-width': DOT() * 0.3, 'stroke-linecap': 'round', opacity: 0.7, 'pointer-events': 'none'}, layers.dots);
+    if (poses[i]) {
+      const bx = pos[i][0] + DOT() * 1.15, by = Y(pos[i][1]) - DOT() * 1.15, g = POSES.find(x => x[0] === poses[i]);
+      el('circle', {cx: bx, cy: by, r: DOT() * 0.82, fill: '#12141a', stroke: '#fff', 'stroke-width': DOT() * 0.1, 'pointer-events': 'none'}, layers.dots);
+      const t = el('text', {x: bx, y: by, 'font-size': DOT() * 1.15, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#fff', 'pointer-events': 'none'}, layers.dots); t.textContent = g ? g[2] : '?';
+    }
+    if (names) { const t = el('text', {x: pos[i][0], y: Y(pos[i][1]) - DOT() * 1.5, 'font-size': DOT() * 1.4, 'text-anchor': 'middle', fill: '#fff', stroke: '#000', 'stroke-width': DOT() * 0.2, 'paint-order': 'stroke', 'pointer-events': 'none'}, layers.dots); t.textContent = D.performers[i].id; }
+  }
+  if (!anim) drawOverlays(k);
+}
+
+// ハンドル（ドラッグで隊形を編集）
+function drawHandles(k) {
+  if (!R.handles[k] || !M.sets[k]) return;
+  const {el, Y} = FLD, hs = R.handles[k];
+  if (hs.length !== M.sets[k].stmts.length) return;
+  // 選択中の隊形のハンドルを最後に（一番上に）描く
+  const order = hs.map((_, i) => i).filter(i => i !== curStmt).concat(curStmt >= 0 && curStmt < hs.length ? [curStmt] : []);
+  order.forEach(si => { const list = hs[si];
+    const st = M.sets[k].stmts[si];
+    if (!st || !list.length || st.shape.kind === 'at') return;
+    const sel = si === curStmt;
+    const col = sel ? '#ffd23f' : '#9fb4ff';
+    const byRole = Object.fromEntries(list.map(h => [h[0], h]));
+    // 図形の骨組み
+    const sk = {stroke: col, 'stroke-width': HND() * 0.12, fill: 'none', 'stroke-dasharray': `${HND() * 0.5} ${HND() * 0.3}`, opacity: sel ? 0.9 : 0.5, 'pointer-events': 'none'};
+    if (st.shape.kind === 'line' && byRole.a && byRole.b) el('line', Object.assign({x1: byRole.a[1], y1: Y(byRole.a[2]), x2: byRole.b[1], y2: Y(byRole.b[2])}, sk), layers.shape);
+    if (st.shape.kind === 'curve' || st.shape.kind === 'poly' || st.shape.kind === 'follow') el('polyline', Object.assign({points: list.map(h => `${h[1]},${Y(h[2])}`).join(' ')}, sk), layers.shape);
+    if ((st.shape.kind === 'circle' || st.shape.kind === 'arc') && byRole.c && (byRole.r || byRole.a1)) {
+      const c = byRole.c, p = byRole.r || byRole.a1, r = Math.hypot(p[1] - c[1], p[2] - c[2]);
+      el('circle', Object.assign({cx: c[1], cy: Y(c[2]), r}, sk, {opacity: sel ? 0.5 : 0.25}), layers.shape);
+    }
+    for (const h of list) {
+      const big = HND() * (sel ? 1 : 0.75);
+      const isC = h[0] === 'c';
+      const node = isC
+        ? el('rect', {x: h[1] - big / 2, y: Y(h[2]) - big / 2, width: big, height: big, fill: col, stroke: '#000', 'stroke-width': big * 0.12, style: 'cursor:move', 'data-si': si}, layers.handles)
+        : el('circle', {cx: h[1], cy: Y(h[2]), r: big * 0.55, fill: col, stroke: '#000', 'stroke-width': big * 0.12, style: 'cursor:grab', 'data-si': si}, layers.handles);
+      node.addEventListener('pointerdown', e => startDrag(e, k, si, h));
+    }
+  });
+}
+function drawOverlays(k) {
+  drawHandles(k);
+  try { if (sel.size >= 2) drawSelGizmo(k); else { drawStmtGizmo(k); if (sel.size === 1) drawFaceArrow(k); } } catch (e) { console.error(e); }
+}
+
+// ================= ギズモ（回転・拡大） =================
+function bboxOf(pts) {
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  return {x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys)};
+}
+// 隊形の形を決めている点（ハンドルの評価済み座標）と、その外接矩形
+function stmtGeom(k, si) {
+  const set = M && M.sets[k], st = set && set.stmts[si], hs = R && R.handles && R.handles[k] && R.handles[k][si];
+  if (!st || !hs || R.handles[k].length !== set.stmts.length || !hs.length) return null;
+  const by = Object.fromEntries(hs.map(h => [h[0], [h[1], h[2]]])), s = st.shape;
+  const g = {kind: s.kind, by};
+  switch (s.kind) {
+    case 'line': if (!by.a || !by.b) return null; g.pts = [by.a, by.b]; break;
+    case 'curve': case 'poly': case 'follow': g.pts = hs.map(h => [h[1], h[2]]); if (g.pts.length < 2) return null; break;
+    case 'circle': {
+      if (!by.c || !by.r) return null;
+      g.c = by.c; g.r = dist(by.c, by.r); g.startAng = deg(Math.atan2(by.r[1] - by.c[1], by.r[0] - by.c[0]));
+      g.pts = [[g.c[0] - g.r, g.c[1] - g.r], [g.c[0] + g.r, g.c[1] + g.r]]; break;
+    }
+    case 'arc': {
+      if (!by.c || !by.a1 || !by.a2) return null;
+      g.c = by.c; g.r = dist(by.c, by.a1);
+      const A1 = deg(Math.atan2(by.a1[1] - by.c[1], by.a1[0] - by.c[0])), A2 = deg(Math.atan2(by.a2[1] - by.c[1], by.a2[0] - by.c[0]));
+      const n1 = numOf(s.a1), n2 = numOf(s.a2);
+      g.a1 = isFinite(n1) ? n1 : A1; g.a2 = isFinite(n2) ? n2 : (g.a1 + (((A2 - A1) % 360) + 360) % 360);
+      g.pts = [];
+      const span = g.a2 - g.a1, n = Math.max(2, Math.ceil(Math.abs(span) / 6));
+      for (let j = 0; j <= n; j++) { const a = rad(g.a1 + span * j / n); g.pts.push([g.c[0] + g.r * Math.cos(a), g.c[1] + g.r * Math.sin(a)]); }
+      break;
+    }
+    case 'block': {
+      if (!by.c) return null; g.c = by.c;
+      const mem = R.members[k] && R.members[k][si], ps = R.data.sets[k].pos;
+      g.pts = mem && mem.length ? mem.map(i => ps[i]) : [by.c];
+      break;
+    }
+    default: return null;
+  }
+  const bb = bboxOf(g.pts), pad = Math.max(HND() * 0.8, 0), cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
+  g.bb = {x0: Math.min(bb.x0, cx - pad), x1: Math.max(bb.x1, cx + pad), y0: Math.min(bb.y0, cy - pad), y1: Math.max(bb.y1, cy + pad)};
+  g.pivot = [(g.bb.x0 + g.bb.x1) / 2, (g.bb.y0 + g.bb.y1) / 2];
+  return g;
+}
+function gHandle(kind, x, y, glyph, col, onDown, title) {
+  const {el, Y} = FLD, r = HND() * 1.0;
+  const g = el('g', {'data-g': kind, style: 'cursor:' + (kind === 'rot' ? 'grab' : kind === 'scl' ? 'nwse-resize' : 'move')}, layers.handles);
+  if (kind === 'scl') el('rect', {x: x - r * 0.8, y: Y(y) - r * 0.8, width: r * 1.6, height: r * 1.6, fill: '#1c1f25', stroke: col, 'stroke-width': r * 0.2}, g);
+  else el('circle', {cx: x, cy: Y(y), r, fill: '#1c1f25', stroke: col, 'stroke-width': r * 0.2}, g);
+  const t = el('text', {x, y: Y(y), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': r * 1.35, fill: col, 'pointer-events': 'none'}, g); t.textContent = glyph;
+  const ti = el('title', {}, g); ti.textContent = title;
+  g.addEventListener('pointerdown', onDown);
+  return g;
+}
+function drawBox(bb, col, withMove, onDown) {
+  const {el, Y} = FLD, off = HND() * 2.4;
+  el('rect', {x: bb.x0, y: Y(bb.y1), width: bb.x1 - bb.x0, height: bb.y1 - bb.y0, fill: 'none', stroke: col, 'stroke-width': HND() * 0.17, 'stroke-dasharray': `${HND() * 0.6} ${HND() * 0.4}`, opacity: 0.95, 'pointer-events': 'none'}, layers.handles);
+  const cx = (bb.x0 + bb.x1) / 2;
+  el('line', {x1: cx, y1: Y(bb.y1), x2: cx, y2: Y(bb.y1 + off), stroke: col, 'stroke-width': HND() * 0.17, opacity: 0.95, 'pointer-events': 'none'}, layers.handles);
+  gHandle('rot', cx, bb.y1 + off, '↻', col, e => onDown(e, 'rot'), '回転（ドラッグ。5°ごと、Shift で自由に）');
+  gHandle('scl', bb.x1, bb.y0, '⤡', col, e => onDown(e, 'scl'), '拡大・縮小（ドラッグ）');
+  if (withMove) gHandle('move', bb.x0, bb.y1, '✥', col, e => onDown(e, 'move'), '選んだ人をまとめて移動');
+}
+function drawStmtGizmo(k) {
+  if (curStmt < 0) return;
+  const g = stmtGeom(k, curStmt);
+  if (!g) return;
+  drawBox(g.bb, '#ffd23f', false, (e, type) => gizmoStartStmt(e, type));
+}
+function drawSelGizmo(k) {
+  const D = R.data, ps = [...sel].map(i => D.sets[k].pos[i]);
+  if (ps.length < 2) return;
+  const bb = bboxOf(ps), pad = DOT() * 1.8;
+  drawBox({x0: bb.x0 - pad, x1: bb.x1 + pad, y0: bb.y0 - pad, y1: bb.y1 + pad}, '#8fb3ff', true, (e, type) => gizmoStartSel(e, type));
+}
+function drawFaceArrow(k) {
+  const i = [...sel][0], D = R.data, p = D.sets[k].pos[i], {el, Y} = FLD;
+  if (!p) return;
+  const fa = rad((D.sets[k].face || [])[i] ?? -90), L = DOT() * 3.1, tx = p[0] + Math.cos(fa) * L, ty = p[1] + Math.sin(fa) * L;
+  el('line', {x1: p[0] + Math.cos(fa) * DOT() * 1.1, y1: Y(p[1] + Math.sin(fa) * DOT() * 1.1), x2: tx, y2: Y(ty), stroke: '#7ee0ff', 'stroke-width': DOT() * 0.18, opacity: 0.9, 'pointer-events': 'none'}, layers.handles);
+  const h = el('g', {style: 'cursor:grab', 'data-g': 'face'}, layers.handles);
+  el('circle', {cx: tx, cy: Y(ty), r: Math.max(DOT() * 0.7, HND() * 0.62), fill: '#7ee0ff', stroke: '#000', 'stroke-width': DOT() * 0.1}, h);
+  const t = el('text', {x: tx, y: Y(ty), 'font-size': Math.max(DOT() * 0.95, HND() * 0.8), 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#000', 'pointer-events': 'none'}, h); t.textContent = '➤';
+  t.setAttribute('transform', `rotate(${-deg(fa)} ${tx} ${Y(ty)})`);
+  const ti = el('title', {}, h); ti.textContent = 'ドラッグで向きを変える（5°ごと、Shift で自由に）';
+  h.addEventListener('pointerdown', e => {
+    e.stopPropagation(); e.preventDefault();
+    gdrag = {type: 'face', i, p: p.slice(), before: src};
+    svg.setPointerCapture(e.pointerId);
+  });
+}
+function showGLabel(text, e) {
+  const l = $('glabel'), r = $('canvaswrap').getBoundingClientRect();
+  l.textContent = text; l.style.display = 'block';
+  l.style.left = Math.min(r.width - 140, e.clientX - r.left + 16) + 'px'; l.style.top = Math.max(4, e.clientY - r.top - 28) + 'px';
+}
+const hideGLabel = () => { $('glabel').style.display = 'none'; };
+// 図形の定義点を、回転・拡大した値で書き換える（式で書かれていても、評価済みの座標から数値で書き直す）
+function transformShape(st, orig, origXf, g, pivot, angDeg, kk) {
+  const a = rad(angDeg), P = p => { const q = [pivot[0] + (p[0] - pivot[0]) * kk, pivot[1] + (p[1] - pivot[1]) * kk]; return rotPt(q, pivot, a); };
+  const F2 = p => { const q = P(p); return [fmt(q[0]), fmt(q[1])]; };
+  const s = st.shape;
+  st.xf = JSON.parse(JSON.stringify(origXf));
+  switch (g.kind) {
+    case 'line': s.a = F2(g.pts[0]); s.b = F2(g.pts[1]); break;
+    case 'curve': case 'poly': case 'follow': s.pts = g.pts.map(F2); break;
+    case 'circle': {
+      s.c = F2(g.c); s.r = fmt(Math.max(0.1, g.r * kk));
+      const n0 = numOf(orig.start), base = isFinite(n0) ? n0 : g.startAng;
+      s.start = (angDeg !== 0 || orig.start != null) ? fmt(base + angDeg) : null;
+      break;
+    }
+    case 'arc': s.c = F2(g.c); s.r = fmt(Math.max(0.1, g.r * kk)); s.a1 = fmt(g.a1 + angDeg); s.a2 = fmt(g.a2 + angDeg); break;
+    case 'block': {
+      s.c = F2(g.c);
+      if (kk !== 1) {
+        const sp0 = isFinite(numOf(orig.spacing)) ? numOf(orig.spacing) : (isFB() ? 2 : 1.5), rs0 = isFinite(numOf(orig.rows)) ? numOf(orig.rows) : sp0;
+        s.spacing = fmt(Math.max(0.3, sp0 * kk)); s.rows = fmt(Math.max(0.3, rs0 * kk));
+      }
+      if (angDeg !== 0) {
+        const j = st.xf.findIndex(x => x.kind === 'rotate' && !x.about);
+        if (j >= 0) { const b = numOf(st.xf[j].a); st.xf[j].a = fmt((isFinite(b) ? b : 0) + angDeg); }
+        else st.xf.push({kind: 'rotate', a: fmt(angDeg), about: null});
+      }
+      break;
+    }
+  }
+}
+function gizmoStartStmt(e, type) {
+  e.stopPropagation(); e.preventDefault();
+  const k = curSet, si = curStmt, g = stmtGeom(k, si);
+  if (!g) return;
+  const st = M.sets[k].stmts[si], orig = JSON.parse(JSON.stringify(st.shape)), origXf = JSON.parse(JSON.stringify(st.xf));
+  const q = toField(e), pivot = g.pivot;
+  gdrag = {type, target: 'stmt', before: src, pivot, prevA: Math.atan2(q[1] - pivot[1], q[0] - pivot[0]), total: 0, d0: Math.max(0.01, dist(q, pivot)), geom: g,
+    apply(ang, kk) { transformShape(st, orig, origXf, g, pivot, ang, kk); syncCardInputs(); }};
+  svg.setPointerCapture(e.pointerId);
+}
+function gizmoStartSel(e, type) {
+  e.stopPropagation(); e.preventDefault();
+  const k = curSet, D = R.data, ids = [...sel], orig = new Map(ids.map(i => [i, D.sets[k].pos[i].slice()]));
+  const bb = bboxOf(ids.map(i => orig.get(i))), pivot = [(bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2], q = toField(e);
+  gdrag = {type, target: 'sel', before: src, pivot, start: q, prevA: Math.atan2(q[1] - pivot[1], q[0] - pivot[0]), total: 0, d0: Math.max(0.01, dist(q, pivot)),
+    apply(ang, kk, dx, dy) {
+      const a = rad(ang);
+      for (const [j, p] of orig) {
+        let np;
+        if (type === 'move') np = [p[0] + dx, p[1] + dy];
+        else { const s = [pivot[0] + (p[0] - pivot[0]) * kk, pivot[1] + (p[1] - pivot[1]) * kk]; np = rotPt(s, pivot, a); }
+        setIndividual(k, j, f3(np[0]), f3(np[1]));
+        if (dotEls[j]) { dotEls[j].setAttribute('cx', np[0]); dotEls[j].setAttribute('cy', FLD.Y(np[1])); }
+      }
+    }};
+  svg.setPointerCapture(e.pointerId);
+}
+svg.addEventListener('pointermove', e => {
+  if (!gdrag) return;
+  const g = gdrag, q = toField(e);
+  if (g.type === 'face') {
+    let N = deg(Math.atan2(q[1] - g.p[1], q[0] - g.p[0])) + 90;
+    N = e.shiftKey ? Math.round(N) : Math.round(N / 5) * 5;
+    setAttr([g.i], {face: faceStrOf(N)}, false);
+    showGLabel(`向き ${faceName(faceStrOf(N))}`, e);
+    return;
+  }
+  if (g.type === 'rot') {
+    const a = Math.atan2(q[1] - g.pivot[1], q[0] - g.pivot[0]);
+    let d = a - g.prevA; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    g.prevA = a; g.total += d;
+    let ang = deg(g.total); ang = e.shiftKey ? Math.round(ang * 10) / 10 : Math.round(ang / 5) * 5;
+    g.ang = ang; g.k = 1;
+    g.apply(ang, 1, 0, 0);
+    showGLabel(`回転 ${ang > 0 ? '+' : ''}${fmt(ang)}°`, e);
+  } else if (g.type === 'scl') {
+    let kk = dist(q, g.pivot) / g.d0;
+    kk = e.shiftKey ? Math.round(kk * 100) / 100 : Math.round(kk * 20) / 20;
+    kk = Math.max(0.1, kk); g.k = kk; g.ang = 0;
+    g.apply(0, kk, 0, 0);
+    const w = g.geom ? (g.geom.bb.x1 - g.geom.bb.x0) * kk : 0;
+    showGLabel(`拡大 ×${fmt(kk)}${g.geom ? '（幅 ' + unitLen(w) + '）' : ''}`, e);
+  } else if (g.type === 'move') {
+    const dx = snapv(q[0] - g.start[0], e), dy = snapv(q[1] - g.start[1], e);
+    g.apply(0, 1, dx, dy);
+    showGLabel(`移動 (${dx >= 0 ? '+' : ''}${fmt(dx)}, ${dy >= 0 ? '+' : ''}${fmt(dy)})`, e);
+  }
+  $('info').textContent = g.target === 'sel' ? `${sel.size}人を${g.type === 'rot' ? '回転' : g.type === 'scl' ? '拡大縮小' : '移動'}` : '隊形を' + (g.type === 'rot' ? '回転' : '拡大縮小');
+  edited(false);
+});
+svg.addEventListener('pointerup', () => {
+  if (!gdrag) return;
+  pushUndo(gdrag.before);
+  gdrag = null; hideGLabel();
+  renderPanels();
+});
+
+// ================= ドラッグ編集 =================
+function toField(e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  const q = p.matrixTransform(svg.getScreenCTM().inverse());
+  return [q.x, FLD.Y1 - q.y];
+}
+function snapv(v, e) { const g = e.shiftKey ? 0 : +$('snap').value; return g ? Math.round(v / g) * g : Math.round(v * 100) / 100; }
+function startDrag(e, k, si, h) {
+  if (tool !== 'select') return;
+  e.stopPropagation(); e.preventDefault();
+  curStmt = si; markCards();
+  const st = M.sets[k].stmts[si];
+  const hs = Object.fromEntries(R.handles[k][si].map(x => [x[0], x]));
+  dragging = {k, si, role: h[0], st, center: hs.c ? [hs.c[1], hs.c[2]] : null, before: src};
+  svg.setPointerCapture(e.pointerId);
+}
+svg.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const [x0, y0] = toField(e), x = snapv(x0, e), y = snapv(y0, e);
+  const {st, role, center} = dragging, s = st.shape;
+  if (role === 'a' || role === 'b') s[role] = [fmt(x), fmt(y)];
+  else if (role === 'p') s.p = [fmt(x), fmt(y)];
+  else if (role[0] === 'p') s.pts[+role.slice(1)] = [fmt(x), fmt(y)];
+  else if (role === 'c') { s.c = [fmt(x), fmt(y)]; }
+  else if (role === 'r') { s.r = fmt(Math.max(0.1, Math.hypot(x0 - center[0], y0 - center[1]))); s.r = fmt(snapv(+s.r, e) || +s.r); }
+  else if (role === 'a1' || role === 'a2') {
+    let ang = Math.atan2(y0 - center[1], x0 - center[0]) * 180 / Math.PI;
+    const old = parseFloat(s[role]);
+    if (isFinite(old)) { while (ang - old > 180) ang -= 360; while (ang - old < -180) ang += 360; }
+    s[role] = fmt(e.shiftKey ? ang : Math.round(ang / 5) * 5);
+    s.r = fmt(snapv(Math.hypot(x0 - center[0], y0 - center[1]), e) || 0.5);
+  }
+  $('info').textContent = `${role === 'c' ? '中心' : role === 'r' ? '半径' : '点'}: ${dPt([x, y])}` + (s.r && role !== 'p' ? `／半径 ${unitLen(+s.r)}` : '');
+  edited(false);
+  syncCardInputs();
+});
+svg.addEventListener('pointerup', () => {
+  if (!dragging) return;
+  pushUndo(dragging.before);
+  dragging = null;
+  renderPanels();
+});
+// ---- 人を選ぶ・動かす ----
+function dotDown(e, i) {
+  e.stopPropagation(); e.preventDefault();
+  if (!R || tool !== 'select') return;
+  if (e.button === 2) { if (!sel.has(i)) { sel = new Set([i]); updateSel(); drawCanvas(); } return; }
+  if (e.shiftKey || e.ctrlKey || e.metaKey) { sel.has(i) ? sel.delete(i) : sel.add(i); updateSel(); drawCanvas(); return; }
+  if (!sel.has(i)) sel = new Set([i]);
+  const k = curSet;
+  pdrag = {k, grab: i, start: toField(e), orig: new Map([...sel].map(j => [j, basePos(k, j)])), moved: false, before: src};
+  svg.setPointerCapture(e.pointerId);
+  updateSel(); drawCanvas();
+}
+function stmtIsIndividual(st) { return st.shape.kind === 'at' && !st.xf.length && /^[\p{L}_][\p{L}\p{N}_]*$/u.test(st.group.trim()) && st.group.trim() !== 'all'; }
+// その人の「個別の位置」（1人用の at 文）をセットの最後に置く／更新する
+function setIndividual(k, i, x, y) {
+  const id = R.data.performers[i].id, set = M.sets[k];
+  const idx = set.stmts.findIndex(st => stmtIsIndividual(st) && st.group.trim() === id);
+  const own = R.owner && R.owner[k] ? R.owner[k][i] : -1;
+  if (idx >= 0 && (own === idx || idx === set.stmts.length - 1 || set.stmts.slice(idx + 1).every(st => stmtIsIndividual(st) || st.shape.kind === 'attr'))) { set.stmts[idx].shape.p = [x, y]; return; }
+  if (idx >= 0) set.stmts.splice(idx, 1);
+  set.stmts.push({group: id, shape: {kind: 'at', p: [x, y]}, xf: [], assign: null, wait: null, within: null, bend: null, face: null, step: null, action: null, pose: null, carry: null, note: [], tail: null, line: 0});
+}
+function removeIndividual(k, ids) {
+  const names = new Set(ids.map(i => R.data.performers[i].id));
+  M.sets[k].stmts = M.sets[k].stmts.filter(st => !(stmtIsIndividual(st) && names.has(st.group.trim())));
+}
+function basePos(k, i) {
+  const id = R.data.performers[i].id, st = M.sets[k].stmts.find(x => stmtIsIndividual(x) && x.group.trim() === id);
+  if (st && isFinite(+st.shape.p[0]) && isFinite(+st.shape.p[1])) return [+st.shape.p[0], +st.shape.p[1]];
+  return R.data.sets[k].pos[i].slice();
+}
+function moveSelected(dx, dy, orig) {
+  for (const [j, p] of orig) setIndividual(curSet, j, f3(p[0] + dx), f3(p[1] + dy));
+}
+svg.addEventListener('pointerdown', e => {
+  if (!FLD || tool !== 'select' || e.button !== 0 || e.target.closest('#Ldots,#Lhandles')) return;
+  const p = toField(e);
+  band = {x0: p[0], y0: p[1], add: e.shiftKey || e.ctrlKey || e.metaKey, moved: false,
+    rect: FLD.el('rect', {fill: '#5b8def22', stroke: '#5b8def', 'stroke-width': DOT() * 0.08, 'pointer-events': 'none'}, layers.handles)};
+  svg.setPointerCapture(e.pointerId);
+});
+svg.addEventListener('pointermove', e => {
+  if (pdrag) {
+    const [fx, fy] = toField(e);
+    let dx = fx - pdrag.start[0], dy = fy - pdrag.start[1];
+    if (!pdrag.moved && Math.hypot(dx, dy) < DOT() * 0.4) return;
+    pdrag.moved = true;
+    const g = pdrag.orig.get(pdrag.grab);
+    dx = snapv(g[0] + dx, e) - g[0]; dy = snapv(g[1] + dy, e) - g[1];
+    for (const [j, p] of pdrag.orig) if (dotEls[j]) { dotEls[j].setAttribute('cx', p[0] + dx); dotEls[j].setAttribute('cy', FLD.Y(p[1] + dy)); }
+    moveSelected(dx, dy, pdrag.orig);
+    $('info').textContent = `${pdrag.orig.size}人を移動  (${dx >= 0 ? '+' : ''}${fmt(dx)}, ${dy >= 0 ? '+' : ''}${fmt(dy)})`;
+    edited(false);
+  } else if (band) {
+    const [x, y] = toField(e);
+    if (Math.hypot(x - band.x0, y - band.y0) > DOT() * 0.5) band.moved = true;
+    const [x0, x1] = [Math.min(x, band.x0), Math.max(x, band.x0)], [y0, y1] = [Math.min(y, band.y0), Math.max(y, band.y0)];
+    Object.entries({x: x0, y: FLD.Y(y1), width: x1 - x0, height: y1 - y0}).forEach(([a, v]) => band.rect.setAttribute(a, v));
+    band.x1 = x; band.y1 = y;
+  }
+});
+svg.addEventListener('pointerup', e => {
+  if (pdrag) {
+    const d = pdrag; pdrag = null;
+    if (d.moved) { pushUndo(d.before); renderPanels(); }
+    else pickPerformer(d.grab);
+    return;
+  }
+  if (band) {
+    const b = band; band = null; b.rect.remove();
+    if (!b.moved) { if (!b.add) { sel.clear(); curStmt = -1; } updateSel(); markCards(); drawCanvas(); return; }
+    const pos = R.data.sets[curSet].pos;
+    const [x0, x1] = [Math.min(b.x0, b.x1), Math.max(b.x0, b.x1)], [y0, y1] = [Math.min(b.y0, b.y1), Math.max(b.y0, b.y1)];
+    if (!b.add) sel.clear();
+    pos.forEach((p, i) => { if (p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1) sel.add(i); });
+    updateSel(); drawCanvas();
+  }
+});
+function updateSel() {
+  const n = sel.size, D = R && R.data;
+  $('selbar').style.display = n ? 'flex' : 'none';
+  if (!n || !D) { closePops(); return; }
+  const names = [...sel].slice(0, 5).map(i => D.performers[i].id).join(', ') + (n > 5 ? ' …' : '');
+  $('selinfo').textContent = `${n}人選択: ${names}`;
+  document.querySelectorAll('#selbar [data-arr]').forEach(b => b.disabled = n < 2);
+  $('mkfollow').disabled = n < 2 || curSet === 0;
+  $('flipx').disabled = $('flipy').disabled = n < 2;
+  const k = curSet, has = M.sets[k] && M.sets[k].stmts.some(st => stmtIsIndividual(st) && [...sel].some(i => D.performers[i].id === st.group.trim()));
+  $('unpin').disabled = !has;
+}
+$('selclear').onclick = () => { sel.clear(); updateSel(); drawCanvas(); };
+$('unpin').onclick = () => { removeIndividual(curSet, [...sel]); edited(true); updateSel(); };
+function flipSel(axis) {
+  const k = curSet, D = R.data, ids = [...sel];
+  if (ids.length < 2) return;
+  const ps = ids.map(i => D.sets[k].pos[i]), bb = bboxOf(ps), cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
+  ids.forEach((i, j) => { const p = ps[j]; setIndividual(k, i, f3(axis === 'x' ? 2 * cx - p[0] : p[0]), f3(axis === 'y' ? 2 * cy - p[1] : p[1])); });
+  edited(true);
+}
+$('flipx').onclick = () => flipSel('x');
+$('flipy').onclick = () => flipSel('y');
+
+// ---- 属性だけの文（姿勢・向き）を選んだ人に ----
+function groupOf(ids) {
+  // 並び順を保ったまま、同じセクションで番号が続く部分を tp3..tp5 のようにまとめる
+  const D = R.data, info = ids.map(i => { const p = D.performers[i], sid = D.sections[p.sec].id; return {sid, n: parseInt(p.id.slice(sid.length)), id: p.id}; });
+  const out = [];
+  for (let j = 0; j < info.length;) {
+    let e = j;
+    while (e + 1 < info.length && info[e + 1].sid === info[j].sid && info[e + 1].n === info[e].n + 1) e++;
+    out.push(e - j >= 2 ? `${info[j].id}..${info[e].id}` : info.slice(j, e + 1).map(x => x.id).join(' + '));
+    j = e + 1;
+  }
+  return out.join(' + ');
+}
+const newStmt = (group, shape) => ({group, shape, xf: [], assign: null, wait: null, within: null, bend: null, face: null, step: null, action: null, pose: null, carry: null, note: [], tail: null, line: 0});
+function setAttr(ids, patch, structural = true) {
+  const k = curSet, set = M.sets[k];
+  ids = [...ids].sort((a, b) => a - b);
+  if (!ids.length) return;
+  const g = groupOf(ids);
+  let st = set.stmts.find(s => s.shape.kind === 'attr' && s.group.trim() === g);
+  if (!st) { st = newStmt(g, {kind: 'attr'}); set.stmts.push(st); }
+  Object.assign(st, patch);
+  if (!st.face && !st.step && !st.action && !st.pose && !st.carry) set.stmts.splice(set.stmts.indexOf(st), 1);
+  edited(structural);
+}
+function clearPoseFor(ids) {
+  // 前のセットから引き継いでいる姿勢は「気をつけ」で上書きして解除する
+  const D = R.data, k = curSet;
+  const inherited = k > 0 && ids.some(i => D.sets[k - 1].pose && D.sets[k - 1].pose[i] && !(R.owner && R.owner[k] && R.owner[k][i] >= 0));
+  setAttr(ids, {pose: inherited ? 'attention' : null});
+}
+
+// ---- 選んだ人を図形に並べる ----
+// 新しい隊形の文を作る。対象が全員この文で上書きされる古い隊形は、もう誰も動かさないので消す
+function addPositional(k, ids, group, shape) {
+  removeIndividual(k, ids);
+  const chosen = new Set(ids), mem = R.members[k] || [];
+  const keep = M.sets[k].stmts.map((st, si) => st.shape.kind === 'attr' || stmtIsIndividual(st) || !mem[si] || !mem[si].length || !mem[si].every(i => chosen.has(i)));
+  if (M.sets[k].stmts.length === mem.length) M.sets[k].stmts = M.sets[k].stmts.filter((_, si) => keep[si]);
+  const st = newStmt(group, shape);
+  M.sets[k].stmts.push(st);
+  normalizeAttrs();
+  curStmt = M.sets[k].stmts.indexOf(st);
+  showTab('pset');
+  edited(true);
+}
+function arrange(kind) {
+  const k = curSet, D = R.data, pos = D.sets[k].pos, ids = [...sel];
+  if (ids.length < 2) return;
+  const n = ids.length, pts = ids.map(i => pos[i]);
+  const c = [pts.reduce((a, p) => a + p[0], 0) / n, pts.reduce((a, p) => a + p[1], 0) / n];
+  let sxx = 0, syy = 0, sxy = 0;
+  for (const p of pts) { const dx = p[0] - c[0], dy = p[1] - c[1]; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
+  let a = 0.5 * Math.atan2(2 * sxy, sxx - syy), u = [Math.cos(a), Math.sin(a)];
+  if (u[0] < -1e-9 || (Math.abs(u[0]) < 1e-9 && u[1] < 0)) u = [-u[0], -u[1]];
+  const sp = isFB() ? 2 : 1.2;
+  const t = pts.map(p => (p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1]);
+  let tmin = Math.min(...t), tmax = Math.max(...t);
+  const need = (n - 1) * sp;
+  if (tmax - tmin < need) { const m = (tmax + tmin) / 2; tmin = m - need / 2; tmax = m + need / 2; }
+  const at = s => [c[0] + u[0] * s, c[1] + u[1] * s];
+  const F2 = p => [fmt(p[0]), fmt(p[1])];
+  const byT = ids.map((i, j) => [i, t[j]]).sort((x, y) => x[1] - y[1]).map(x => x[0]);
+  let shape, order = byT;
+  const meanR = Math.max(pts.reduce((s, p) => s + Math.hypot(p[0] - c[0], p[1] - c[1]), 0) / n, n * sp / (2 * Math.PI));
+  if (kind === 'line') shape = {kind: 'line', a: F2(at(tmin)), b: F2(at(tmax))};
+  else if (kind === 'curve') {
+    const mid = pos[byT[Math.floor(n / 2)]];
+    let m = mid.slice();
+    const v = [-u[1], u[0]], off = (m[0] - c[0]) * v[0] + (m[1] - c[1]) * v[1];
+    if (Math.abs(off) < (tmax - tmin) * 0.08) m = [c[0] + v[0] * (tmax - tmin) * 0.25, c[1] + v[1] * (tmax - tmin) * 0.25];
+    shape = {kind: 'curve', pts: [F2(at(tmin)), F2(m), F2(at(tmax))]};
+  } else if (kind === 'circle' || kind === 'arc') {
+    const r = kind === 'circle' ? meanR : Math.max((tmax - tmin) * 0.7, sp);
+    let cc = c;
+    if (kind === 'arc') { let v = [-u[1], u[0]]; if (v[1] < 0) v = [-v[0], -v[1]]; const h = Math.sqrt(Math.max(r * r - ((tmax - tmin) / 2) ** 2, 0)); cc = [c[0] + v[0] * h, c[1] + v[1] * h]; }
+    const angOf = p => Math.atan2(p[1] - cc[1], p[0] - cc[0]) * 180 / Math.PI;
+    if (kind === 'circle') {
+      order = ids.slice().sort((x, y) => angOf(pos[x]) - angOf(pos[y]));
+      shape = {kind: 'circle', c: F2(cc), r: fmt(r), start: fmt(angOf(pos[order[0]]))};
+    } else {
+      let a1 = angOf(at(tmin)), a2 = angOf(at(tmax));
+      if (a2 < a1) a2 += 360;
+      if (a2 - a1 > 180) { const tmp = a1; a1 = a2; a2 = tmp + 360; }
+      shape = {kind: 'arc', c: F2(cc), r: fmt(r), a1: fmt(a1), a2: fmt(a2)};
+      order = ids.slice().sort((x, y) => { const f = p => { let v = angOf(p); while (v < a1 - 1e-6) v += 360; return v; }; return f(pos[x]) - f(pos[y]); });
+    }
+  } else {
+    const cols = Math.ceil(Math.sqrt(n));
+    const byRow = ids.slice().sort((x, y) => (pos[x][1] - pos[y][1]) || (pos[x][0] - pos[y][0]));
+    order = byRow;
+    shape = {kind: 'block', c: F2(c), cols: String(cols), spacing: null, rows: null};
+  }
+  addPositional(k, ids, groupOf(order), shape);
+}
+function makeFollow() {
+  const k = curSet, pos = R.data.sets[k].pos, ids = [...sel];
+  if (ids.length < 2) return;
+  if (k === 0) { notice('最初のセットではフォローは使えません。'); return; }
+  const lead = ids.reduce((a, i) => pos[i][1] < pos[a][1] || (pos[i][1] === pos[a][1] && pos[i][0] < pos[a][0]) ? i : a, ids[0]);
+  const s0 = pos[lead], w = isFB() ? 8 : 4, P2 = (dx, dy) => [fmt(s0[0] + dx), fmt(s0[1] + dy)];
+  const order = ids.slice().sort((x, y) => Math.hypot(pos[x][0] - s0[0], pos[x][1] - s0[1]) - Math.hypot(pos[y][0] - s0[0], pos[y][1] - s0[1]));
+  addPositional(k, ids, groupOf(order), {kind: 'follow', pts: [P2(0, 0), P2(w, w / 2), P2(2 * w, 0)], spacing: null});
+}
+$('mkfollow').onclick = makeFollow;
+document.querySelectorAll('#selbar [data-arr]').forEach(b => b.onclick = () => arrange(b.dataset.arr));
+
+function pickPerformer(i) {
+  const D = R.data, k = curSet, p = D.performers[i], d = D.dots[i][k];
+  $('info').textContent = `${p.id}（${D.sections[p.sec].label}）  ${d.h} ／ ${d.v} ／ ${d.step}`;
+  const si = R.owner && R.owner[k] ? R.owner[k][i] : -1;
+  curStmt = si;
+  showTab('pset'); renderPanels(); drawCanvas();
+  const card = document.querySelector(`.card[data-si="${si}"]`); if (card) card.scrollIntoView({block: 'nearest'});
+}
+
+// ================= 描画ツール =================
+const TOOLS = [
+  ['select', '選択', 'V', '<path d="M5 3L5 16L9 12.5L12 19L14.5 18L11.5 11.5L17 11Z"/>'],
+  ['line', '直線', 'L', '<path d="M4 18L18 4"/><circle cx="4" cy="18" r="1.6"/><circle cx="18" cy="4" r="1.6"/>'],
+  ['arc', '弧', 'A', '<path d="M3 16C6 4 16 4 19 16"/>'],
+  ['circle', '円', 'C', '<circle cx="11" cy="11" r="7.5"/>'],
+  ['curve', '曲線', 'P', '<path d="M3 15C7 4 10 18 14 9S19 8 19 8"/>'],
+  ['follow', 'フォロー', 'F', '<path d="M3 17L9 9L14 14L19 5"/><circle cx="3" cy="17" r="1.4"/><circle cx="6.5" cy="12.5" r="1.1"/>'],
+  ['block', 'ブロック', 'B', '<rect x="4" y="5" width="14" height="12"/><path d="M8.5 5V17M13 5V17M4 11H18"/>']
+];
+function renderTools() {
+  $('tools').innerHTML = TOOLS.map(([id, name, key, ic]) => `<button data-tool="${id}" class="${tool === id ? 'on' : ''}" title="${name}ツール (${key})${id === 'curve' || id === 'follow' ? '：クリックで点を置き、ダブルクリックか Enter で完了' : id === 'select' ? '' : '：ドラッグで描く'}"><svg viewBox="0 0 22 22">${ic}</svg><span class="kb">${key}</span></button>`).join('');
+  $('tools').querySelectorAll('button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+}
+function setTool(t) {
+  if (t === 'follow' && curSet === 0) { notice('フォロー経路は最初のセットでは使えません（前のセットからの動きが必要です）。'); return; }
+  cancelDraw();
+  tool = t;
+  svg.classList.toggle('drawing', t !== 'select');
+  renderTools();
+  const msg = {select: '', line: '直線: 始点から終点までドラッグ', arc: '弧: 弦の両端をドラッグ（右回りに膨らみます。逆なら反対向きにドラッグ）', circle: '円: 中心から半径までドラッグ', curve: '曲線: クリックで点を置く。ダブルクリックか Enter で完了', follow: 'フォロー経路: クリックで点を置く。ダブルクリックか Enter で完了', block: 'ブロック: 四角形をドラッグ'}[t];
+  if (msg) $('info').textContent = msg + '（Esc でやめる）';
+}
+function cancelDraw() { draw = null; pendingDraw = null; if (layers.draw) layers.draw.innerHTML = ''; $('whopop').style.display = 'none'; hideGLabel(); }
+const snapPt = (p, e) => [snapv(p[0], e), snapv(p[1], e)];
+svg.addEventListener('pointerdown', e => {
+  if (tool === 'select' || !FLD || !R) return;
+  if (e.button !== 0) return;
+  e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault();
+  if (playT !== null || playing) exitScrub();
+  $('whopop').style.display = 'none'; pendingDraw = null;
+  const p = snapPt(toField(e), e);
+  if (tool === 'curve' || tool === 'follow') {
+    if (!draw) draw = {kind: tool, pts: [p], cur: p, poly: true};
+    else if (dist(draw.pts[draw.pts.length - 1], p) > 0.3) draw.pts.push(p);
+    renderDraw(); return;
+  }
+  draw = {kind: tool, a: p, b: p};
+  svg.setPointerCapture(e.pointerId);
+  renderDraw();
+}, true);
+svg.addEventListener('pointermove', e => {
+  if (!draw || !FLD) return;
+  const p = snapPt(toField(e), e);
+  if (draw.poly) draw.cur = p; else draw.b = p;
+  renderDraw(e);
+});
+svg.addEventListener('pointerup', e => {
+  if (!draw || draw.poly) return;
+  const d = draw; draw = null; layers.draw.innerHTML = ''; hideGLabel();
+  const len = dist(d.a, d.b);
+  if (d.kind === 'block' ? (Math.abs(d.a[0] - d.b[0]) < 1 && Math.abs(d.a[1] - d.b[1]) < 1) : len < 1) { $('info').textContent = '小さすぎます。もう少し大きくドラッグしてください'; return; }
+  finishDraw(d, e);
+});
+svg.addEventListener('dblclick', e => { if (draw && draw.poly) { e.preventDefault(); finishPoly(e); } });
+function finishPoly(e) {
+  if (!draw || !draw.poly) return;
+  const d = draw; draw = null; layers.draw.innerHTML = ''; hideGLabel();
+  if (d.pts.length < 2) { $('info').textContent = '点を2つ以上置いてください'; return; }
+  finishDraw(d, e);
+}
+// 弦（P→Q）から120°の弧を作る。中心は進行方向の左側。弧は右側に膨らむ
+function arcFromChord(P, Q) {
+  const L = dist(P, Q), r = L / Math.sqrt(3), m = [(P[0] + Q[0]) / 2, (P[1] + Q[1]) / 2], u = [(Q[0] - P[0]) / L, (Q[1] - P[1]) / L];
+  const c = [m[0] - u[1] * r / 2, m[1] + u[0] * r / 2], a1 = deg(Math.atan2(P[1] - c[1], P[0] - c[0]));
+  return {c, r, a1, a2: a1 + 120};
+}
+function renderDraw(e) {
+  if (!layers.draw) return;
+  const {el, Y} = FLD, L = layers.draw, d = draw;
+  L.innerHTML = '';
+  if (!d) return;
+  const st = {stroke: '#ffd23f', 'stroke-width': HND() * 0.16, fill: 'none', 'stroke-dasharray': `${HND() * 0.5} ${HND() * 0.3}`, 'pointer-events': 'none'};
+  const dotAt = p => el('circle', {cx: p[0], cy: Y(p[1]), r: HND() * 0.45, fill: '#ffd23f', stroke: '#000', 'stroke-width': HND() * 0.08, 'pointer-events': 'none'}, L);
+  let label = '';
+  if (d.kind === 'line') { el('line', Object.assign({x1: d.a[0], y1: Y(d.a[1]), x2: d.b[0], y2: Y(d.b[1])}, st), L); dotAt(d.a); dotAt(d.b); label = `長さ ${unitLen(dist(d.a, d.b))}`; }
+  else if (d.kind === 'circle') { const r = dist(d.a, d.b); el('circle', Object.assign({cx: d.a[0], cy: Y(d.a[1]), r}, st), L); el('line', Object.assign({x1: d.a[0], y1: Y(d.a[1]), x2: d.b[0], y2: Y(d.b[1])}, st), L); dotAt(d.a); label = `半径 ${unitLen(r)}`; }
+  else if (d.kind === 'arc') {
+    el('line', Object.assign({x1: d.a[0], y1: Y(d.a[1]), x2: d.b[0], y2: Y(d.b[1])}, st, {opacity: 0.4}), L); dotAt(d.a); dotAt(d.b);
+    if (dist(d.a, d.b) > 0.3) { const g = arcFromChord(d.a, d.b), pts = []; for (let j = 0; j <= 24; j++) { const a = rad(g.a1 + 120 * j / 24); pts.push(`${g.c[0] + g.r * Math.cos(a)},${Y(g.c[1] + g.r * Math.sin(a))}`); } el('polyline', Object.assign({points: pts.join(' ')}, st), L); label = `半径 ${unitLen(g.r)}`; }
+  } else if (d.kind === 'block') {
+    const x0 = Math.min(d.a[0], d.b[0]), y0 = Math.min(d.a[1], d.b[1]);
+    el('rect', Object.assign({x: x0, y: Y(Math.max(d.a[1], d.b[1])), width: Math.abs(d.a[0] - d.b[0]), height: Math.abs(d.a[1] - d.b[1])}, st), L);
+    label = `${unitLen(Math.abs(d.a[0] - d.b[0]))} × ${unitLen(Math.abs(d.a[1] - d.b[1]))}`;
+  } else if (d.poly) {
+    const pts = d.pts.concat([d.cur]);
+    el('polyline', Object.assign({points: pts.map(p => `${p[0]},${Y(p[1])}`).join(' ')}, st), L);
+    d.pts.forEach(dotAt);
+    label = `${d.pts.length}点（ダブルクリックか Enter で完了）`;
+  }
+  if (e && label) showGLabel(label, e);
+}
+function finishDraw(d, e) {
+  pendingDraw = d;
+  if (sel.size >= 1) { commitDraw([...sel], null); return; }
+  openWhoPop(e);
+}
+function openWhoPop(e) {
+  const D = R.data, p = $('whopop'), wrap = $('canvaswrap').getBoundingClientRect();
+  const chosen = new Set();
+  p.innerHTML = `<div class="note" style="color:var(--fg)">だれを並べますか？（セクションを選ぶ）</div><div class="chips">${D.sections.map((s, j) => `<span class="chip" data-s="${j}" style="font-size:12px">${esc(s.label)}（${D.performers.filter(x => x.sec === j).length}）</span>`).join('')}<span class="chip" data-s="all">全員</span></div><div class="row" style="margin:0"><button class="pri" id="whook" disabled>決定</button><button id="whocancel">やめる</button></div>`;
+  p.style.display = 'block';
+  p.style.left = Math.max(60, Math.min(wrap.width - 250, e.clientX - wrap.left + 10)) + 'px';
+  p.style.top = Math.max(10, Math.min(wrap.height - 150, e.clientY - wrap.top - 20)) + 'px';
+  const upd = () => {
+    p.querySelectorAll('.chip').forEach(c => { const on = c.dataset.s === 'all' ? chosen.size === D.sections.length : chosen.has(+c.dataset.s); c.classList.toggle('on', on); c.style.background = on ? (c.dataset.s === 'all' ? '#ccc' : D.sections[+c.dataset.s].color) : ''; });
+    $('whook').disabled = !chosen.size;
+  };
+  p.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    if (c.dataset.s === 'all') { if (chosen.size === D.sections.length) chosen.clear(); else D.sections.forEach((_, j) => chosen.add(j)); }
+    else { const j = +c.dataset.s; chosen.has(j) ? chosen.delete(j) : chosen.add(j); }
+    upd();
+  });
+  $('whook').onclick = () => {
+    const secs = [...chosen].sort((a, b) => a - b), ids = D.performers.map((x, i) => secs.includes(x.sec) ? i : -1).filter(i => i >= 0);
+    const group = secs.length === D.sections.length ? 'all' : secs.map(j => D.sections[j].id).join(' + ');
+    p.style.display = 'none';
+    commitDraw(ids, group);
+  };
+  $('whocancel').onclick = () => { p.style.display = 'none'; pendingDraw = null; };
+  upd();
+}
+function commitDraw(ids, group) {
+  const d = pendingDraw; pendingDraw = null;
+  if (!d || !ids.length) return;
+  const k = curSet, n = ids.length, F2 = p => [fmt(p[0]), fmt(p[1])];
+  let shape;
+  if (d.kind === 'line') shape = {kind: 'line', a: F2(d.a), b: F2(d.b)};
+  else if (d.kind === 'circle') shape = {kind: 'circle', c: F2(d.a), r: fmt(Math.max(0.5, dist(d.a, d.b))), start: null};
+  else if (d.kind === 'arc') { const g = arcFromChord(d.a, d.b); shape = {kind: 'arc', c: F2(g.c), r: fmt(g.r), a1: fmt(g.a1), a2: fmt(g.a1 + 120)}; }
+  else if (d.kind === 'curve') shape = {kind: 'curve', pts: d.pts.map(F2)};
+  else if (d.kind === 'follow') { if (k === 0) { notice('最初のセットではフォローは使えません。'); return; } shape = {kind: 'follow', pts: d.pts.map(F2), spacing: null}; }
+  else if (d.kind === 'block') {
+    const w = Math.abs(d.a[0] - d.b[0]), h = Math.abs(d.a[1] - d.b[1]), sp0 = isFB() ? 2 : 1.5;
+    let cols = Math.max(1, Math.round(w / sp0) + 1);
+    if (h < 1 && w >= 1) cols = n; else if (w < 1 && h >= 1) cols = 1;
+    cols = Math.min(cols, n);
+    const rows = Math.ceil(n / cols);
+    shape = {kind: 'block', c: F2([(d.a[0] + d.b[0]) / 2, (d.a[1] + d.b[1]) / 2]), cols: String(cols),
+      spacing: cols > 1 && w >= 0.5 ? fmt(Math.max(0.5, w / (cols - 1))) : null, rows: rows > 1 && h >= 0.5 ? fmt(Math.max(0.5, h / (rows - 1))) : null};
+  }
+  addPositional(k, ids, group || groupOf(ids.slice().sort((a, b) => a - b)), shape);
+  tool = 'select'; svg.classList.remove('drawing'); renderTools();
+  $('info').textContent = '作成しました。ハンドル（■ ●）や回転 ↻・拡大 ⤡ で整えられます';
+}
+
+// ================= 画面内ダイアログ（alert / confirm の代わり） =================
+let modalKey = null;
+function modal(title, body, buttons) {
+  return new Promise(res => {
+    $('modalt').textContent = title || ''; $('modalt').style.display = title ? '' : 'none';
+    $('modalb').textContent = body;
+    const bt = $('modalbt'); bt.innerHTML = '';
+    const done = v => { $('modalbg').style.display = 'none'; modalKey = null; res(v); };
+    buttons.forEach(b => { const e = document.createElement('button'); e.textContent = b.label; if (b.cls) e.className = b.cls; e.onclick = () => done(b.value); bt.appendChild(e); });
+    modalKey = e => { if (e.key === 'Escape') { e.preventDefault(); done(buttons[0].value === true && buttons.length === 1 ? true : false); } else if (e.key === 'Enter') { e.preventDefault(); done(buttons[buttons.length - 1].value); } };
+    $('modalbg').style.display = 'flex';
+    const last = bt.lastChild; if (last) last.focus();
+  });
+}
+const notice = msg => modal('', msg, [{label: 'OK', value: true, cls: 'pri'}]);
+const ask = (msg, ok) => modal('', msg, [{label: 'キャンセル', value: false}, {label: ok || 'OK', value: true, cls: 'pri'}]);
+
+// ================= タイムライン =================
+let tlFreeze = null;
+function tlLayout() {
+  let t = 0; const segs = [];
+  M.sets.forEach((s, k) => {
+    const c = k ? Math.max(0, parseFloat(s.counts) || 0) : 0, h = Math.max(0, parseFloat(s.hold) || 0);
+    segs.push({k, t0: t, c, h, t1: t + c + h, u0: 0, u1: 0}); t += c + h;
+  });
+  let u = 0; segs.forEach(s => { s.u0 = u; s.u1 = u + Math.max(s.t1 - s.t0, 2.5); u = s.u1; });
+  return {segs, total: t, utot: Math.max(u, 1)};
+}
+const tlPPC = lay => tlFreeze ? tlFreeze.ppc : (Math.max(200, $('tltrack').clientWidth) - 4) / lay.utot;
+function uOfT(t, lay) {
+  let seg = lay.segs[0];
+  for (const s of lay.segs) if (s.t0 <= t + 1e-9) seg = s;
+  const frac = seg.t1 > seg.t0 ? Math.min(1, Math.max(0, (t - seg.t0) / (seg.t1 - seg.t0))) : 0;
+  return seg.u0 + frac * (seg.u1 - seg.u0);
+}
+function tOfU(u, lay) {
+  let seg = lay.segs[lay.segs.length - 1];
+  for (const s of lay.segs) if (u <= s.u1) { seg = s; break; }
+  const frac = Math.min(1, Math.max(0, (u - seg.u0) / (seg.u1 - seg.u0)));
+  return seg.t0 + frac * (seg.t1 - seg.t0);
+}
+function renderTimeline() {
+  if (!M) return;
+  const lay = tlLayout(), ppc = tlPPC(lay), D = R && R.data;
+  let h = '<div id="tlruler">' + lay.segs.map(s => (s.u1 - s.u0) * ppc > 30 ? `<span class="tk" style="left:${s.u0 * ppc}px">${s.t0}</span>` : '').join('') + '</div>';
+  lay.segs.forEach(s => {
+    const set = M.sets[s.k], w = (s.u1 - s.u0) * ppc - 3, nw = D ? D.warnings.filter(x => x.set === s.k).length : 0;
+    const tip = `セット ${set.name}｜${s.k ? s.c + 'カウント' : '開始'}${s.h ? '＋ホールド' + s.h : ''}${nw ? '｜⚠' + nw + '件' : ''}`;
+    h += `<div class="tlb ${s.k === curSet ? 'cur' : ''}" data-k="${s.k}" style="left:${s.u0 * ppc}px;width:${Math.max(6, w)}px" title="${esc(tip)}">
+      <b>${w > 64 ? 'セット ' : ''}${esc(set.name)}</b>${nw ? `<span class="w">⚠${nw}</span>` : ''}<br><span class="m">${s.k ? s.c + 'c' : '開始'}${s.h ? ' +' + s.h : ''}</span>
+      ${s.h ? `<div class="hold" style="width:${Math.min(w, s.h * ppc)}px"></div>` : ''}${s.k ? '<div class="edge" title="ドラッグでカウント数を変える"></div>' : ''}</div>`;
+  });
+  h += '<div id="playhead"></div>';
+  $('tltrack').innerHTML = h;
+  updatePlayhead();
+}
+function playheadT() {
+  if (playT !== null) return playT;
+  const lay = tlLayout(), s = lay.segs[Math.min(curSet, lay.segs.length - 1)];
+  return s.t0 + s.c;
+}
+function updatePlayhead() {
+  const ph = $('playhead'); if (!ph || !M) return;
+  const lay = tlLayout(), ppc = tlPPC(lay), t = playheadT();
+  ph.style.left = (uOfT(t, lay) * ppc + 1) + 'px';
+  const s = M.sets[Math.min(curSet, M.sets.length - 1)];
+  $('tltime').textContent = `セット ${s.name}｜${fmt1(t)} / ${fmt1(lay.total)} カウント`;
+}
+function totalOf(D) { const s = D.sets[D.sets.length - 1]; return s.start + s.counts + s.hold; }
+function drawAt(t) {
+  const D = R.data; t = Math.max(0, Math.min(t, totalOf(D)));
+  const k = jkSetAt(D, t), changed = k !== curSet;
+  if (changed) { curSet = k; curStmt = -1; renderSetPane(); }
+  playT = t;
+  const sts = D.performers.map((_, i) => jkState(D, i, t));
+  drawCanvas({pos: sts.map(s => s.p), face: sts.map(jkFacing)});
+  if (changed) renderTimeline(); else updatePlayhead();
+}
+function exitScrub() { if (playT === null && !playing) return; stopPlay(); playT = null; if (R) drawCanvas(); updatePlayhead(); }
+function stopPlay() { playing = false; cancelAnimationFrame(playRaf); jkAudio.stop(); $('tlplay').textContent = '▶ 全体を再生'; }
+function startPlay() {
+  if (!R || lastErr || R.data.sets.length !== M.sets.length) return;
+  cancelDraw();
+  const D = R.data, total = totalOf(D);
+  let t = playT !== null ? playT : D.sets[curSet].start + D.sets[curSet].counts;
+  if (t >= total - 1e-6) t = 0;
+  playing = true; $('tlplay').textContent = '■ 停止';
+  stopScore();
+  jkAudio.play(D, t);
+  let last = performance.now();
+  const step = now => {
+    if (!playing) return;
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    t += dt * jkTempoAt(D, t) / 60;
+    if (t >= total) { drawAt(total); stopPlay(); return; }
+    drawAt(t); playRaf = requestAnimationFrame(step);
+  };
+  playRaf = requestAnimationFrame(step);
+}
+$('tlplay').onclick = () => { if (playing) stopPlay(); else startPlay(); };
+function selectSet(k) { stopPlay(); playT = null; curSet = k; curStmt = -1; refresh(true); }
+const tltrack = $('tltrack');
+tltrack.addEventListener('pointerdown', e => {
+  if (!M || !R || e.button !== 0) return;
+  const edge = e.target.closest('.edge'), blk = e.target.closest('.tlb'), rul = e.target.closest('#tlruler');
+  if (edge && blk) {
+    const k = +blk.dataset.k, lay = tlLayout(), seg = lay.segs[k], ppc = tlPPC(lay);
+    stopPlay(); playT = null;
+    tdrag = {type: 'edge', k, ppc, x0: e.clientX, c0: seg.c, before: src};
+    tlFreeze = {ppc};
+    if (k !== curSet) { curSet = k; curStmt = -1; renderSetPane(); }
+    tltrack.setPointerCapture(e.pointerId); e.preventDefault(); return;
+  }
+  if (rul || e.target.closest('#playhead')) {
+    stopPlay(); tdrag = {type: 'scrub'};
+    tltrack.setPointerCapture(e.pointerId); e.preventDefault(); scrubTo(e); return;
+  }
+  if (blk) selectSet(+blk.dataset.k);
+});
+function scrubTo(e) {
+  if (!R || R.data.sets.length !== M.sets.length) return;
+  const lay = tlLayout(), ppc = tlPPC(lay), x = e.clientX - tltrack.getBoundingClientRect().left;
+  drawAt(tOfU(x / ppc, lay));
+}
+tltrack.addEventListener('pointermove', e => {
+  if (!tdrag) return;
+  if (tdrag.type === 'scrub') { scrubTo(e); return; }
+  const counts = Math.max(1, tdrag.c0 + Math.round((e.clientX - tdrag.x0) / tdrag.ppc));
+  if (String(M.sets[tdrag.k].counts) !== String(counts)) { M.sets[tdrag.k].counts = String(counts); edited(false); renderTimeline(); }
+  $('info').textContent = `セット ${M.sets[tdrag.k].name}: ${counts}カウント`;
+});
+tltrack.addEventListener('pointerup', () => {
+  if (!tdrag) return;
+  const d = tdrag; tdrag = null; tlFreeze = null;
+  if (d.type === 'edge') { pushUndo(d.before); renderPanels(); renderTimeline(); }
+});
+function nextSetName() {
+  const nums = M.sets.map(s => parseInt(s.name)).filter(n => !isNaN(n));
+  return String(nums.length ? Math.max(...nums) + 1 : M.sets.length + 1);
+}
+$('addset').onclick = () => { M.sets.splice(curSet + 1, 0, {name: nextSetName(), counts: '16', hold: '0', note: [], tail: null, foot: [], stmts: []}); curSet++; curStmt = -1; edited(true); };
+$('dupset').onclick = () => { const c = JSON.parse(JSON.stringify(M.sets[curSet])); c.name = nextSetName(); c.note = []; if (!+c.counts) c.counts = '16'; M.sets.splice(curSet + 1, 0, c); curSet++; edited(true); };
+$('delset').onclick = async () => { if (M.sets.length < 2) return; if (!(await ask(`セット ${M.sets[curSet].name} を削除しますか？`, '削除する'))) return; M.sets.splice(curSet, 1); curSet = Math.max(0, curSet - 1); curStmt = -1; edited(true); };
+$('upset').onclick = () => { if (curSet < 1) return; [M.sets[curSet - 1], M.sets[curSet]] = [M.sets[curSet], M.sets[curSet - 1]]; curSet--; edited(true); };
+$('downset').onclick = () => { if (curSet >= M.sets.length - 1) return; [M.sets[curSet + 1], M.sets[curSet]] = [M.sets[curSet], M.sets[curSet + 1]]; curSet++; edited(true); };
+window.addEventListener('resize', () => { if (M) renderTimeline(); });
+
+// ================= 右: タブ =================
+function showTab(id) { document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.p === id)); document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === id)); }
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.p));
+function renderPanels() { if (!M) return; renderSetPane(); renderSecPane(); renderShowPane(); renderScorePane(); }
+
+// ---- 隊形（セットの中身） ----
+const KINDS = [['line', '直線'], ['arc', '弧'], ['circle', '円'], ['block', 'ブロック'], ['curve', '曲線'], ['poly', '折れ線'], ['follow', 'フォロー'], ['at', '1点（1人用）'], ['same', 'そのまま']];
+const kindName = k => (KINDS.find(x => x[0] === k) || [0, k])[1];
+function defaultCenter() {
+  const f = R && R.data && R.data.field;
+  if (!f) return M.field.type === 'gym' ? ['0', '0'] : ['0', 'MID'];
+  if (f.type === 'gym') return ['0', '0'];
+  if (f.type === 'football') return ['0', fmt(f.bsl / 2)];
+  return ['0', fmt(f.d / 2)];
+}
+function defaultShape(kind, st) {
+  const c = defaultCenter(), old = st && st.shape;
+  const oc = old && (old.c || old.p || (old.a && old.b && [fmt((+old.a[0] + +old.b[0]) / 2 || 0), old.a[1]])) || c;
+  const cc = oc.map(String), w = isFB() ? 16 : 5;
+  const off = (v, d) => isFinite(+v) ? fmt(+v + d) : `${v} + ${d}`;
+  switch (kind) {
+    case 'line': return {kind, a: [off(cc[0], -w), cc[1]], b: [off(cc[0], w), cc[1]]};
+    case 'arc': return {kind, c: cc, r: String(w), a1: '200', a2: '340'};
+    case 'circle': return {kind, c: cc, r: String(w), start: null};
+    case 'block': return {kind, c: cc, cols: '4', spacing: null, rows: null};
+    case 'curve': case 'poly': return {kind, pts: [[off(cc[0], -w), cc[1]], [cc[0], off(cc[1], w / 2)], [off(cc[0], w), cc[1]]]};
+    case 'follow': {
+      let c0 = cc;
+      if (st && R && R.members && R.members[curSet] && R.members[curSet][M.sets[curSet].stmts.indexOf(st)]) {
+        const mm = R.members[curSet][M.sets[curSet].stmts.indexOf(st)], ps = R.data.sets[Math.max(curSet - 1, 0)].pos;
+        if (mm.length) c0 = [fmt(mm.reduce((a, i) => a + ps[i][0], 0) / mm.length), fmt(mm.reduce((a, i) => a + ps[i][1], 0) / mm.length)];
+      }
+      return {kind, pts: [c0, [off(c0[0], w), off(c0[1], w / 2)], [off(c0[0], 2 * w), c0[1]]], spacing: null};
+    }
+    case 'at': return {kind, p: cc};
+    default: return {kind: 'same'};
+  }
+}
+function fld(label, val, key, path, w) {
+  return `<label class="f">${label}<input data-path="${path}" data-key="${key}" value="${esc(val ?? '')}" ${w ? `style="width:${w}"` : ''}></label>`;
+}
+function ptFld(label, p, path) {
+  return `<div class="pt">${fld(label + ' 左右(x)', p[0], '0', path)}${fld('前後(y)', p[1], '1', path)}</div>`;
+}
+function paramsHtml(st, si) {
+  const s = st.shape, b = `s${si}.shape`;
+  switch (s.kind) {
+    case 'line': return ptFld('始点', s.a, b + '.a') + ptFld('終点', s.b, b + '.b');
+    case 'arc': return ptFld('中心', s.c, b + '.c') + fld('半径', s.r, 'r', b) + fld('開始角(°)', s.a1, 'a1', b) + fld('終了角(°)', s.a2, 'a2', b);
+    case 'circle': return ptFld('中心', s.c, b + '.c') + fld('半径', s.r, 'r', b) + fld('開始角(°)', s.start, 'start', b);
+    case 'block': return ptFld('中心', s.c, b + '.c') + fld('列数', s.cols, 'cols', b) + fld('左右の間隔', s.spacing, 'spacing', b) + fld('前後の間隔', s.rows, 'rows', b);
+    case 'curve': case 'poly': case 'follow': return s.pts.map((p, j) => ptFld('点' + (j + 1), p, `${b}.pts.${j}`)).join('') +
+      `<div style="grid-column:span 4;display:flex;gap:4px"><button class="ghost" data-act="addpt" data-si="${si}">＋点</button>${s.pts.length > 2 ? `<button class="ghost" data-act="delpt" data-si="${si}">−点</button>` : ''}</div>` + (s.kind === 'follow' ? fld('間隔', s.spacing, 'spacing', b) : '');
+    case 'at': return ptFld('位置', s.p, b + '.p');
+    default: return '<div class="note" style="grid-column:span 4">前のセットの位置のまま。「変形」で回転・移動できます。</div>';
+  }
+}
+// ---- 変形（回転・移動・拡大）: 数字の入力欄ではなく、小さなステップボタンで ----
+function xfChipsHtml(st, si) {
+  const stepM = isFB() ? 2 : 0.5;
+  return st.xf.map((x, j) => {
+    const a = `data-act="xfstep" data-si="${si}" data-j="${j}"`, del = `<button class="ghost" data-act="delxf" data-si="${si}" data-j="${j}" title="この変形を外す">×</button>`;
+    if (x.kind === 'rotate') {
+      const n = numOf(x.a), ok = isFinite(n);
+      return `<div class="xfc"><span class="xl">↻ 回転 <b>${ok ? fmt(n) : esc(x.a)}°</b>${x.about ? '（指定した点を中心に）' : ''}</span><span class="stp"><button ${a} data-d="-5" ${ok ? '' : 'disabled'} title="時計回りに5°">−</button><button ${a} data-d="5" ${ok ? '' : 'disabled'} title="反時計回りに5°">＋</button></span>${del}</div>`;
+    }
+    if (x.kind === 'shift') {
+      const dx = numOf(x.d[0]), dy = numOf(x.d[1]), ok = isFinite(dx) && isFinite(dy);
+      const txt = ok ? `${dx ? (dx > 0 ? '上手へ' : '下手へ') + unitLen(Math.abs(dx)) + ' ' : ''}${dy ? (dy > 0 ? '奥へ' : '客席側へ') + unitLen(Math.abs(dy)) : ''}` || '動かさない' : '式で指定';
+      return `<div class="xfc"><span class="xl">⇄ 移動 <b>${esc(txt)}</b></span><span class="stp"><button ${a} data-dx="${-stepM}" data-dy="0" ${ok ? '' : 'disabled'} title="下手へ">◀</button><button ${a} data-dx="${stepM}" data-dy="0" ${ok ? '' : 'disabled'} title="上手へ">▶</button><button ${a} data-dx="0" data-dy="${stepM}" ${ok ? '' : 'disabled'} title="奥へ">▲</button><button ${a} data-dx="0" data-dy="${-stepM}" ${ok ? '' : 'disabled'} title="客席側へ">▼</button></span>${del}</div>`;
+    }
+    const n = numOf(x.k), ok = isFinite(n);
+    return `<div class="xfc"><span class="xl">⤢ 拡大 <b>×${ok ? fmt(n) : esc(x.k)}</b></span><span class="stp"><button ${a} data-d="-0.1" ${ok ? '' : 'disabled'} title="小さく">−</button><button ${a} data-d="0.1" ${ok ? '' : 'disabled'} title="大きく">＋</button></span>${del}</div>`;
+  }).join('');
+}
+// ---- 動き（待つ・動く・カーブ）: スライダとカウント表示 ----
+function motionVals(st, set) {
+  const counts = numOf(set.counts), okc = isFinite(counts) && counts >= 1;
+  const w = st.wait == null || st.wait === '' ? 0 : numOf(st.wait);
+  const d = st.within == null || st.within === '' ? (okc ? counts - (isFinite(w) ? w : 0) : NaN) : numOf(st.within);
+  const b = st.bend == null || st.bend === '' ? 0 : numOf(st.bend);
+  return {counts, okc, w, d, b, okAll: okc && isFinite(w) && isFinite(d) && isFinite(b)};
+}
+function motionVizHtml(v) {
+  if (!v.okAll) return '<span class="mut">カウントや値が式で書かれているため、「数値で編集」で直してください。</span>';
+  const W = 200, sx = W / v.counts, w = Math.max(0, v.w), d = Math.max(0, v.d), rest = Math.max(0, v.counts - w - d);
+  const bar = `<svg width="${W}" height="16" viewBox="0 0 ${W} 16"><defs><pattern id="hp" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="4" fill="#667"/></pattern></defs>
+    <rect x="0" y="2" width="${W}" height="12" rx="3" fill="#2b3140"/>
+    <rect x="0" y="2" width="${w * sx}" height="12" rx="3" fill="url(#hp)"/>
+    <rect x="${w * sx}" y="2" width="${d * sx}" height="12" fill="#5b8def"/>
+    <rect x="${(w + d) * sx}" y="2" width="${rest * sx}" height="12" fill="#3a4152"/></svg>`;
+  const k = Math.max(-1, Math.min(1, v.b / 90)), cy = 20 - k * 16;
+  const bend = `<svg width="64" height="28" viewBox="0 0 64 28"><path d="M6 22Q32 ${cy + 1} 56 22" stroke="${v.b ? '#ffd23f' : '#667'}" fill="none" stroke-width="2"/><path d="M52 18L58 22L51 25" stroke="${v.b ? '#ffd23f' : '#667'}" fill="none" stroke-width="2"/></svg>`;
+  return `<div>${bar}<div>待つ ${fmt(w)} → 動く ${fmt(d)} → 止まって ${fmt(rest)}（計 ${fmt(v.counts)}カウント）</div></div><div style="text-align:center">${bend}<div>${v.b ? (v.b > 0 ? '左へ' : '右へ') + 'ふくらむ' : 'まっすぐ'}</div></div>`;
+}
+function motionHtml(st, si, k) {
+  const set = M.sets[k], v = motionVals(st, set), dis = v.okAll ? '' : 'disabled', C = v.okc ? v.counts : 16;
+  const wv = isFinite(v.w) ? v.w : 0, dv = isFinite(v.d) ? v.d : C, bv = isFinite(v.b) ? v.b : 0;
+  return `<div class="mot" data-si="${si}">
+    <div class="mrow"><span class="ml">待つ</span><input type="range" data-mv="wait" data-si="${si}" min="0" max="${Math.max(0, C - 1)}" step="1" value="${wv}" ${dis}><output>${fmt(wv)}カウント</output><button class="ghost" data-mreset="wait" data-si="${si}" title="待たずにすぐ動く">なし</button></div>
+    <div class="mrow"><span class="ml">動く時間</span><input type="range" data-mv="within" data-si="${si}" min="1" max="${Math.max(1, C - wv)}" step="1" value="${dv}" ${dis}><output>${fmt(dv)}カウント</output><button class="ghost" data-mreset="within" data-si="${si}" title="残り全部を使って動く">最大</button></div>
+    <div class="mrow"><span class="ml">カーブ</span><input type="range" data-mv="bend" data-si="${si}" min="-90" max="90" step="5" value="${bv}" ${dis}><output>${bv ? (bv > 0 ? '左へ ' : '右へ ') + Math.abs(bv) + '°' : 'まっすぐ'}</output><button class="ghost" data-mreset="bend" data-si="${si}" title="まっすぐ進む">なし</button></div>
+    <div class="mviz" data-viz="${si}">${motionVizHtml(v)}</div></div>`;
+}
+function updateMotion(card, st, set) {
+  const v = motionVals(st, set); if (!v.okAll) return;
+  const q = n => card.querySelector(`[data-mv="${n}"]`), o = n => q(n).parentElement.querySelector('output');
+  q('within').max = Math.max(1, v.counts - v.w);
+  q('wait').value = v.w; q('within').value = v.d; q('bend').value = v.b;
+  o('wait').textContent = `${fmt(v.w)}カウント`; o('within').textContent = `${fmt(v.d)}カウント`;
+  o('bend').textContent = v.b ? (v.b > 0 ? '左へ ' : '右へ ') + Math.abs(v.b) + '°' : 'まっすぐ';
+  card.querySelector('[data-viz]').innerHTML = motionVizHtml(v);
+}
+document.addEventListener('input', e => {
+  const r = e.target.closest && e.target.closest('input[data-mv]');
+  if (!r || !M) return;
+  const si = +r.dataset.si, set = M.sets[curSet], st = set.stmts[si], card = r.closest('.card'), counts = numOf(set.counts), val = +r.value, key = r.dataset.mv;
+  if (!st) return;
+  curStmt = si;
+  if (key === 'wait') { st.wait = val ? String(val) : null; const d = st.within == null ? null : numOf(st.within); if (d != null && isFinite(d) && val + d > counts) st.within = String(Math.max(1, counts - val)); }
+  else if (key === 'within') { const w = st.wait == null ? 0 : numOf(st.wait); st.within = val >= counts - w ? null : String(val); }
+  else if (key === 'bend') st.bend = val ? String(val) : null;
+  updateMotion(card, st, set);
+  edited(false);
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-mreset]');
+  if (!b || !M) return;
+  const st = M.sets[curSet].stmts[+b.dataset.si]; if (!st) return;
+  const key = b.dataset.mreset; st[key] = null; curStmt = +b.dataset.si;
+  updateMotion(b.closest('.card'), st, M.sets[curSet]); edited(false);
+});
+
+// ---- 向き・姿勢・ステップ・動作（ビジュアルな部品） ----
+const STEPS = [['', '自動'], ['glide', 'グライド'], ['back', 'バックマーチ'], ['slide', 'スライド'], ['jazz', 'ジャズラン'], ['high', 'ハイステップ']];
+const ACTIONS = [['', 'なし'], ['spin', 'スピン'], ['toss', 'トス'], ['swing', 'スイング'], ['rest', 'レスト']];
+function compassHtml(tgt, cur) {
+  const n = faceNum(cur), cs = cur == null ? '' : String(cur).trim();
+  const cell = (v, ch, title) => { const vn = faceNum(v), on = n !== null && vn !== null && Math.abs(vn - n) < 0.01; return `<button data-fx="face" data-tgt="${tgt}" data-v="${v}" class="${on ? 'on' : ''}" title="${title}">${ch}</button>`; };
+  const ex = (v, label, title) => `<button data-fx="face" data-tgt="${tgt}" data-v="${v}" class="${cs === v ? 'on' : ''}" title="${title}">${label}</button>`;
+  const adj = n !== null && Math.abs(n % 45) > 0.01 ? `<div class="fxl" style="margin-top:4px">角度 <button data-fx="faceadj" data-tgt="${tgt}" data-v="-5">−5°</button> <b>${fmt(n)}°</b> <button data-fx="faceadj" data-tgt="${tgt}" data-v="5">＋5°</button></div>` : '';
+  return `<div class="fxrow"><div><div class="fxl">向き（客席から見た図）</div><div class="compass">
+    ${cell('-135', '↖', '奥・下手向き')}${cell('back', '↑', '奥向き')}${cell('135', '↗', '奥・上手向き')}
+    ${cell('shimo', '←', '下手向き')}<div class="mid">奥<br>▲</div>${cell('kami', '→', '上手向き')}
+    ${cell('-45', '↙', '客席・下手向き')}${cell('front', '↓', '客席向き')}${cell('45', '↘', '客席・上手向き')}</div>${adj}</div>
+    <div class="fxx"><div class="fxl">&nbsp;</div>${ex('center', '中心へ', '隊形の中心を向く')}${ex('out', '外へ', '隊形の外を向く')}${ex('travel', '進行方向', '進む方向を向く')}${ex('', '自動', '移動中は進行方向、止まると客席向き')}</div></div>`;
+}
+function paletteHtml(tgt, cur) {
+  return `<div class="fxl" style="margin-top:6px">姿勢</div><div class="pal">${POSES.map(([id, name]) => `<button data-fx="pose" data-tgt="${tgt}" data-v="${id}" class="${cur === id ? 'on' : ''}" title="${name}">${poseIcon(id)}<span>${name}</span></button>`).join('')}<button data-fx="pose" data-tgt="${tgt}" data-v="" title="姿勢を解除">${poseIcon('')}<span>解除</span></button></div>`;
+}
+function carryHtml(tgt, cur) {
+  return `<div class="fxl" style="margin-top:6px">楽器の構え</div>` + segHtml(tgt, 'carry', CARRIES.concat([['', '解除']]), cur);
+}
+function segHtml(tgt, kind, opts, cur) {
+  return `<div class="seg">${opts.map(([v, n]) => `<button data-fx="${kind}" data-tgt="${tgt}" data-v="${v}" class="${(cur || '') === v ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+}
+function applyFx(tgt, kind, v) {
+  hidePops();
+  if (tgt === 'sel') {
+    const ids = [...sel]; if (!ids.length) return;
+    if (kind === 'pose' && v === '') clearPoseFor(ids);
+    else if (kind === 'carry' && v === '') { const D = R.data, k = curSet; setAttr(ids, {carry: k > 0 && ids.some(i => D.sets[k - 1].carry && D.sets[k - 1].carry[i] && !(R.owner && R.owner[k] && R.owner[k][i] >= 0)) ? 'play' : null}); }
+    else setAttr(ids, {[kind]: v || null});
+    return;
+  }
+  const m = /^stmt:(\d+)$/.exec(tgt), st = m && M.sets[curSet].stmts[+m[1]];
+  if (!st) return;
+  curStmt = +m[1];
+  if (kind === 'faceadj') st.face = faceStrOf((faceNum(st.face) || 0) + +v); else st[kind] = v || null;
+  edited(true);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-fx]');
+  if (!b || !M || !R) return;
+  e.preventDefault();
+  applyFx(b.dataset.tgt, b.dataset.fx, b.dataset.v);
+});
+// 選択中の人の現在の向き・姿勢
+function selCommon(arr) {
+  const k = curSet, D = R.data, a = (D.sets[k][arr] || []);
+  const vals = [...sel].map(i => a[i] == null ? null : a[i]);
+  return vals.length && vals.every(x => x === vals[0]) ? vals[0] : undefined;
+}
+function selFaceStr() {
+  // 属性文があればその値、なければ解決済みの角度
+  const ids = [...sel].sort((a, b) => a - b), g = groupOf(ids), at = M.sets[curSet].stmts.find(s => s.shape.kind === 'attr' && s.group.trim() === g);
+  if (at && at.face) return at.face;
+  const f = selCommon('face');
+  return f == null ? '' : faceStrOf(f + 90);
+}
+function openPop(btn, kind) {
+  const p = $('pop'), wrap = $('canvaswrap').getBoundingClientRect(), br = btn.getBoundingClientRect();
+  if (!R || !sel.size) return;
+  p.innerHTML = (kind === 'face'
+    ? `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の向き</div>` + compassHtml('sel', selFaceStr()) + `<div class="note" style="margin-top:6px">1人だけ選ぶと、画面上の ➤ をドラッグして好きな角度にできます</div>`
+    : kind === 'carry'
+    ? `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の楽器の構え（このセット）</div>` + carryHtml('sel', selCommon('carry') || '')
+    : `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の姿勢（このセット）</div>` + paletteHtml('sel', selCommon('pose') || ''));
+  p.style.display = 'block'; p.style.top = 'auto';
+  p.style.left = Math.max(56, Math.min(wrap.width - p.offsetWidth - 10, br.left - wrap.left)) + 'px';
+  p.style.bottom = (wrap.bottom - br.top + 6) + 'px';
+}
+function hidePops() { $('pop').style.display = 'none'; $('ctx').style.display = 'none'; }
+function closePops() { hidePops(); $('whopop').style.display = 'none'; }
+$('selface').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'face'; hidePops(); if (!v) { openPop(e.currentTarget, 'face'); $('pop').dataset.k = 'face'; } };
+$('selpose').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'pose'; hidePops(); if (!v) { openPop(e.currentTarget, 'pose'); $('pop').dataset.k = 'pose'; } };
+$('selcarry').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'carry'; hidePops(); if (!v) { openPop(e.currentTarget, 'carry'); $('pop').dataset.k = 'carry'; } };
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#pop,#ctx,#selface,#selpose,#selcarry')) hidePops(); if (!e.target.closest('#whopop') && !e.target.closest('#svg') && $('whopop').style.display === 'block') { $('whopop').style.display = 'none'; pendingDraw = null; } }, true);
+
+// ---- 隊形カード（座標は裏方。ふだんは言葉で読める要約） ----
+function summaryHtml(k, si) { try { return summaryHtml0(k, si); } catch (e) { return '<div class="mut">計算中…</div>'; } }
+function summaryHtml0(k, si) {
+  const st = M.sets[k] && M.sets[k].stmts[si], hs = R && R.handles && R.handles[k] && R.handles[k][si];
+  if (!st) return '';
+  const s = st.shape, K = t => `<span class="k">${t}</span>`;
+  if (s.kind === 'attr') return `<div>${K('位置')}そのまま（前の位置を保つ）</div>`;
+  if (s.kind === 'same') return `<div>前のセットの位置のまま${st.xf.length ? '（下の変形を加える）' : ''}</div>`;
+  if (!hs || R.handles[k].length !== M.sets[k].stmts.length || !hs.length) return '<div class="mut">計算中…</div>';
+  const by = Object.fromEntries(hs.map(h => [h[0], [h[1], h[2]]])), P = r => by[r];
+  switch (s.kind) {
+    case 'line': return `<div>${K('始点')}${dPt(P('a'))}</div><div>${K('終点')}${dPt(P('b'))}／長さ ${unitLen(dist(P('a'), P('b')))}</div>`;
+    case 'circle': return `<div>${K('中心')}${dPt(P('c'))}／半径 ${unitLen(dist(P('c'), P('r')))}</div>`;
+    case 'arc': {
+      const c = P('c'), A1 = deg(Math.atan2(P('a1')[1] - c[1], P('a1')[0] - c[0])), A2 = deg(Math.atan2(P('a2')[1] - c[1], P('a2')[0] - c[0]));
+      const n1 = numOf(s.a1), n2 = numOf(s.a2), span = isFinite(n1) && isFinite(n2) ? n2 - n1 : ((A2 - A1) % 360 + 360) % 360;
+      return `<div>${K('中心')}${dPt(c)}／半径 ${unitLen(dist(c, P('a1')))}</div><div>${K('弧')}${fmt(Math.abs(span))}°ぶん（客席から見て${isFinite(n1) ? fmt(((n1 % 360) + 360) % 360) + '° → ' + fmt(((n2 % 360) + 360) % 360) + '°' : '角度は式で指定'}）</div>`;
+    }
+    case 'block': {
+      const sp = numOf(s.spacing), rs = numOf(s.rows);
+      return `<div>${K('中心')}${dPt(P('c'))}</div><div>${K('列数')}${esc(s.cols)}列／左右の間隔 ${s.spacing ? (isFinite(sp) ? unitLen(sp) : '式') : '既定'}／前後の間隔 ${s.rows ? (isFinite(rs) ? unitLen(rs) : '式') : '同じ'}</div>`;
+    }
+    case 'curve': case 'poly': case 'follow': {
+      const pts = hs.map(h => [h[1], h[2]]); let len = 0; for (let j = 1; j < pts.length; j++) len += dist(pts[j], pts[j - 1]);
+      return `<div>${K(s.kind === 'follow' ? '経路' : s.kind === 'poly' ? '折れ線' : '曲線')}${pts.length}点を通る／全長 ${unitLen(len)}${s.kind === 'follow' ? '／' + (s.spacing ? '間隔 ' + esc(s.spacing) : '間隔は既定') : ''}</div><div>${K('始点')}${dPt(pts[0])}</div><div>${K('終点')}${dPt(pts[pts.length - 1])}</div>`;
+    }
+    case 'at': return `<div>${K('位置')}${dPt(P('p'))}</div>`;
+  }
+  return '';
+}
+function cntText(k, si) {
+  const mem = R && R.members && R.members[k] && R.members[k].length === M.sets[k].stmts.length ? R.members[k][si] : null;
+  return mem ? `${mem.length}人` : '';
+}
+function updateSummaries() {
+  if (!M || !R) return;
+  document.querySelectorAll('#pset .card[data-si]').forEach(c => {
+    const si = +c.dataset.si, s = c.querySelector('.sum'), n = c.querySelector('.cnt');
+    if (s) s.innerHTML = summaryHtml(curSet, si);
+    if (n) n.textContent = cntText(curSet, si);
+  });
+  document.querySelectorAll('#pset .indrow[data-pi]').forEach(r => {
+    const pi = +r.dataset.pi, p = R.data.sets[curSet] && R.data.sets[curSet].pos[pi];
+    if (p) r.querySelector('.d').textContent = dPt(p);
+  });
+}
+function fxSummary(st) {
+  const bits = [`向き: ${faceName(st.face)}`];
+  if (st.pose) bits.push(`姿勢: ${poseName(st.pose)}`);
+  if (st.carry) bits.push(`構え: ${carryName(st.carry)}`);
+  return bits.join('／');
+}
+function detOpen(k, si, name) { return openDet.has(`${k}:${si}:${name}`) ? 'open' : ''; }
+function fxBlock(st, si, k) {
+  const tgt = `stmt:${si}`;
+  return compassHtml(tgt, st.face) + paletteHtml(tgt, st.pose) + carryHtml(tgt, st.carry) +
+    (k && st.shape.kind !== 'attr' || (st.shape.kind === 'attr' && k) ? `<div class="segl">ステップ</div>${segHtml(tgt, 'step', STEPS, st.step)}` : '') +
+    `<div class="segl">動作（カラーガードなど）</div>${segHtml(tgt, 'action', ACTIONS, st.action)}`;
+}
+function cardHtml(st, si, k, errLine) {
+  const toks = groupTokens(st.group);
+  const posNums = st.shape.kind !== 'attr';
+  return `<div class="card ${si === curStmt ? 'sel' : ''} ${errLine && errLine === st.line ? 'errc' : ''}" data-si="${si}">
+    ${(st.note || []).map(n => `<div class="note"># ${esc(n)}</div>`).join('')}
+    <div class="top"><select data-act="kind" data-si="${si}" title="形の種類">${KINDS.map(([v, n]) => `<option value="${v}" ${st.shape.kind === v ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="cnt">${esc(cntText(k, si))}</span>
+      <button class="ghost" data-act="up" data-si="${si}" title="上へ（後に書いた指定が優先）">↑</button><button class="ghost" data-act="del" data-si="${si}" title="この隊形を削除">✕</button></div>
+    <div class="chips">${M.sections.map(s => `<span class="chip ${toks.includes(s.id) ? 'on' : ''}" style="${toks.includes(s.id) ? 'background:' + (s.color || '#ccc') : ''}" data-act="chip" data-si="${si}" data-id="${esc(s.id)}">${esc(s.label)}</span>`).join('')}</div>
+    <div class="sum">${summaryHtml(k, si)}</div>
+    ${xfChipsHtml(st, si)}
+    <div class="xfadd"><button class="ghost" data-act="rot" data-si="${si}" title="回転を足す">＋回転</button><button class="ghost" data-act="shift" data-si="${si}" title="平行移動を足す">＋移動</button><button class="ghost" data-act="scale" data-si="${si}" title="拡大・縮小を足す">＋拡大</button></div>
+    ${k ? `<details class="adv" data-dk="${k}:${si}:mot" ${detOpen(k, si, 'mot')}><summary>動き方（待つ・カーブ）</summary>${motionHtml(st, si, k)}</details>` : ''}
+    <details class="adv" data-dk="${k}:${si}:fx" ${detOpen(k, si, 'fx')}><summary>向き・姿勢・ステップ<span class="dsum">${esc(fxSummary(st))}${st.step ? '／' + esc((STEPS.find(x => x[0] === st.step) || [0, st.step])[1]) : ''}</span></summary>${fxBlock(st, si, k)}</details>
+    ${posNums ? `<details class="adv" data-dk="${k}:${si}:num" ${detOpen(k, si, 'num')}><summary>数値で編集</summary><div>
+      <div class="opts" style="margin-bottom:6px"><label class="f" style="flex:1">対象（式）<input class="grp" data-path="s${si}" data-key="group" value="${esc(st.group)}" title="例: tp + tb、tp1..tp4、all"></label>
+        <label class="f">割り当て<select data-path="s${si}" data-key="assign"><option value="">${st.shape.kind === 'same' ? '既定（順番どおり）' : '既定（自動）'}</option><option value="auto" ${st.assign === 'auto' ? 'selected' : ''}>自動（最短・衝突回避）</option><option value="keep" ${st.assign === 'keep' ? 'selected' : ''}>書いた順番どおり</option></select></label></div>
+      <div class="params">${paramsHtml(st, si)}</div>
+      ${st.xf.map((x, j) => x.kind === 'rotate' ? `<div class="opts" style="margin-bottom:4px">${fld('回転(°)', x.a, 'a', `s${si}.xf.${j}`, '70px')}</div>` : x.kind === 'shift' ? `<div class="opts" style="margin-bottom:4px">${fld('移動 x', x.d[0], '0', `s${si}.xf.${j}.d`, '70px')}${fld('y', x.d[1], '1', `s${si}.xf.${j}.d`, '70px')}</div>` : `<div class="opts" style="margin-bottom:4px">${fld('拡大 ×', x.k, 'k', `s${si}.xf.${j}`, '70px')}</div>`).join('')}
+      ${k ? `<div class="opts">${fld('待ってから(wait)', st.wait, 'wait', 's' + si, '64px')}${fld('何カウントで(in)', st.within, 'within', 's' + si, '64px')}${fld('カーブ(°)', st.bend, 'bend', 's' + si, '56px')}</div>` : ''}
+      <div class="opts" style="margin-top:6px">${fld('向き（式）', st.face, 'face', 's' + si, '150px')}</div>
+    </div></details>` : ''}</div>`;
+}
+function attrCardHtml(st, si, k) {
+  const tgt = `stmt:${si}`;
+  return `<div class="card attr ${si === curStmt ? 'sel' : ''}" data-si="${si}">
+    ${(st.note || []).map(n => `<div class="note"># ${esc(n)}</div>`).join('')}
+    <div class="top"><b>姿勢・向きだけ</b><span class="cnt">${esc(cntText(k, si))}　位置はそのまま</span><button class="ghost" data-act="up" data-si="${si}" title="上へ">↑</button><button class="ghost" data-act="del" data-si="${si}" title="削除">✕</button></div>
+    <div class="sum"><div><span class="k">対象</span>${esc(st.group)}</div><div><span class="k">内容</span>${esc(fxSummary(st))}${st.step ? '／ステップ: ' + esc((STEPS.find(x => x[0] === st.step) || [0, st.step])[1]) : ''}${st.action ? '／動作: ' + esc((ACTIONS.find(x => x[0] === st.action) || [0, st.action])[1]) : ''}</div></div>
+    <details class="adv" data-dk="${k}:${si}:fx" ${openDet.has(`${k}:${si}:fx`) ? 'open' : ''}><summary>向き・姿勢を変える</summary>${fxBlock(st, si, k)}</details>
+    <details class="adv" data-dk="${k}:${si}:num" ${detOpen(k, si, 'num')}><summary>数値で編集</summary><div class="opts"><label class="f" style="flex:1">対象（式）<input class="grp" data-path="s${si}" data-key="group" value="${esc(st.group)}"></label>${fld('向き（式）', st.face, 'face', 's' + si, '130px')}</div></details></div>`;
+}
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.dk) { d.open ? openDet.add(d.dataset.dk) : openDet.delete(d.dataset.dk); } }, true);
+function groupTokens(g) { return g.split('+').map(x => x.trim()).filter(Boolean); }
+function renderSetPane() {
+  const k = curSet, set = M.sets[k];
+  if (!set) { $('pset').innerHTML = ''; return; }
+  const errLine = lastErr && lastErr.line;
+  let h = `<div class="row">${fld('セット名', set.name, 'name', 'set', '70px')}${k ? fld('移動カウント', set.counts, 'counts', 'set', '70px') : ''}${fld('ホールド', set.hold, 'hold', 'set', '60px')}${fld('テンポ（ここから）', set.tempo, 'tempo', 'set', '70px')}
+    <label class="f" title="ホールド中・出発待ちの間、その場で足踏み" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="mark" ${set.mark ? 'checked' : ''} style="width:auto">マークタイム</label></div>`;
+  if (!set.stmts.length) h += `<div class="note">このセットでは誰も動きません（全員その場）。左の描画ツールで描くか、下のボタンで隊形を追加します。</div>`;
+  const inds = [];
+  set.stmts.forEach((st, si) => {
+    if (stmtIsIndividual(st)) { inds.push(si); return; }
+    h += st.shape.kind === 'attr' ? attrCardHtml(st, si, k) : cardHtml(st, si, k, errLine);
+  });
+  if (inds.length) {
+    h += `<div class="card ind"><div class="note" style="color:var(--fg);font-weight:600">個別に動かした人（${inds.length}人）</div><div class="note">隊形の位置より優先されます。✕ で隊形の位置に戻ります。</div>` +
+      inds.map(si => { const st = set.stmts[si], pi = R ? R.data.performers.findIndex(p => p.id === st.group.trim()) : -1, p = R && pi >= 0 && R.data.sets[k] ? R.data.sets[k].pos[pi] : null;
+        return `<div class="indrow ${sel.has(pi) ? 'on' : ''}" data-pi="${pi}"><b>${esc(st.group)}</b><span class="d">${p ? esc(dPt(p)) : ''}</span><button class="ghost" data-act="del" data-si="${si}" title="隊形の位置に戻す">✕</button></div>`; }).join('') +
+      `<details class="adv"><summary>数値で編集</summary><table class="t ind"><tr><th>名前</th><th>左右(x)</th><th>前後(y)</th></tr>` +
+      inds.map(si => { const st = set.stmts[si]; return `<tr><td>${esc(st.group)}</td><td><input data-path="s${si}.shape.p" data-key="0" value="${esc(st.shape.p[0])}"></td><td><input data-path="s${si}.shape.p" data-key="1" value="${esc(st.shape.p[1])}"></td></tr>`; }).join('') + '</table></details></div>';
+  }
+  h += `<button id="addstmt">＋ 隊形を追加</button>
+    <div class="hint" style="margin-top:10px">
+      <b>描く</b>: 左の道具（<kbd>L</kbd> 直線・<kbd>A</kbd> 弧・<kbd>C</kbd> 円・<kbd>P</kbd> 曲線・<kbd>F</kbd> フォロー・<kbd>B</kbd> ブロック）で、人を選んでから画面にドラッグ。<br>
+      <b>整える</b>: 隊形を選ぶと <b style="color:#ffd23f">■ ●</b> で形を、<b>↻</b> で回転（5°ごと）、<b>⤡</b> で拡大縮小。<br>
+      <b>人を動かす</b>: ドットをドラッグ。<kbd>Shift</kbd>/<kbd>Ctrl</kbd>+クリックで追加選択、何もない所をドラッグで範囲選択。選んだ人は枠の ↻ ⤡ ✥ でまとめて回転・拡大・移動。右クリックでメニュー。<br>
+      吸着は下のバーで設定（ドラッグ中 <kbd>Shift</kbd> で吸着なし）。</div>`;
+  $('pset').innerHTML = h;
+  $('addstmt').onclick = () => {
+    const used = new Set(set.stmts.flatMap(st => groupTokens(st.group)));
+    const free = M.sections.find(s => !used.has(s.id)) || M.sections[0];
+    const st = newStmt(free ? free.id : 'all', defaultShape('line', null));
+    set.stmts.push(st); normalizeAttrs(); curStmt = set.stmts.indexOf(st); edited(true);
+  };
+  bindInputs($('pset'));
+  $('pset').querySelectorAll('.indrow[data-pi]').forEach(tr => tr.addEventListener('click', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return; const i = +tr.dataset.pi; if (i >= 0) { sel = new Set([i]); updateSel(); drawCanvas(); renderSetPane(); } }));
+}
+function getPath(path) {
+  const parts = path.split('.');
+  let o;
+  if (parts[0] === 'set') return M.sets[curSet];
+  if (parts[0] === 'show') return M;
+  if (parts[0] === 'field') return M.field;
+  if (parts[0].startsWith('sec')) o = M.sections[+parts[0].slice(3)];
+  else o = M.sets[curSet].stmts[+parts[0].slice(1)];
+  for (const p of parts.slice(1)) o = o[isNaN(+p) ? p : +p];
+  return o;
+}
+function bindInputs(root) {
+  root.querySelectorAll('[data-path]').forEach(inp => {
+    const ev = inp.tagName === 'SELECT' || inp.type === 'color' ? 'change' : 'input';
+    inp.addEventListener(ev, () => {
+      const o = getPath(inp.dataset.path), key = inp.dataset.key;
+      let v = inp.type === 'checkbox' ? inp.checked : inp.value;
+      if (inp.dataset.num) v = v === '' ? null : v;
+      if (v === '' && ['assign', 'wait', 'within', 'start', 'spacing', 'rows', 'clearance', 'maxstep', 'look', 'color', 'instrument', 'tempo', 'bend', 'face', 'step', 'action'].includes(key)) v = null;
+      o[isNaN(+key) ? key : +key] = v;
+      const structural = key === 'group' ? false : (inp.dataset.structural === '1');
+      if (inp.dataset.path === 'field' || key === 'type') { renderShowPane(); }
+      edited(structural);
+      if (key === 'group') updateChips(inp);
+    });
+    inp.addEventListener('focus', () => { const m = /^s(\d+)/.exec(inp.dataset.path || ''); if (m && curStmt !== +m[1]) { curStmt = +m[1]; markCards(); drawCanvas(); } });
+  });
+  root.querySelectorAll('[data-act]').forEach(b => {
+    const act = b.dataset.act, si = +b.dataset.si;
+    const run = () => {
+      const set = M.sets[curSet], st = set.stmts[si];
+      if (act === 'kind') { st.shape = defaultShape(b.value, st); if (b.value === 'same') st.assign = null; }
+      else if (act === 'del') { set.stmts.splice(si, 1); curStmt = -1; }
+      else if (act === 'up') { if (si > 0) { [set.stmts[si - 1], set.stmts[si]] = [set.stmts[si], set.stmts[si - 1]]; curStmt = si - 1; } }
+      else if (act === 'chip') {
+        const toks = groupTokens(st.group), id = b.dataset.id;
+        const nt = toks.includes(id) ? toks.filter(t => t !== id) : [...toks, id];
+        st.group = nt.join(' + ') || id;
+      }
+      else if (act === 'rot') st.xf.push({kind: 'rotate', a: '15', about: null});
+      else if (act === 'shift') st.xf.push({kind: 'shift', d: ['0', fmt(isFB() ? 4 : 2)]});
+      else if (act === 'scale') st.xf.push({kind: 'scale', k: '1.2'});
+      else if (act === 'delxf') st.xf.splice(+b.dataset.j, 1);
+      else if (act === 'xfstep') {
+        const x = st.xf[+b.dataset.j];
+        if (x.kind === 'rotate') x.a = fmt(numOf(x.a) + +b.dataset.d);
+        else if (x.kind === 'shift') x.d = [fmt(numOf(x.d[0]) + +b.dataset.dx), fmt(numOf(x.d[1]) + +b.dataset.dy)];
+        else x.k = fmt(Math.max(0.1, numOf(x.k) + +b.dataset.d));
+      }
+      else if (act === 'addpt') { const p = st.shape.pts, l = p[p.length - 1]; p.push([isFinite(+l[0]) ? fmt(+l[0] + 3) : l[0], l[1]]); }
+      else if (act === 'delpt') st.shape.pts.pop();
+      if (act !== 'del' && act !== 'up') curStmt = si;
+      edited(true);
+    };
+    if (b.tagName === 'SELECT') b.addEventListener('change', run); else b.addEventListener('click', run);
+  });
+}
+function updateChips(inp) {
+  const card = inp.closest('.card'); if (!card) return;
+  const toks = groupTokens(inp.value);
+  card.querySelectorAll('.chip').forEach(c => { const on = toks.includes(c.dataset.id); c.classList.toggle('on', on); const s = M.sections.find(x => x.id === c.dataset.id); c.style.background = on ? (s.color || '#ccc') : ''; });
+}
+function markCards() { document.querySelectorAll('#pset .card[data-si]').forEach(c => c.classList.toggle('sel', +c.dataset.si === curStmt)); }
+function syncCardInputs() {
+  document.querySelectorAll('#pset [data-path]').forEach(inp => {
+    if (inp === document.activeElement) return;
+    try { const o = getPath(inp.dataset.path), k = inp.dataset.key, v = o[isNaN(+k) ? k : +k]; if (inp.tagName !== 'SELECT') inp.value = v ?? ''; } catch (e) {}
+  });
+  markCards();
+}
+// カードをクリックしたら、その隊形を選ぶ
+$('pset').addEventListener('pointerdown', e => {
+  const c = e.target.closest('.card[data-si]');
+  if (c && +c.dataset.si !== curStmt) { curStmt = +c.dataset.si; markCards(); if (R) drawCanvas(); }
+});
+
+// ---- セクション ----
+// 楽器 ID → 日本語名（src/instruments.rs の INSTRUMENTS と同じ）
+const INSTR_NAME = {trumpet: 'トランペット', mellophone: 'メロフォン', marching_horn: 'マーチングホルン', horn: 'ホルン', trombone: 'トロンボーン', euphonium: 'ユーフォニアム', marching_euphonium: 'マーチングユーフォニアム', tuba: 'チューバ', marching_tuba: 'マーチングチューバ', sousaphone: 'スーザフォン', piccolo: 'ピッコロ', flute: 'フルート', oboe: 'オーボエ', bassoon: 'ファゴット', eb_clarinet: 'E♭クラリネット', clarinet: 'クラリネット', alto_clarinet: 'アルトクラリネット', bass_clarinet: 'バスクラリネット', soprano_sax: 'ソプラノサックス', alto_sax: 'アルトサックス', tenor_sax: 'テナーサックス', baritone_sax: 'バリトンサックス', snare: 'スネアドラム', tenors: 'テナードラム', bass_drum: 'バスドラム（メンバー順に小→大）', bass1: 'バスドラム1（最小）', bass2: 'バスドラム2', bass3: 'バスドラム3', bass4: 'バスドラム4', bass5: 'バスドラム5（最大）', cymbals_mid: 'シンバル（ミドルポジション）', cymbals_high: 'シンバル（ハイポジション）', glockenspiel: 'グロッケン', xylophone: 'シロフォン', flag: 'カラーガード（フラッグ）', none: '楽器なし'};
+const INSTR_GROUPS = [['金管', 'trumpet mellophone marching_horn horn trombone euphonium marching_euphonium tuba marching_tuba sousaphone'], ['木管', 'piccolo flute oboe bassoon eb_clarinet clarinet alto_clarinet bass_clarinet soprano_sax alto_sax tenor_sax baritone_sax'], ['打楽器', 'snare tenors bass_drum bass1 bass2 bass3 bass4 bass5 cymbals_mid cymbals_high glockenspiel xylophone'], ['その他', 'flag none']];
+function instrAutoText(i) {
+  const id = R && R.data.sections[i] ? R.data.sections[i].instrument : null;
+  return `自動（表示名から: ${id ? (INSTR_NAME[id] || id) : '…'}）`;
+}
+function updateInstrAuto() {
+  document.querySelectorAll('#psec select[data-key="instrument"]').forEach(sel => { const o = sel.options[0]; if (o) o.textContent = instrAutoText(+sel.dataset.path.slice(3)); });
+}
+function renderSecPane() {
+  let h = `<table class="t"><tr><th>記号</th><th>表示名</th><th>人数</th><th>色</th><th></th></tr>`;
+  const instrOpts = i => `<option value="">${esc(instrAutoText(i))}</option>` + INSTR_GROUPS.map(([g, ids]) => `<optgroup label="${g}">${ids.split(' ').map(id => `<option value="${id}" ${M.sections[i].instrument === id ? 'selected' : ''}>${esc(INSTR_NAME[id])}</option>`).join('')}</optgroup>`).join('');
+  M.sections.forEach((s, i) => {
+    h += `<tr><td><input data-sec="${i}" data-key="id" value="${esc(s.id)}" style="width:60px"></td><td><input data-path="sec${i}" data-key="label" value="${esc(s.label)}"></td>
+      <td><input data-path="sec${i}" data-key="n" value="${esc(s.n)}" style="width:44px"></td>
+      <td><input type="color" data-path="sec${i}" data-key="color" value="${esc(s.color || (R && R.data.sections[i] ? R.data.sections[i].color : '#cccccc'))}" style="width:40px;padding:0;height:24px"></td>
+      <td><button class="ghost" data-delsec="${i}">✕</button></td></tr>
+      <tr><td></td><td colspan="4"><label class="f" style="flex-direction:row;align-items:center;gap:6px">楽器<select data-path="sec${i}" data-key="instrument" style="flex:1;min-width:0">${instrOpts(i)}</select></label></td></tr>`;
+  });
+  h += `</table><button id="addsec" style="margin-top:8px">＋ セクションを追加</button>
+    <div class="hint" style="margin-top:10px">メンバー名は「記号＋番号」（tp1, tp2 …）になります。記号を変えると、隊形の対象も自動で書き換わります。人数を増やすと、新しいメンバーは最初のセットで位置が必要になります。</div>`;
+  $('psec').innerHTML = h;
+  bindInputs($('psec'));
+  $('psec').querySelectorAll('[data-sec]').forEach(inp => inp.addEventListener('change', () => {
+    const i = +inp.dataset.sec, old = M.sections[i].id, nu = inp.value.trim();
+    if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(nu) || nu === old) { inp.value = old; return; }
+    M.sections[i].id = nu;
+    const re = new RegExp(`^${old}(\\d*)$`);
+    for (const set of M.sets) for (const st of set.stmts)
+      st.group = groupTokens(st.group).map(t => t.split('..').map(x => x.replace(re, (m, d) => nu + d)).join('..')).join(' + ');
+    edited(true);
+  }));
+  $('psec').querySelectorAll('[data-delsec]').forEach(b => b.onclick = async () => {
+    const i = +b.dataset.delsec, id = M.sections[i].id;
+    if (!(await ask(`セクション ${M.sections[i].label} を削除しますか？（隊形の対象からも外します）`, '削除する'))) return;
+    M.sections.splice(i, 1);
+    const re = new RegExp(`^${id}\\d*(\\.\\.${id}\\d*)?$`);
+    for (const set of M.sets) set.stmts = set.stmts.filter(st => { st.group = groupTokens(st.group).filter(t => !re.test(t)).join(' + '); return st.group; });
+    edited(true);
+  });
+  $('addsec').onclick = () => {
+    let n = 1; while (M.sections.some(s => s.id === 'sec' + n)) n++;
+    const id = 'sec' + n, c = defaultCenter();
+    M.sections.push({id, label: '新しいセクション', n: '4', color: '#7bed9f', note: [], tail: null});
+    if (M.sets[0]) M.sets[0].stmts.push(newStmt(id, {kind: 'line', a: [isFinite(+c[0]) ? fmt(+c[0] - 3) : c[0], c[1]], b: [isFinite(+c[0]) ? fmt(+c[0] + 3) : c[0], c[1]]}));
+    edited(true);
+  };
+}
+
+// ---- ショー設定 ----
+function renderShowPane() {
+  const f = M.field;
+  let h = `<div class="row">${fld('ショー名', M.name, 'name', 'show', '240px')}</div>
+  <div class="row"><label class="f">会場<select data-path="field" data-key="type"><option value="gym" ${f.type === 'gym' ? 'selected' : ''}>体育館</option><option value="stage" ${f.type === 'stage' ? 'selected' : ''}>ステージ</option><option value="football" ${f.type === 'football' ? 'selected' : ''}>フットボールフィールド</option><option value="floor" ${f.type === 'floor' ? 'selected' : ''}>フロア（任意）</option></select></label>`;
+  if (f.type === 'football') h += `<label class="f">ハッシュ<select data-path="field" data-key="level"><option value="hs" ${f.level === 'hs' ? 'selected' : ''}>高校</option><option value="college" ${f.level === 'college' ? 'selected' : ''}>大学</option><option value="nfl" ${f.level === 'nfl' ? 'selected' : ''}>NFL</option></select></label>`;
+  else h += fld(f.type === 'stage' ? '間口(m)' : '横(m)', f.w, 'w', 'field', '60px') + fld('奥行(m)', f.d, 'd', 'field', '60px') + (f.type === 'stage' ? fld('袖(m)', f.wing, 'wing', 'field', '50px') : '');
+  h += `</div><div class="row">${fld('テンポ', M.tempo, 'tempo', 'show', '60px')}${fld('衝突とみなす距離', M.clearance, 'clearance', 'show', '70px')}${fld('歩幅の上限', M.maxstep, 'maxstep', 'show', '70px')}<label class="f">見た目<select data-path="show" data-key="look"><option value="" ${!M.look || M.look === 'real' ? 'selected' : ''}>リアル（既定）</option><option value="illust" ${M.look === 'illust' ? 'selected' : ''}>イラスト</option></select></label></div>
+  <div class="hint">空欄は既定値です。体育館・ステージ: 衝突 0.6m、歩幅の上限は1カウント0.8m。フットボール: 衝突 1歩、6 to 5 より大股で警告。<br>会場を変えると座標の意味が変わります（体育館は中心が原点、ステージは舞台前端の中央が原点）。</div>`;
+  $('pshow').innerHTML = h;
+  $('pshow').querySelector('[data-key="type"]').addEventListener('change', e => {
+    const t = e.target.value;
+    if (t === 'gym') Object.assign(M.field, {w: M.field.w || '30', d: M.field.d || '30'});
+    if (t === 'stage') Object.assign(M.field, {w: '16', d: '10', wing: '4'});
+    if (t === 'floor') Object.assign(M.field, {w: M.field.w || '24', d: M.field.d || '18'});
+    if (t === 'football') M.field.level = M.field.level || 'hs';
+  });
+  bindInputs($('pshow'));
+}
+
+// ---- チェック ----
+let fixNotes = [];
+function renderWarns() {
+  const D = R.data, nc = D.warnings.filter(w => w.kind === '衝突').length;
+  $('pwarn').innerHTML = (nc ? `<div class="row"><button id="autofix" class="pri" title="時間差（wait）・早着き（in）・カーブ（bend）を総当たりで試して、衝突が最も減る直し方を入れます（Ctrl+Z で戻せます）">衝突を自動で直す</button></div>` : '') +
+    (fixNotes.length ? `<div class="card" style="border-color:var(--ok)"><div class="note" style="color:var(--ok);font-weight:600">自動で直しました</div>${fixNotes.map(n => `<div class="note">・${esc(n)}</div>`).join('')}</div>` : '') +
+    (D.warnings.length ? D.warnings.map((w, j) => `<div class="warn" data-j="${j}"><b>${w.kind}</b>${esc(w.msg)}</div>`).join('') : '<div style="color:var(--ok)">✓ 大股・衝突・場外はありません</div>');
+  if ($('autofix')) $('autofix').onclick = autoFix;
+  document.querySelectorAll('#pwarn .warn').forEach(d => d.onclick = () => { const w = D.warnings[+d.dataset.j]; stopPlay(); playT = null; curSet = w.set; curStmt = -1; refresh(true); $('info').textContent = w.msg; });
+  const n = D.warnings.length;
+  document.querySelector('.tabs [data-p="pwarn"]').textContent = n ? `チェック ⚠${n}` : 'チェック ✓';
+}
+async function autoFix() {
+  $('autofix').disabled = true; $('autofix').textContent = '探しています…';
+  const r = await fetch('/api/fix', {method: 'POST', body: src}).then(r => r.json());
+  if (!r.ok) { notice(r.error); renderWarns(); return; }
+  if (!r.notes.length) { fixNotes = ['自動で直せる組み合わせは見つかりませんでした。隊形や counts を見直してください。']; renderWarns(); return; }
+  pushUndo(src);
+  M = r.model;
+  fixNotes = [...r.notes, `衝突 ${r.before}件 → ${r.after}件`];
+  edited(true);
+  renderPanels();
+}
+
+
+// ---- 楽譜（パート） ----
+// 打楽器・管楽器が演奏する譜面。本文は `part` ブロックの記法そのまま（README の「楽譜（part）」参照）
+let scorePlay = null;
+function stopScore() { if (scorePlay) { cancelAnimationFrame(scorePlay.raf); scorePlay = null; jkAudio.stop(); } const b = document.querySelector('#pscore [data-play].on'); if (b) { b.classList.remove('on'); b.textContent = '▶ 試聴'; } }
+function defaultPartGroup() {
+  const d = R && R.data;
+  const drum = d && d.sections.find(s => /^(snare|tenors|bass|bass_drum|bass[1-5]|cymbals_mid|cymbals_high|xylophone|glockenspiel)$/.test(s.instrument));
+  return drum ? drum.id : (M.sections[0] ? M.sections[0].id : 'all');
+}
+function renderScorePane() {
+  stopScore();
+  const ids = ['all', ...M.sections.map(s => s.id)];
+  let h = `<div class="row"><button id="addpart" class="pri">＋ パートを追加</button><button id="xmlnew" title="MusicXML（.musicxml / .xml / .mxl）の1パートを、新しいパートとして読み込みます">MusicXMLから読み込む</button><input type="file" id="xmlfile" accept=".musicxml,.xml,.mxl" style="display:none"></div>
+  <datalist id="grouplist">${ids.map(i => `<option value="${esc(i)}">`).join('')}</datalist><datalist id="meterlist">${['4/4', '3/4', '2/4', '2/2', '5/4', '6/8', '7/8', '9/8', '12/8'].map(i => `<option value="${i}">`).join('')}</datalist>`;
+  if (!M.parts.length) h += `<div class="hint" style="margin:10px 0">パートを足すと、そのセクションの人が譜面どおりに叩きます（再生すると音も鳴ります）。</div>`;
+  M.parts.forEach((p, i) => {
+    h += `<div class="pcard" data-pi="${i}"><div class="row">
+      <label class="f">名前<input data-pf="name" value="${esc(p.name)}" style="width:110px"></label>
+      <label class="f" title="セクション・メンバー・a + b・all">対象<input data-pf="group" list="grouplist" value="${esc(p.group)}" style="width:120px"></label>
+      <label class="f">拍子<input data-pf="meter" list="meterlist" value="${esc(p.meter || '4/4')}" style="width:52px"></label>
+      <label class="f">開始<input data-pf="start" value="${esc(p.start || '')}" placeholder="0 / set 2" style="width:64px"></label></div>
+      <textarea class="score" data-pf="src" spellcheck="false" placeholder="例: 16: R r l r R r l r | 8: ^R l r l 3[ R l r ] |">${esc(p.src)}</textarea>
+      <div class="perr" data-perr="${i}"></div>
+      <div class="row" style="margin:6px 0 0"><button data-play="${i}">▶ 試聴</button><button data-xml="${i}" title="MusicXMLの1パートで、この譜面を置き換えます">MusicXMLから</button><span style="flex:1"></span><button class="ghost" data-delpart="${i}">削除</button></div>
+      <div class="pstaff" data-staff="${i}"></div></div>`;
+  });
+  h += `<div class="hint" style="margin-top:8px">R/L/B = アクセント付きの右手・左手・両手、r/l/b = 普通の強さ。<code>^</code>強いアクセント <code>x</code>スティック <code>f</code>フラム <code>d</code>ダブル <code>z</code>バズ <code>-</code>休符 <code>~</code>タイ <code>|</code>小節線。<code>16:</code> で音価（4: 8: 16: 32: / <code>8.:</code> 付点）、<code>3[ r l r ]</code> で3連符、<code>R2</code> のように手の後ろの数字で打面（スネア 2=リム 3=スティック、テナー 1〜6、バス 1〜5、シンバル 2=閉 3=開 4=チョーク）。</div>`;
+  $('pscore').innerHTML = h;
+  const P = i => M.parts[i];
+  $('pscore').querySelectorAll('[data-pf]').forEach(inp => inp.addEventListener('input', () => {
+    const i = +inp.closest('.pcard').dataset.pi, k = inp.dataset.pf;
+    let v = inp.value;
+    if (k === 'meter' || k === 'start') { v = v.trim(); if (v === '') v = null; }
+    P(i)[k] = v;
+    edited(false);
+  }));
+  $('addpart').onclick = () => {
+    let n = M.parts.length + 1; while (M.parts.some(p => p.name === 'パート' + n)) n++;
+    M.parts.push({name: 'パート' + n, group: defaultPartGroup(), meter: '4/4', start: null, src: '16: R r l r R r l r R r l r R r l r |', note: [], line: 0});
+    edited(true);
+  };
+  $('xmlnew').onclick = () => importXml(-1);
+  $('pscore').querySelectorAll('[data-xml]').forEach(b => b.onclick = () => importXml(+b.dataset.xml));
+  $('pscore').querySelectorAll('[data-delpart]').forEach(b => b.onclick = async () => {
+    const i = +b.dataset.delpart;
+    if (!(await ask(`パート「${P(i).name}」を削除しますか？`, '削除する'))) return;
+    M.parts.splice(i, 1); edited(true);
+  });
+  $('pscore').querySelectorAll('[data-play]').forEach(b => b.onclick = () => playPart(+b.dataset.play, b));
+  updateScoreView();
+}
+// 楽譜の絵とエラー表示だけを更新（入力欄は触らない）
+function updateScoreView() {
+  if (!M || !$('pscore')) return;
+  const D = R && R.data, ok = D && D.parts && D.parts.length === M.parts.length && !lastErr;
+  // エラー行がどのパートの中か（src は今コンパイルしている文字列）
+  const lines = src.split('\n'), starts = [];
+  lines.forEach((l, n) => { if (/^\s*(part|パート)\s/.test(l)) starts.push(n + 1); });
+  M.parts.forEach((p, i) => {
+    const e = $('pscore').querySelector(`[data-perr="${i}"]`), st = $('pscore').querySelector(`[data-staff="${i}"]`);
+    if (!e || !st) return;
+    let msg = '';
+    if (lastErr && lastErr.line && starts.length === M.parts.length) {
+      let endL = lines.length;
+      for (let n = starts[i]; n < lines.length; n++) if (/^  }\s*$/.test(lines[n])) { endL = n + 1; break; }
+      if (lastErr.line >= starts[i] && lastErr.line <= endL) {
+        const off = lastErr.line - starts[i] - (p.meter ? 1 : 0) - (p.start ? 1 : 0);
+        msg = `${off >= 1 && lastErr.line < endL ? off + '行目 ' + Math.max(lastErr.col - 4, 1) + '列: ' : ''}${lastErr.msg}`;
+      }
+    }
+    const warns = ok ? D.warnings.filter(w => w.kind === '拍子' && w.msg.startsWith(`パート「${p.name}」`)).map(w => w.msg) : [];
+    e.textContent = [msg ? '⚠ ' + msg : '', ...warns.map(w => '△ ' + w)].filter(Boolean).join('\n');
+    e.style.color = msg ? '' : '#ffd23f';
+    const dp = D && D.parts && D.parts[i];
+    if (dp && !(scorePlay && scorePlay.i === i)) {
+      const len = Math.max(dp.end - dp.start, 1);
+      st.innerHTML = dp.notes.length ? jkStaff(dp, dp.start, dp.end, Math.ceil(80 + len * 60), 120, null) : '';
+    }
+    st.style.opacity = ok ? '' : '0.45';
+  });
+}
+function playPart(i, btn) {
+  const was = scorePlay && scorePlay.i === i;
+  stopScore(); stopPlay();
+  if (was) { updateScoreView(); return; }
+  const D = R && R.data; if (!D || lastErr || !D.parts || !D.parts[i]) return;
+  const p = D.parts[i], D2 = Object.assign({}, D, {parts: [p]});
+  if (!jkAudio.play(D2, p.start)) return;
+  btn.classList.add('on'); btn.textContent = '■ 停止';
+  const st = $('pscore').querySelector(`[data-staff="${i}"]`), t0 = performance.now(), s0 = jkAudio.secAt(D2, p.start);
+  const len = Math.max(p.end - p.start, 1), W = Math.ceil(80 + len * 60);
+  scorePlay = {i, raf: 0};
+  const step = () => {
+    if (!scorePlay || scorePlay.i !== i) return;
+    const c = jkAudio.countAt(D2, s0 + (performance.now() - t0) / 1000);
+    if (c > p.end + 1 || !jkAudio.playing) { stopScore(); updateScoreView(); return; }
+    st.innerHTML = jkStaff(p, p.start, p.end, W, 120, c);
+    const x = 70 + (c - p.start) / len * (W - 80);
+    if (x > st.scrollLeft + st.clientWidth - 40 || x < st.scrollLeft) st.scrollLeft = Math.max(0, x - 60);
+    scorePlay.raf = requestAnimationFrame(step);
+  };
+  scorePlay.raf = requestAnimationFrame(step);
+}
+// MusicXML（.musicxml / .xml / .mxl）の1パートを譜面に取り込む。i = -1 なら新しいパート
+function importXml(i) {
+  const f = $('xmlfile'); f.value = '';
+  f.onchange = async () => {
+    const file = f.files[0]; if (!file) return;
+    try {
+      const text = /\.mxl$/i.test(file.name) ? await jkUnpackMxl(await file.arrayBuffer()) : await file.text();
+      let r = jkImportMusicXml(text);
+      if (r.parts.length > 1) {
+        const pick = await modal('MusicXML の読み込み', 'どのパートを読み込みますか？', [{label: 'やめる', value: -1}, ...r.parts.map((n, k) => ({label: n, value: k, cls: k === 0 ? 'pri' : ''}))]);
+        if (typeof pick !== 'number' || pick < 0) return;
+        r = jkImportMusicXml(text, pick);
+      }
+      if (i < 0) M.parts.push({name: r.name, group: defaultPartGroup(), meter: r.meter, start: null, src: r.notation, note: [], line: 0});
+      else { M.parts[i].meter = r.meter; M.parts[i].src = r.notation; }
+      edited(true);
+      if (r.warnings.length) notice('読み込みました。\n' + r.warnings.map(w => '・' + w).join('\n'));
+    } catch (e) { notice('MusicXML を読み込めません: ' + e.message); }
+  };
+  f.click();
+}
+
+// ---- コード（上級） ----
+let codeTimer = null;
+$('code').addEventListener('input', () => {
+  clearTimeout(codeTimer);
+  codeTimer = setTimeout(async () => {
+    const s = $('code').value;
+    pushUndo(src);
+    dirty = s !== savedSrc;
+    await compile(s, true);
+    $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : '';
+  }, 400);
+});
+
+// ---- 動きの再生（このセットだけ） ----
+$('playset').onclick = () => {
+  if (!R) return;
+  stopPlay(); playT = null;
+  const D = R.data, k = curSet, s = D.sets[k];
+  if (k === 0 || !s.counts) return;
+  const dur = s.counts * 60 / (s.tempo || D.tempo) * 1000, t0 = performance.now();
+  const step = now => {
+    const c = Math.min(s.counts, (now - t0) / dur * s.counts);
+    const sts = s.pos.map((_, i) => jkState(D, i, s.start + c));
+    drawCanvas({pos: sts.map(x => x.p), face: sts.map(jkFacing)});
+    $('info').textContent = `セット ${s.name} へ移動中 ${Math.min(s.counts, Math.floor(c) + 1)}/${s.counts}`;
+    if (c < s.counts) requestAnimationFrame(step); else drawCanvas();
+  };
+  requestAnimationFrame(step);
+};
+$('showprev').onchange = () => drawCanvas();
+$('shownames').onchange = () => drawCanvas();
+
+// ================= 右クリックメニュー =================
+let ctxT = null, ctxView = 'main';
+function openCtx(ev, target) {
+  ctxT = target; ctxView = 'main';
+  const m = $('ctx'); m.style.display = 'block'; m.dataset.x = ev.clientX; m.dataset.y = ev.clientY;
+  renderCtx();
+}
+function ctxPlace() {
+  const m = $('ctx'), x = +m.dataset.x, y = +m.dataset.y;
+  m.style.left = Math.max(4, Math.min(innerWidth - m.offsetWidth - 4, x)) + 'px';
+  m.style.top = Math.max(4, Math.min(innerHeight - m.offsetHeight - 4, y)) + 'px';
+}
+function ctxHasIndividual() {
+  if (!R || !sel.size) return false;
+  return M.sets[curSet].stmts.some(st => stmtIsIndividual(st) && [...sel].some(i => R.data.performers[i].id === st.group.trim()));
+}
+function renderCtx() {
+  const m = $('ctx'), t = ctxT, isSel = t.type === 'sel', tgt = isSel ? 'sel' : `stmt:${t.si}`;
+  const st = !isSel ? M.sets[curSet].stmts[t.si] : null;
+  let h = '';
+  const back = '<button class="mi" data-cx="back">← 戻る</button><div class="ms"></div>';
+  if (ctxView === 'main') {
+    h += `<div class="mh">${isSel ? `選んだ ${sel.size}人` : (st && st.shape.kind === 'attr' ? '姿勢・向きだけ' : `隊形: ${kindName(st ? st.shape.kind : '')}`)}</div>`;
+    const canArr = isSel ? sel.size >= 2 : st && st.shape.kind !== 'attr';
+    h += `<button class="mi" data-cx="arr" ${canArr ? '' : 'disabled'}>${isSel ? '並べる' : '形を変える'}　▸</button><button class="mi" data-cx="face">向き　▸</button><button class="mi" data-cx="pose">姿勢　▸</button><button class="mi" data-cx="carry">構え　▸</button>`;
+    h += `<div class="ms"></div><button class="mi" data-cx="unpin" ${ctxHasIndividual() ? '' : 'disabled'}>個別の位置を解除</button>`;
+    if (!isSel) h += `<button class="mi" data-cx="del">この${st && st.shape.kind === 'attr' ? '指定' : '隊形'}を削除</button>`;
+    else h += `<button class="mi" data-cx="clear">選択を解除</button>`;
+  } else if (ctxView === 'arr') {
+    h += back + '<div class="arr">' + [['line', '直線'], ['arc', '弧'], ['circle', '円'], ['curve', '曲線'], ['block', 'ブロック'], ['follow', 'フォロー']].map(([k, n]) => `<button data-cxarr="${k}" ${k === 'follow' && curSet === 0 ? 'disabled' : ''}>${n}</button>`).join('') + '</div>';
+  } else if (ctxView === 'face') {
+    h += back + '<div class="pw">' + compassHtml(tgt, isSel ? selFaceStr() : st.face) + '</div>';
+  } else if (ctxView === 'carry') {
+    h += back + '<div class="pw">' + carryHtml(tgt, isSel ? (selCommon('carry') || '') : st.carry) + '</div>';
+  } else if (ctxView === 'pose') {
+    h += back + '<div class="pw">' + paletteHtml(tgt, isSel ? (selCommon('pose') || '') : st.pose) + '</div>';
+  }
+  m.innerHTML = h;
+  m.querySelectorAll('[data-cx]').forEach(b => b.onclick = () => {
+    const c = b.dataset.cx;
+    if (c === 'back') ctxView = 'main';
+    else if (['arr', 'face', 'pose', 'carry'].includes(c)) ctxView = c;
+    else if (c === 'unpin') { hidePops(); removeIndividual(curSet, [...sel]); edited(true); updateSel(); return; }
+    else if (c === 'clear') { hidePops(); sel.clear(); updateSel(); drawCanvas(); return; }
+    else if (c === 'del') { hidePops(); M.sets[curSet].stmts.splice(t.si, 1); curStmt = -1; edited(true); return; }
+    renderCtx();
+  });
+  m.querySelectorAll('[data-cxarr]').forEach(b => b.onclick = () => {
+    const k = b.dataset.cxarr; hidePops();
+    if (isSel) { if (k === 'follow') makeFollow(); else arrange(k); }
+    else { const s2 = M.sets[curSet].stmts[t.si]; s2.shape = defaultShape(k, s2); curStmt = t.si; edited(true); }
+  });
+  ctxPlace();
+}
+svg.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (!R || tool !== 'select') return;
+  const t = e.target, dot = t.closest && t.closest('[data-i]'), h = t.closest && t.closest('[data-si]'), gz = t.closest && t.closest('[data-g]');
+  if (dot) { const i = +dot.dataset.i; if (!sel.has(i)) { sel = new Set([i]); updateSel(); drawCanvas(); } openCtx(e, {type: 'sel'}); }
+  else if (h) { const si = +h.dataset.si; curStmt = si; markCards(); drawCanvas(); openCtx(e, {type: 'stmt', si}); }
+  else if (gz && sel.size) openCtx(e, {type: 'sel'});
+  else if (sel.size) openCtx(e, {type: 'sel'});
+  else if (curStmt >= 0) openCtx(e, {type: 'stmt', si: curStmt});
+});
+$('pset').addEventListener('contextmenu', e => {
+  const c = e.target.closest('.card[data-si]');
+  if (!c || e.target.closest('input,textarea')) return;
+  e.preventDefault();
+  const si = +c.dataset.si; curStmt = si; markCards(); if (R) drawCanvas();
+  openCtx(e, {type: 'stmt', si});
+});
+
+// ---- 保存・プレビュー・動画 ----
+$('save').onclick = save;
+$('undo').onclick = undo; $('redo').onclick = redo;
+// ブラウザ版（jinkei web）: プレビューはひな形から作ってBlob URLで開く
+function openLocalPreview(hash) {
+  if (!R || lastErr) { notice('エラーを直してからプレビューしてください'); return; }
+  const h = JK_LOCAL.previewHtml(R.data, R.data.name);
+  window.open(URL.createObjectURL(new Blob([h], {type: 'text/html'})) + (hash || ''), '_blank');
+}
+$('preview').onclick = () => { if (window.JK_LOCAL) openLocalPreview(''); else window.open('/preview', '_blank'); };
+$('video').onclick = async () => {
+  if (window.JK_LOCAL) { openLocalPreview('#view=3d&rec=1&cam=' + encodeURIComponent($('vcam').value)); return; }
+  if (lastErr) { notice('エラーを直してから書き出してください'); return; }
+  const r = await fetch('/api/video', {method: 'POST', body: $('vcam').value}).then(r => r.json());
+  if (!r.ok) { notice(r.error); return; }
+  $('vprog').style.display = 'inline-block'; $('video').disabled = true;
+  const poll = async () => {
+    const v = await fetch('/api/video').then(r => r.json());
+    if (v.total) $('vprog').value = v.done / v.total;
+    $('video').textContent = v.running ? `描画中 ${v.total ? Math.round(v.done / v.total * 100) : 0}%` : '3D動画を書き出す';
+    if (v.running) { setTimeout(poll, 500); return; }
+    $('vprog').style.display = 'none'; $('video').disabled = false;
+    if (v.error) notice('書き出しに失敗しました: ' + v.error);
+    else { $('info').textContent = `動画を書き出しました: ${v.path}`; window.open('/video.mp4?' + Date.now(), '_blank'); }
+  };
+  poll();
+};
+document.addEventListener('keydown', e => {
+  if (modalKey && $('modalbg').style.display === 'flex') { modalKey(e); return; }
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === 's') { e.preventDefault(); save(); }
+  else if (mod && e.key.toLowerCase() === 'z' && !/TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (typing || !R) return;
+  if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); sel = new Set(R.data.performers.map((_, i) => i)); updateSel(); drawCanvas(); }
+  else if (e.key === 'Escape') {
+    if ($('ctx').style.display === 'block' || $('pop').style.display === 'block') { closePops(); return; }
+    if (draw || pendingDraw) { cancelDraw(); return; }
+    if (tool !== 'select') { setTool('select'); return; }
+    exitScrub(); sel.clear(); curStmt = -1; updateSel(); markCards(); drawCanvas();
+  }
+  else if (e.key === 'Enter' && draw && draw.poly) { e.preventDefault(); finishPoly({clientX: innerWidth / 2, clientY: innerHeight / 2}); }
+  else if (!mod && !e.altKey && e.key === ' ' && document.activeElement.tagName !== 'BUTTON') { e.preventDefault(); $('tlplay').click(); }
+  else if (!mod && !e.altKey && /^[vlacpfb]$/i.test(e.key)) { const t = {v: 'select', l: 'line', a: 'arc', c: 'circle', p: 'curve', f: 'follow', b: 'block'}[e.key.toLowerCase()]; setTool(t); }
+  else if (sel.size && e.key.startsWith('Arrow')) {
+    e.preventDefault();
+    const st = (+$('snap').value || 0.1) * (e.shiftKey ? 4 : 1);
+    const d = {ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st]}[e.key];
+    moveSelected(d[0], d[1], new Map([...sel].map(j => [j, basePos(curSet, j)])));
+    edited(true);
+  }
+});
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+// 描画中でない時に、スクラブ中の画面をクリックしたら編集に戻る
+svg.addEventListener('pointerdown', e => {
+  if (playT !== null || playing) { exitScrub(); e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+
+// ---- ブラウザ版: 開く・新規・ドロップ ----
+function showName(name) { $('fname').textContent = name; document.title = `${name} — 陣形エディタ`; }
+async function loadLocal(text, name, handle, fresh) {
+  if (dirty && !(await ask('保存していない変更があります。破棄して続けますか？', '破棄して続ける'))) return;
+  JK_LOCAL.setFile(name, handle); showName(name);
+  undoStack = []; redoStack = []; sel.clear(); stopPlay(); playT = null;
+  savedSrc = fresh ? '' : text;
+  await compile(text, true);
+  dirty = !!fresh; curSet = 0;
+  if (!R) { showTab('pcode'); $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : ''; }
+  setStatusFromState();
+}
+if (window.JK_LOCAL) {
+  $('localbtns').style.display = '';
+  $('openfile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (f) loadLocal(await f.text(), f.name, null);
+  };
+  $('open').onclick = async () => {
+    if (!window.showOpenFilePicker) { $('openfile').click(); return; }
+    try {
+      const [h] = await window.showOpenFilePicker({types: [{description: '陣形ファイル', accept: {'text/plain': ['.jk']}}]});
+      loadLocal(await (await h.getFile()).text(), h.name, h);
+    } catch (e) { if (e.name !== 'AbortError') notice('開けませんでした: ' + e.message); }
+  };
+  $('newfile').onclick = () => loadLocal(JK_LOCAL.template, '新しいショー.jk', null, true);
+  window.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  window.addEventListener('drop', async e => {
+    const f = e.dataTransfer && e.dataTransfer.files[0];
+    if (!f) return;
+    e.preventDefault();
+    if (!/\.jk$/i.test(f.name)) { notice('.jk ファイルをドロップしてください'); return; }
+    loadLocal(await f.text(), f.name, null);
+  });
+}
+
+// ---- 起動 ----
+renderTools();
+(async () => {
+  const r = await fetch('/api/source').then(r => r.json());
+  showName(r.name);
+  savedSrc = r.source;
+  await compile(r.source, true);
+  if (!R) { showTab('pcode'); $('codeerr').textContent = lastErr ? `${lastErr.line}行${lastErr.col}列: ${lastErr.msg}` : ''; }
+})();
+</script>
+</body></html>

@@ -1,0 +1,9 @@
+show "oob" {
+  section a "A" 4
+  set 1 {
+    a : line (-5, 0) -> (5, 0)
+  }
+  set 2 counts 2 {
+    a : line (-40, 0) -> (40, 20)
+  }
+}

@@ -1,0 +1,5 @@
+show "x" {
+  section a 11
+  section a1 1
+  set 1 { a : line (0, 0) -> (4, 1) }
+}

@@ -1,0 +1,17 @@
+show "attr inherit" {
+  section a "A" 3
+  section b "B" 3
+  set 1 {
+    a : line (-6, 0) -> (6, 0) face 30 pose rest
+    b : line (-6, 4) -> (6, 4)
+  }
+  set 2 counts 8 {
+    b : face out pose wide
+  }
+  set 3 counts 8 {
+    a : line (-6, 8) -> (6, 8)
+  }
+  set 4 counts 4 {
+    b2 : face front step jazz
+  }
+}

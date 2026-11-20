@@ -1,0 +1,13 @@
+# 見た目（イラスト）
+show "look" {
+  field gym
+  tempo 120
+  look イラスト
+  section sn "スネア" 3 instrument snare
+  set 1 hold 4 {
+    sn : line (-3, 0) -> (3, 0)
+  }
+  set 2 counts 8 {
+    sn : arc (0, 0) radius 4 from 200 to 340
+  }
+}

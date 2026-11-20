@@ -1,0 +1,8 @@
+show "attr first" {
+  section a "A" 3
+  section b "B" 2
+  set 1 {
+    a : line (-6, 0) -> (6, 0)
+    b : face front pose rest
+  }
+}

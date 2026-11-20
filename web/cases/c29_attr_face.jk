@@ -1,0 +1,21 @@
+show "attr face" {
+  section a "A" 4
+  section b "B" 4
+  set 1 {
+    a : circle (-6, 4) radius 3
+    b : circle (6, 4) radius 3
+  }
+  set 2 counts 8 {
+    a : line (-8, 0) -> (-2, 0)
+    b : line (2, 0) -> (8, 0)
+    a : face center
+    b : face out pose kneel
+  }
+  set 3 counts 8 {
+    a : line (-8, 6) -> (8, 6)
+    b : face 45 pose crouch
+  }
+  set 4 counts 4 {
+    a1 + a2 : face toward (0, 0) step slide action swing
+  }
+}

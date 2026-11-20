@@ -1,0 +1,16 @@
+show "waitin" {
+  section a "A" 6
+  section b "B" 6
+  set 1 {
+    a : line (-8, -6) -> (8, -6)
+    b : line (-8, 6) -> (8, 6)
+  }
+  set 2 counts 16 {
+    a : line (-8, 6) -> (8, 6) wait 4
+    b : line (-8, -6) -> (8, -6) in 8
+  }
+  set 3 counts 16 hold 4 {
+    a : same shift (0, -3) wait 2 in 10
+    b : same shift (0, 3) wait 8
+  }
+}

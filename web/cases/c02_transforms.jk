@@ -1,0 +1,16 @@
+show "xf" {
+  section a "A" 8
+  section b "B" 4
+  set 1 {
+    a : line (-8, 0) -> (8, 0)
+    b : block (0, 8) cols 2
+  }
+  set 2 counts 16 {
+    a : line (-8, 0) -> (8, 0) rotate 45
+    b : block (0, 8) cols 2 shift (2, -3) scale 1.5
+  }
+  set 3 counts 16 {
+    a : same rotate 90 about (0, 0) scale 0.5 shift (1, 1)
+    b : circle (0, 0) radius 3 rotate -30 scale 2
+  }
+}

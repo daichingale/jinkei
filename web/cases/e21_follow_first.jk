@@ -1,0 +1,4 @@
+show "x" {
+  section a "A" 3
+  set 1 { a : follow (0, 0) -> (4, 1) }
+}

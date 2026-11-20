@@ -1,0 +1,21 @@
+show "fb" {
+  field football college
+  section a "A" 8
+  section b "B" 6
+  set 1 hold 8 {
+    a : line (s1(35), FH + 6) -> (s2(35), FH + 6)
+    b : block (0, MID) cols 3 spacing 2.5
+  }
+  set 2 counts 16 {
+    a : arc (0, BH) radius 24 from 200 to 340
+    b : circle (0, MID) radius 8
+  }
+  set 3 counts 4 {
+    a : line (yd(-20), BH) -> (yd(20), BH)
+    b : same shift (m(20), 0)
+  }
+  set 4 counts 16 {
+    a : line (s1(50), 0) -> (s2(50), 0)
+    b : line (0, 0) -> (BSL, 120)
+  }
+}

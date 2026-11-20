@@ -1,0 +1,31 @@
+# 陣形 サンプル: 屋内フロア（大きさは例。会場に合わせて変更してください）
+show "フロアドリル" {
+  field floor 24 x 18        # 横24m × 奥行18m、単位はメートル
+  tempo 120
+  clearance 0.6               # これより近づいたら衝突として警告
+  maxstep 0.75                # 1カウント75cmを超えたら大股として警告
+
+  section fl  "フルート"     6
+  section cl  "クラリネット" 8
+  section br  "金管"         10
+  section pc  "打楽器"       4
+
+  set A hold 4 {
+    br      : line (-8, 10) -> (8, 10)
+    fl + cl : arc (0, 9) radius 7 from 200 to 340
+    pc      : line (-3, 14) -> (3, 14)
+  }
+  set B counts 16 {
+    br      : circle (0, MID) radius 5 start 0
+    fl + cl : curve (LEFT + 2, 2) -> (0, 3.5) -> (RIGHT - 2, 2)
+    pc      : block (0, MID) cols 2 spacing 1.5
+  }
+  set C counts 8 {
+    br      : same rotate 36
+  }
+  set D counts 16 hold 4 {
+    br      : poly (-9, 13) -> (0, 6) -> (9, 13)
+    fl + cl : line (-10, 2.5) -> (10, 2.5)
+    pc      : line (-2.25, 14) -> (2.25, 14)
+  }
+}

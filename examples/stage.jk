@@ -1,0 +1,40 @@
+# 陣形 サンプル: ステージ（既定は間口16m × 奥行10m、両袖4m）
+#   原点 = 舞台前端の中央、+x = 上手、+y = 奥。|x| が間口の半分を超えると袖
+show "ステージマーチング — 光の行進" {
+  field stage            # 大きさを変えるなら: field stage 18 x 12 wings 5
+  tempo 112
+
+  section tp  "トランペット" 6  color "#ffd23f"
+  section tb  "トロンボーン" 4  color "#ee5253"
+  section ww  "木管"         8  color "#48dbfb"
+  section pc  "打楽器"       4  color "#c8d6e5"
+
+  # 1: 袖でスタンバイ（金管は上手袖、木管は下手袖、打楽器は奥に置いておく）
+  set 1 hold 4 {
+    tp + tb : block (KAMIWING, 5) cols 2 spacing 1.4 rows 1.4
+    ww      : block (SHIMOWING, 5) cols 2 spacing 1.4 rows 1.4
+    pc      : line (shimo(3), 9) -> (kami(3), 9)
+  }
+
+  # 2: 両袖から登場して横一列
+  set 2 counts 16 {
+    tp + tb : line (kami(0.3), 5) -> (kami(7.5), 5)
+    ww      : line (shimo(0.5), 3) -> (shimo(7.5), 3)
+  }
+
+  # 3: 前に向かって開く弧（打楽器を囲む）
+  set 3 counts 16 {
+    tp + tb + ww : arc (0, 8.5) radius 6.5 from 200 to 340
+  }
+
+  # 4: 弧を少しずつ前へ（客席に迫る）
+  set 4 counts 8 {
+    tp + tb + ww : same shift (0, 1.5)
+  }
+
+  # 5: 締め。舞台前端から1mに一列、打楽器は中央奥
+  set 5 counts 16 hold 8 {
+    tp + tb + ww : line (shimo(7), 1.2) -> (kami(7), 1.2)
+    pc           : line (shimo(2), 4) -> (kami(2), 4)
+  }
+}

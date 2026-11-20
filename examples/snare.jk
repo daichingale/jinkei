@@ -1,0 +1,42 @@
+# スネアライン — 楽譜（part）つきの例
+# 7人のスネアが、くさび形 → 横一列 → 弧 と動きながら、8小節の譜面を叩く
+show "スネアライン" {
+  field gym
+  tempo 140
+
+  section sn "スネア" 7 instrument snare color "#ff9f43"
+
+  set 1 hold 8 {
+    sn : poly (-6, -10) -> (0, -3) -> (6, -10)
+  }
+
+  set 2 counts 20 {
+    sn : line (-8, 4) -> (8, 4)
+  }
+
+  set 3 counts 20 {
+    sn : arc (0, -2) radius 9 from 200 to 340
+  }
+
+  # 全員で同じ譜面（R/L = アクセント付きの右手/左手、小文字は普通の強さ）
+  part "スネアソロ" for sn {
+    meter 4/4
+    start 0
+    # 1: 8分音符の基本
+    8: R l r l R l r l |
+    # 2: 16分音符とアクセント（^ は強いアクセント）
+    16: ^R r l r R r l r ^L r l r R l r l |
+    # 3: フラム(f)とダブル(d)
+    8: fR l dr l fL r dl r |
+    # 4: 3連符
+    8: 3[ R l r ] 3[ L r l ] 3[ R l r ] 3[ L r l ] |
+    # 5: スティック打ち(x) + 16分
+    8: xR xl xr xl 16: R r l r R r l r |
+    # 6: 休符・タイ・両手
+    4: R 8: - r l 16: R r l r 8: B |
+    # 7: バズ（z）ロール
+    4: zR ~ zL ~ |
+    # 8: 決め
+    16: ^B - - - ^B - - - 8: ^B - 4: ^B |
+  }
+}

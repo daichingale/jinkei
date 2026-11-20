@@ -1,0 +1,21 @@
+# 先頭コメント
+# 二行目
+show "comments" {   # ショー行の末尾
+  # 設定コメント
+  tempo 120   # テンポ
+  # セクション前
+  section a "A" 4 color "#ff0000"   # 色つき
+  section b 3  # ラベル省略
+  # セット1の前
+  set 1 hold 2 {  # セット行末
+    # 文の前
+    a : line (-6, 0) -> (6, 0)   # 文の末尾
+    b : line (-1, 5) -> (1, 5); # 付き
+    # 最後の前のコメント
+  }
+  set "second" counts 8 {
+    a : same
+    b : line (-2, 5) to (2, 5)
+  }
+  # 終わりの前
+}

@@ -1,0 +1,5 @@
+show "x" {
+  section a "A" 3
+  section b "B" 3
+  set 1 { a1..b2 : line (0, 0) -> (4, 1) }
+}

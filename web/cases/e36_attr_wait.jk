@@ -1,0 +1,9 @@
+show "attr err" {
+  section a "A" 3
+  set 1 {
+    a : line (-6, 0) -> (6, 0)
+  }
+  set 2 counts 8 {
+    a : face front wait 2
+  }
+}

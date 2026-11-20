@@ -1,0 +1,22 @@
+show "explicit instrument" {
+  section a "低音" 2 instrument trumpet
+  section b "Trumpet" 2 color "#ff0000" instrument bass3
+  section c "x" 2 instrument "テナーサックス" color "#00ff00"
+  section d "y" 2 instrument バスクラリネット
+  section e "z" 2 instrument none
+  section f "テナー" 2 instrument tenor_sax
+  set 1 {
+    a1 : at (-8, 0)
+    a2 : at (-6, 0)
+    b1 : at (-4, 0)
+    b2 : at (-2, 0)
+    c1 : at (0, 0)
+    c2 : at (2, 0)
+    d1 : at (4, 0)
+    d2 : at (6, 0)
+    e1 : at (8, 0)
+    e2 : at (-8, 4)
+    f1 : at (-6, 4)
+    f2 : at (-4, 4)
+  }
+}

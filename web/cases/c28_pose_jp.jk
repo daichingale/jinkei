@@ -1,0 +1,17 @@
+show "poses jp" {
+  section a "A" 9
+  set 1 {
+    a1 : at (-8, 0) pose 気をつけ
+    a2 : at (-6, 0) pose 休め
+    a3 : at (-4, 0) pose 足開き
+    a4 : at (-2, 0) pose クロス
+    a5 : at (0, 0) pose 片膝
+    a6 : at (2, 0) pose 膝つき
+    a7 : at (4, 0) pose ランジ
+    a8 : at (6, 0) pose しゃがみ
+    a9 : at (8, 0) pose つま先
+  }
+  set 2 counts 8 {
+    a : line (-8, 4) -> (8, 4) pose toe face front
+  }
+}

@@ -1,0 +1,15 @@
+show "bend" {
+  section a "A" 8
+  set 1 {
+    a : line (-9, -6) -> (9, -6)
+  }
+  set 2 counts 16 {
+    a : line (-9, 6) -> (9, 6) bend 60
+  }
+  set 3 counts 16 {
+    a : line (-9, -6) -> (9, -6) bend -90
+  }
+  set 4 counts 16 {
+    a : line (-9, 6) -> (9, 6) bend 30 wait 2
+  }
+}

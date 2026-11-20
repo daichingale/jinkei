@@ -1,0 +1,16 @@
+show "collide2" {
+  section a "A" 8
+  section b "B" 8
+  set 1 hold 4 {
+    a : line (-10, 0) -> (10, 0)
+    b : line (0, -10) -> (0, 10)
+  }
+  set 2 counts 16 {
+    a : line (-10, 5) -> (10, 5) assign keep
+    b : line (-5, -10) -> (-5, 10) assign keep
+  }
+  set 3 counts 8 {
+    a : line (10, 0) -> (-10, 0) assign keep
+    b : line (10, -10) -> (10, 10) assign keep
+  }
+}

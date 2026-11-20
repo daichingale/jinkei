@@ -1,0 +1,5 @@
+show "x" {
+  section a "A" 3
+  set 1 { a : line (0, 0) -> (4, 1) }
+  set 2 counts 0 { a : line (0, 5) -> (4, 5) }
+}

@@ -1,0 +1,3 @@
+show "bad" {
+  section a "unterminated 3
+}

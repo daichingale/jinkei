@@ -1,0 +1,50 @@
+# 陣形 サンプル: 高校フィールドショーのオープナー（37人）
+show "Opener — 夜明け" {
+  field football hs
+  tempo 144
+
+  section tp    "トランペット"   8  color "#ffd23f"
+  section mel   "メロフォン"     6  color "#ff9f43"
+  section tb    "トロンボーン"   8  color "#ee5253"
+  section perc  "バッテリー"     7  color "#c8d6e5"
+  section cg    "カラーガード"   8  color "#a66cff"
+
+  # 1: 開始位置。管は前ハッシュの後ろに横一列、打楽器はその後ろ、ガードは前で弧
+  set 1 hold 8 {
+    tp + mel + tb : line (s1(30), FH + 8) -> (s2(30), FH + 8)
+    perc          : line (s1(40), FH + 20) -> (s2(40), FH + 20)
+    cg            : arc (0, FH - 4) radius 12 from 200 to 340
+  }
+
+  # 2: 管は打楽器を包む「笑顔」の弧へ（誰がどこへ行くかは自動）。打楽器は中央に寄る
+  set 2 counts 16 {
+    tp + mel + tb : arc (0, BH) radius 30 from 200 to 340
+    perc          : line (s1(45), FH + 20) -> (s2(45), FH + 20)
+    cg            : line (s1(35), FH - 6) -> (s2(35), FH - 6)
+  }
+
+  # 3: 管は円、打楽器は円の中でブロック（管が来る前に8カウントで入る）、ガードは外側の弧
+  set 3 counts 24 {
+    tp + mel + tb : circle (0, MID) radius 16
+    perc          : block (0, MID) cols 4 spacing 2.5 in 8
+    cg            : arc (0, MID) radius 26 from 200 to 340
+  }
+
+  # 4: 円をそのまま1人分回す（同じ人が同じ順番のまま）
+  set 4 counts 8 {
+    tp + mel + tb : same rotate 360 / 22
+  }
+
+  # 5: 客席に向かうV字（ウェッジ）。ガードは少し前へ
+  set 5 counts 24 {
+    tp + mel + tb : poly (s1(30), BH - 2) -> (0, FH + 2) -> (s2(30), BH - 2)
+    cg            : same shift (0, -6)
+  }
+
+  # 6: カンパニーフロントで締め（打楽器は管が通り過ぎてから8カウント遅れて出る）
+  set 6 counts 32 hold 8 {
+    tp + mel + tb : line (s1(35), FH) -> (s2(35), FH)
+    perc          : line (s1(40), FH + 10) -> (s2(40), FH + 10) wait 8
+    cg            : block (0, FH - 10) cols 8 spacing 3
+  }
+}

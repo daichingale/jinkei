@@ -1,0 +1,16 @@
+show "override" {
+  section a "A" 6
+  section b "B" 4
+  set 1 {
+    a + b : block (0, 0) cols 5 spacing 2
+  }
+  set 2 counts 12 {
+    a + b : line (-10, 6) -> (10, 6)
+    a1 : at (0, -10)
+    b2..b3 : line (-3, -8) -> (3, -8)
+  }
+  set 3 counts 12 {
+    a1 : at (5, 5) wait 4
+    b1 : at (-5, 5) in 6
+  }
+}

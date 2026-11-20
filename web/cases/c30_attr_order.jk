@@ -1,0 +1,21 @@
+show "attr order" {
+  section a "A" 4
+  set 1 {
+    a : line (-6, 0) -> (6, 0) face front pose rest
+  }
+  set 2 counts 8 {
+    a : pose wide face back
+    a1 + a2 : line (-6, 3) -> (-2, 3) face kami pose lunge
+    a3 : at (3, 3)
+  }
+  set 3 counts 8 {
+    a3 : at (0, 6) face shimo pose cross
+    a : face center pose toe step high action toss
+  }
+  set 4 counts 8 {
+    a1 : same
+  }
+  set 5 counts 8 {
+    a4 : pose kneel
+  }
+}

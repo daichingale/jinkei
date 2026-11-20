@@ -1,0 +1,12 @@
+show "nfl" {
+  field football nfl
+  maxstep 8
+  clearance 1.5
+  section a "A" 5
+  set 1 {
+    a : line (-30, FH) -> (30, FH)
+  }
+  set 2 counts 8 {
+    a : line (-30, BH) -> (30, BH)
+  }
+}

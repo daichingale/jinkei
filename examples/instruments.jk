@@ -1,0 +1,22 @@
+show "楽器チェック" {
+  field stage
+  section a "チューバ" 1
+  section b "マーチングチューバ" 1
+  section c "スーザフォン" 1
+  section d "ユーフォニアム" 1
+  section e "マーチングホルン" 1
+  section f "バスクラリネット" 1
+  section g "バリトンサックス" 1
+  section h "ファゴット" 1
+  section i "オーボエ" 1
+  section bd "バスドラム" 5
+  section j "テナードラム" 1
+  section k "シンバル" 1 instrument cymbals_high
+  section l "シンバル" 1 instrument cymbals_mid
+  section m "グロッケン" 1
+  section n "シロフォン" 1
+  set 1 {
+    a : at (-7,4)  b : at (-5,4)  c : at (-3,4)  d : at (-1,4)  e : at (1,4)  f : at (3,4)  g : at (5,4)  h : at (7,4)
+    i : at (-7,1)  bd : line (-5,1) -> (3,1)  j : at (5,1)  k : at (7,1)  l : at (-8,6) m : at (0,6) n : at (8,6)
+  }
+}

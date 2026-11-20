@@ -1,0 +1,5 @@
+show "x" {
+  field football
+  section a "A" 3
+  set 1 { a : line (s1(60), 0) -> (4, 1) }
+}

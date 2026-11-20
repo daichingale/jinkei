@@ -1,0 +1,17 @@
+show "ids" {
+  section tp "TP" 6
+  section tb 4
+  set 1 {
+    tp1..tp3 : line (-6, 0) -> (-2, 0)
+    tp4, tp5 : line (2, 0) -> (6, 0)
+    tp6 + tb1 : line (-3, 5) -> (3, 5)
+    tb2..tb4 : line (-3, -5) -> (3, -5)
+  }
+  set 2 counts 8 {
+    all : circle (0, 0) radius 6
+  }
+  set 3 counts 8 {
+    tp : same shift (1, 1)
+    tb3 : same
+  }
+}

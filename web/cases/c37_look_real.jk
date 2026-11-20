@@ -1,0 +1,8 @@
+# 見た目（リアル・英語）
+show "look2" {
+  look real
+  section a "A" 2
+  set 1 hold 4 {
+    a : line (-2, 0) -> (2, 0)
+  }
+}

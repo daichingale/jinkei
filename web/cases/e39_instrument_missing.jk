@@ -1,0 +1,7 @@
+show "bad" {
+  section a "A" 2 instrument 3
+  set 1 {
+    a1 : at (0, 0)
+    a2 : at (2, 0)
+  }
+}

@@ -1,0 +1,30 @@
+# 楽器の構え（carry / 構え）: 全部の値・日本語・属性だけの文・引き継ぎ
+show "carry" {
+  field stage
+  tempo 120
+  section tp "トランペット" 2
+  section sn "スネア" 2
+  section cg "カラーガード" 1
+
+  set 1 hold 4 {
+    tp : line (-4, 3) -> (-2, 3) carry play
+    sn : line (0, 3) -> (2, 3)
+    cg : at (5, 3) 構え 右手
+  }
+  set 2 counts 4 hold 2 {
+    tp + sn : same carry right
+    cg : carry 左手
+  }
+  set 3 counts 4 {
+    tp : line (-4, 5) -> (-2, 5)
+    sn1 : carry front
+    sn2 : 構え 斜め
+  }
+  set 4 counts 4 {
+    all : same 構え 演奏
+    tp1 : carry diag face front pose rest
+  }
+  set 5 counts 4 {
+    sn : same
+  }
+}

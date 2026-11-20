@@ -1,0 +1,45 @@
+show "楽器の構え" {
+  field stage
+  tempo 120
+
+  section tp "トランペット"    1 instrument trumpet
+  section tb "トロンボーン"    1 instrument trombone
+  section sx "アルトサックス"  1 instrument alto_sax
+  section cl "クラリネット"    1 instrument clarinet
+  section fl "フルート"        1 instrument flute
+  section eu "ユーフォニアム"  1 instrument euphonium
+  section mt "マーチングチューバ" 1 instrument marching_tuba
+  section sz "スーザフォン"    1 instrument sousaphone
+  section sn "スネア"          1 instrument snare
+  section bd "バスドラム"      1 instrument bass_drum
+  section cy "シンバル"        1 instrument cymbals_high
+  section cg "カラーガード"    1 instrument flag
+
+  set 1 hold 8 {
+    tp : at (-6.25, 2.5)
+    tb : at (-3.75, 2.5)
+    sx : at (-1.25, 2.5)
+    cl : at (1.25, 2.5)
+    fl : at (3.75, 2.5)
+    eu : at (6.25, 2.5)
+    mt : at (-5, 6.5)
+    sz : at (-2.5, 6.5)
+    sn : at (0, 6.5)
+    bd : at (2.5, 6.5)
+    cy : at (5, 6.5)
+    cg : at (7.4, 6.5)
+    all : carry play
+  }
+  set 2 counts 2 hold 8 {
+    all : same carry right
+  }
+  set 3 counts 2 hold 8 {
+    all : same carry left
+  }
+  set 4 counts 2 hold 8 {
+    all : same carry front
+  }
+  set 5 counts 2 hold 8 {
+    all : same carry diag
+  }
+}

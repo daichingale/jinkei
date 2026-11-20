@@ -1,0 +1,5 @@
+show "bad" {
+  section a "A" 3
+  set 1 { a : line (0, 0) -> (4, 1) }
+  set 2 counts 8 { a : line (0, 0) -> (4, 5) wait 6 in 5 }
+}

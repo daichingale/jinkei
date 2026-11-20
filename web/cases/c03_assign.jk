@@ -1,0 +1,19 @@
+show "assign" {
+  section a "A" 6
+  section b "B" 6
+  set 1 {
+    a : line (-10, -5) -> (10, -5)
+    b : line (-10, 5) -> (10, 5)
+  }
+  set 2 counts 8 {
+    a : line (10, 5) -> (-10, 5) assign keep
+    b : line (10, -5) -> (-10, -5) assign auto
+  }
+  set 3 counts 8 {
+    a + b : circle (0, 0) radius 7
+  }
+  set 4 counts 8 {
+    a : circle (0, 0) radius 4 assign keep
+    b : same
+  }
+}
