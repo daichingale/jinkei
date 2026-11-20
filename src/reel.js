@@ -1,5 +1,6 @@
 // 縦分割（リール）レイアウトの部品（ブラウザ用。src/reel.rs と同じ式）。
-//   jkReel.layout(H)                   -> 4 段の [上端, 高さ] 配列（上の3D / 楽譜 / 客席側の3D / グリッド）
+//   jkReel.layout(H, n)                -> 4 段の [上端, 高さ] 配列（上の3D / 楽譜 / 客席側の3D / グリッド）。n = 楽譜の段数（省略時は表示中の段数。1 段 = 従来、2・3 段は楽譜の帯が高くなる）
+//   jkReel.pickParts(D)                -> 重ねて出すパートの添字（楽器の種類ごとに最も人数の多いパート。スネア → テナー → バス → シンバル → その他の順で最大 3 段。種類が 1 つだけなら []）
 //   jkReel.memberColor(D, i, illust)   -> 隊員 i の色（3D の袖・ピンで共通）
 //   jkReel.drawGrid(g, W, H, D, t, il) -> 真上のグリッドに全員のピン（番号・色・向きの矢印）を描く（g は 2D コンテキスト）
 //   jkReel.diag(D, t, aspect)          -> {eye, target, fov}  斜め俯瞰（隊形を追う）
@@ -8,11 +9,34 @@ const jkReel = (function () {
   'use strict';
   const SLEEVE_PAL = ['#ff5a5f', '#ff9f1c', '#ffd23f', '#7bd62e', '#2ec4b6', '#3a8dff', '#8f5bff', '#ff5dc8', '#00b8d9', '#ef476f', '#06d6a0', '#f77f00'];
 
-  function layout(H) {
+  // 楽譜の帯の高さ。段が増えるぶん、上の3D・客席側の3D から半分ずつ分ける（グリッドの高さは変えない）。src/reel.rs の Layout と同じ式
+  function layout(H, n) {
+    if (n === undefined) n = shown();
     const ev = (v) => Math.round(v) & ~1;
-    const a = ev(H * 0.32), b = ev(H * 0.135), c = ev(H * 0.30), d = H - a - b - c;
+    const d = H - ev(H * 0.32) - ev(H * 0.135) - ev(H * 0.30);
+    const extra = 0.0825 * (Math.max(1, n) - 1);
+    const b = ev(H * (0.135 + extra)), c = ev(H * (0.30 - extra * 0.5)), a = H - b - c - d;
     return [[0, a], [a, b], [a + b, c], [a + b + c, d]];
   }
+  // 楽器の種類ごとに最も人数の多いパートを選ぶ（同数なら先のもの）
+  const KIND_ORDER = ['snare', 'tenor', 'bass', 'cymbal', 'line'];
+  function pickParts(D) {
+    const best = {};
+    (D.parts || []).forEach((p, i) => {
+      if (!p.notes || !p.notes.length || p.stack) return;
+      const k = typeof jkStaff !== 'undefined' ? jkStaff.instOf(D, p) : 'line';
+      if (!(k in best) || p.members.length > D.parts[best[k]].members.length) best[k] = i;
+    });
+    const out = KIND_ORDER.filter((k) => k in best).map((k) => best[k]).slice(0, 3);
+    return out.length >= 2 ? out : [];
+  }
+  // 今の表示が「全パートを重ねる」なら、その段数（プレビューのパート選択が重ね表示のとき）
+  function shownStack() {
+    if (typeof D === 'undefined' || !D || !D.parts || typeof document === 'undefined') return null;
+    const sel = document.getElementById('partsel'), p = D.parts[(sel && +sel.value) || 0];
+    return p && p.stack ? p.stack : null;
+  }
+  function shown() { const s = shownStack(); return s ? s.length : 1; }
 
   function memberColor(D, i, ill) {
     const sec = D.sections[D.performers[i].sec];
@@ -162,6 +186,17 @@ const jkReel = (function () {
     const target = [xc, 0.9, (zf + zb) / 2];
     return {eye: [xc, 1.6, target[2] + (zc - target[2]) / z], target, fov};
   }
-  return {layout, memberColor, drawGrid, diag, front, number, viewOf};
+  // jkStaff に、重ね表示のパート（part.stack = 段になるパートの添字）を描かせる
+  if (typeof jkStaff !== 'undefined') {
+    const list = (part) => part.stack.map((i) => ({part: D.parts[i], inst: jkStaff.instOf(D, D.parts[i])}));
+    jkStaff.stackHook = (part, from, to, W, H, ph, o) => (part.stack ? jkStaff.stack(list(part), W, H, ph !== null && ph !== undefined ? ph : from, o) : null);
+    jkStaff.stackGeomHook = (part, W, H, o) => {
+      const l = list(part), hs = H / l.length;
+      let x0 = 0, g0 = null;
+      for (const e of l) { const g = jkStaff.geom(e.part, W, hs, {...o, inst: e.inst}); x0 = Math.max(x0, g.x0); g0 = g0 || g; }
+      return {sp: g0.sp, x0, x1: g0.x1};
+    };
+  }
+  return {layout, memberColor, drawGrid, diag, front, number, viewOf, pickParts};
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = {jkReel};

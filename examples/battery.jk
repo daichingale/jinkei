@@ -1,0 +1,137 @@
+# バッテリー（打楽器隊）フィーチャー — テナーの回し・スポック・ダブルストップ、バスのスプリット、スネアのリムショットとミュート
+# 楽器ごとの五線: スネア = 1線 / テナー = 5線（間に ドラム1〜4、上の加線に スポック）/ バス = 5線（線に ドラム1〜5）
+# 手順は大文字 = アクセント。p mf f ff は強弱、cresc / dim は次の強弱記号まで変化
+show "バッテリー フィーチャー" {
+  field gym
+  look illust
+  tempo 132
+
+  section sn "スネア"     5 instrument snare       color "#ff9f43"
+  section tn "テナー"     3 instrument tenors      color "#48dbfb"
+  section bd "バスドラム" 5 instrument bass_drum   color "#ee5253"
+  section cy "シンバル"   4 instrument cymbals_mid color "#ffd23f"
+
+  # 1: スタンバイ。前にスネア、その奥にテナー、一番奥にバスとシンバル
+  set 1 hold 8 {
+    sn : line (-6, 0) -> (6, 0)
+    tn : line (-3, 3) -> (3, 3)
+    bd : line (-6, 6) -> (6, 6)
+    cy : line (-4.5, 9) -> (4.5, 9)
+  }
+
+  # 2: スネアは弧、バスは横へ広がる
+  set 2 counts 12 {
+    sn : arc (0, 7) radius 7 from 210 to 330
+    tn : line (-3, 3) -> (3, 3)
+    bd : line (-8, 7) -> (8, 7)
+    cy : block (0, 10) cols 4 spacing 2
+  }
+
+  # 3: スネアはV字、テナーは弧
+  set 3 counts 12 {
+    sn : poly (-9, -2) -> (1, 3) -> (8, -2)
+    tn : arc (0, 4) radius 3 from 200 to 340
+    bd : line (-8, 8) -> (8, 8)
+    cy : line (-4.5, 11) -> (4.5, 11)
+  }
+
+  # 4: フィナーレ。全員が前へ（4カウント保持）
+  set 4 counts 12 hold 4 {
+    sn : line (-8, -6) -> (8, -6)
+    tn : line (-3, -2) -> (3, -2)
+    bd : line (-8, 2) -> (8, 2)
+    cy : line (-4.5, 6) -> (4.5, 6)
+  }
+
+  # 12小節。スネア: リムショット(o)・ミュート(m)・フラム(f)・バズ(z)・スクレイプ(s)・スティッククリック(k)
+  part "スネア" for sn {
+    meter 4/4
+    # 1-2: 8分の基本
+    mf 8: R l r l R l r l | R l r l R l r l |
+    # 3-4: 16分とアクセント、フラムとダブル
+    16: ^R r l r R r l r ^L r l r R l r l |
+    8: fR l fL r fR l dr l |
+    # 5-6: p から f へ cresc
+    p 16: cresc r l r l r l r l r l r l r l r l |
+    f 16: R l r l R l r l R l r l R l r l |
+    # 7: リムショットとミュート（スカンク）
+    ff 8: oR - ml - oR - ml oL |
+    # 8: ミュートのグルーヴ
+    mf 16: mr - ml - oR - mr ml mr - ml - oL - mr ol |
+    # 9: 3連符
+    8: 3[ R l r ] 3[ L r l ] 3[ R l r ] 3[ L r l ] |
+    # 10: スクレイプとスティッククリック
+    4: sR ~ 8: kb kb 4: ^R |
+    # 11: バズロール
+    4: zR ~ zL ~ |
+    # 12: 決め
+    ff 16: ^B - - - ^B - - - 8: ^B - 4: ^B |
+  }
+
+  # 12小節。テナー: 1 = いちばん高い … 4 = いちばん低い、5・6 = スポック。R[13] = 同時に、B[12] = 右が1・左が2
+  part "テナー" for tn {
+    meter 4/4
+    # 1-2: 1→4 の上がりと下がり
+    mf 16: r1 l2 r3 l4 r1 l2 r3 l4 r1 l2 r3 l4 r1 l2 r3 l4 |
+    16: l4 r3 l2 r1 l4 r3 l2 r1 l4 r3 l2 r1 l4 r3 l2 r1 |
+    # 3: 同時打ちとスポック
+    16: R[13] - l2 - R[24] - l1 - ^R[12] - r5 l6 B[12] - - - |
+    # 4: ダブルストップ
+    f 8: B[12] B[34] B[13] B[24] ^B[14] r5 l6 ^B[23] |
+    # 5-6: 回し（アラウンド）
+    mf 16: r1 r2 r3 r4 l1 l2 l3 l4 r1 r2 r3 r4 l1 l2 l3 l4 |
+    16: r1 l1 r2 l2 r3 l3 r4 l4 r4 l4 r3 l3 r2 l2 r1 l1 |
+    # 7: ゴック（シェル）と和音
+    8: gr4 gl3 gr2 gl1 ^R[13] ^L[24] ^B[14] - |
+    # 8: バスとのユニゾン
+    f 4: ^B[14] 8: r5 l6 4: ^B[23] 8: r5 l6 |
+    # 9: 3連符
+    mf 8: 3[ r1 l2 r3 ] 3[ l4 r3 l2 ] 3[ r1 l2 r3 ] 3[ l4 r5 l6 ] |
+    # 10: cresc で盛り上げる
+    p 16: r1 l1 r2 l2 r2 l2 r3 l3 cresc r3 l3 r4 l4 r4 l4 r4 l4 |
+    # 11-12: フィナーレ
+    ff 16: >B[12] r5 l6 r5 >B[34] r5 l6 r5 >B[13] l6 r5 l6 >B[24] - r5 - |
+    8: ^B[14] - 4: ^B[23] 2: ^R[1234] |
+  }
+
+  # 12小節。バス: 1 = 最小（高い）… 5 = 最大（低い）。番号なし = 全員で同時
+  part "バス" for bd {
+    meter 4/4
+    # 1-2: スプリットの上がり下がり
+    mf 8: r1 l2 r3 l4 r5 l4 r3 l2 |
+    16: r1 l2 r3 l4 r5 l4 r3 l2 r1 l2 r3 l4 r5 - - - |
+    # 3-4: ユニゾン
+    4: ^B - ^B - |
+    8: B - B - ^B B - B |
+    # 5: リムクリック（g）
+    8: gr1 gl2 gr3 gl4 gr5 gl4 gr3 gl2 |
+    # 6: 上がり下がりを16分で
+    16: r5 l5 r4 l4 r3 l3 r2 l2 r1 l1 r2 l2 r3 l3 r4 l4 |
+    # 7-8: 1つおきに、そして同時打ち
+    mf 8: r1 - l2 - r3 - l4 - |
+    f 8: B[15] - B[24] - ^B[13] B[35] ^R[135] - |
+    # 9: 3連符
+    8: 3[ r1 l2 r3 ] 3[ l4 r5 l4 ] 3[ r3 l2 r1 ] 3[ l2 r3 l4 ] |
+    # 10-12: cresc → ff → 決め
+    p 8: r5 l4 r3 l2 cresc r1 l2 r3 l4 |
+    ff 8: ^B ^B ^B - ^B ^B - ^B |
+    4: ^B - 2: ^B |
+  }
+
+  # 12小節。シンバル: 1 = クラッシュ 2 = ハイハット閉 3 = ハイハット開 4 = チョーク
+  part "シンバル" for cy {
+    meter 4/4
+    mf 4: ^B1 - - - |
+    4: - - - - |
+    4: ^B1 - B1 - |
+    8: b2 b2 b2 b2 b2 b2 b2 b3 |
+    8: b2 b2 b2 b3 4: B4 - |
+    8: b2 b2 b2 b2 b2 b2 b2 b2 |
+    f 4: ^B1 - - - |
+    4: B1 - B1 - |
+    4: - - - - |
+    mf 8: b2 b2 b2 b2 b2 b2 b2 b2 |
+    ff 4: ^B1 B4 ^B1 B4 |
+    4: ^B1 ~ ~ ~ |
+  }
+}

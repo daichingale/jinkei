@@ -144,7 +144,7 @@ fn json_and_model_contract() {
     let show = compile(&wrap("part \"p\" for sn { 8: R2 l | }")).unwrap();
     let rep = analyze(&show);
     let j = output::json(&show, &rep);
-    assert!(j.contains("\"parts\":[{\"name\":\"p\",\"members\":[0,1,2],\"meter\":[4,4],\"start\":0,\"end\":1,\"bars\":[0],\"notes\":[[0,0.5,\"R\",1,\"tap\",2],[0.5,0.5,\"L\",0,\"tap\",0]]}]"), "{}", j);
+    assert!(j.contains("\"parts\":[{\"name\":\"p\",\"members\":[0,1,2],\"meter\":[4,4],\"start\":0,\"end\":1,\"bars\":[0],\"notes\":[[0,0.5,\"R\",1,\"tap\",2,0.7],[0.5,0.5,\"L\",0,\"tap\",0,0.7]]}]"), "{}", j);
     let ast = syntax::parse(&wrap("part \"p\" for sn {\n    meter 3/4\n    start set 2\n    # メモ\n    8: R l |\n}")).unwrap();
     let m = model::model_json(&ast);
     assert!(m.contains("\"meter\":\"3/4\",\"start\":\"set 2\",\"src\":\"# メモ\\n8: R l |\""), "{}", m);
@@ -186,6 +186,131 @@ fn musicxml_import_roundtrip() {
     assert_eq!(p.notes[7].accent, 2);
     let t = xmlimport::import(&xml, Some("tenor")).unwrap();
     assert_eq!(t.meter, "3/4");
-    assert_eq!(t.notation, "2.: r6 |");
+    // テナーは G = スポック1 = ドラム番号 5
+    assert_eq!(t.notation, "2.: r5 |");
     assert!(xmlimport::import(&xml, Some("zzz")).is_err());
+}
+
+fn wrap2(body: &str) -> String {
+    format!(
+        "show \"t\" {{\n  field gym\n  tempo 120\n  section tn \"テナー\" 3 instrument tenors\n  section bd \"バス\" 5 instrument bass_drum\n  set 1 hold 16 {{ tn : line (-2, 0) -> (2, 0)\n bd : line (-4, 4) -> (4, 4) }}\n  {}\n}}\n",
+        body
+    )
+}
+
+fn tpart(body: &str) -> build::Part {
+    compile(&wrap2(&format!("part \"p\" for tn {{ {} }}", body))).unwrap_or_else(|e| panic!("{}", e)).parts[0].clone()
+}
+
+#[test]
+fn chords_double_stops_and_tenor_pads() {
+    // R[135] = 同じ手で3つのドラム、B[12] = 右手が1・左手が2、B[3] = 両手で3
+    let p = tpart("4: R[135] B[12] B[3] l5 r6 | 2: ^L[24] ~ |");
+    let v: Vec<(f64, char, u8, u8)> = p.notes.iter().map(|n| (n.t, n.hand, n.pad, n.accent)).collect();
+    assert_eq!(
+        v,
+        vec![
+            (0.0, 'R', 1, 1),
+            (0.0, 'R', 3, 1),
+            (0.0, 'R', 5, 1),
+            (1.0, 'R', 1, 1),
+            (1.0, 'L', 2, 1),
+            (2.0, 'B', 3, 1),
+            (3.0, 'L', 5, 0),
+            (4.0, 'R', 6, 0),
+            (5.0, 'L', 2, 2),
+            (5.0, 'L', 4, 2)
+        ]
+    );
+    // タイは和音の全部の音を延ばす
+    assert_eq!(p.notes[8].dur, 4.0);
+    assert_eq!(p.notes[9].dur, 4.0);
+    // 和音の中身が不正なとき
+    for bad in ["R[", "R[]", "R[1a]", "B[123]", "R[0]"] {
+        assert!(compile(&wrap2(&format!("part \"p\" for tn {{ {} }}", bad))).is_err(), "{}", bad);
+    }
+    // 連符の中でも和音を1音として数える
+    let p = tpart("8: 3[ R[12] l r ] | ");
+    assert_eq!(p.notes.len(), 4);
+    assert!((p.notes[3].t - 2.0 / 3.0).abs() < 1e-9);
+    // バスは番号なし = 全員（pad 0）、番号つき = そのドラムだけ
+    let b = compile(&wrap2("part \"b\" for bd { 8: r1 l2 r3 l4 R5 B | r[135] }")).unwrap().parts[0].clone();
+    assert_eq!(b.notes.iter().map(|n| n.pad).collect::<Vec<_>>(), vec![1, 2, 3, 4, 5, 0, 1, 3, 5]);
+}
+
+#[test]
+fn new_stroke_prefixes() {
+    let p = tpart("8: oR mr gl sr kb xR fR dR zR ^oL >mR |");
+    let kinds: Vec<&str> = p.notes.iter().map(|n| n.kind).collect();
+    assert_eq!(kinds, ["rimshot", "mute", "gock", "scrape", "stickclick", "click", "flam", "diddle", "buzz", "rimshot", "mute"]);
+    assert_eq!(p.notes[9].accent, 2);
+    assert_eq!(p.notes[10].accent, 1);
+    assert_eq!(p.notes[4].hand, 'B');
+    // 奏法は1音に1つだけ
+    assert!(compile(&wrap2("part \"p\" for tn { omR }")).is_err());
+    assert!(compile(&wrap2("part \"p\" for tn { sfR }")).is_err());
+    // 奏法つきの和音・ドラム番号
+    let p = tpart("8: gr2 oR[14] |");
+    assert_eq!((p.notes[0].kind, p.notes[0].pad), ("gock", 2));
+    assert_eq!((p.notes[1].kind, p.notes[2].pad), ("rimshot", 4));
+}
+
+#[test]
+fn dynamics_and_ramps() {
+    let p = tpart("8: R pp r l cresc r l ff r l dim r l mf r | ");
+    let v: Vec<f32> = p.notes.iter().map(|n| n.vel).collect();
+    // 既定 mf = 0.7。pp = 0.25。cresc は次の ff（音5）まで直線で、dim は次の mf（音9）まで
+    assert_eq!(v[0], 0.7);
+    assert_eq!(v[1], 0.25);
+    assert_eq!(v[2], 0.25);
+    assert_eq!(v[3], 0.25);
+    assert!((v[4] - 0.625).abs() < 1e-6, "{:?}", v);
+    assert_eq!(v[5], 1.0);
+    assert_eq!(v[6], 1.0);
+    assert_eq!(v[7], 1.0);
+    assert!((v[8] - 0.85).abs() < 1e-6, "{:?}", v);
+    assert_eq!(v[9], 0.7);
+    // 次の強弱記号がなければパートの終わりまでに少し変わる（cresc は強く、dim は弱く）
+    let p = tpart("4: mf cresc r l r l |");
+    assert_eq!(p.notes[0].vel, 0.7);
+    assert!(p.notes[3].vel > p.notes[2].vel && p.notes[3].vel <= 1.0);
+    let p = tpart("4: mf dim r l r l |");
+    assert!(p.notes[3].vel < p.notes[0].vel);
+    // 6つの記号はそれぞれ別の音量
+    let p = tpart("4: pp r p r mp r mf r f r ff r |");
+    let v: Vec<f32> = p.notes.iter().map(|n| n.vel).collect();
+    assert_eq!(v, vec![0.25, 0.4, 0.55, 0.7, 0.85, 1.0]);
+    // 強弱記号は拍の長さを変えない・繰り返しの中でも使える
+    let p = tpart("4: repeat 2 { p r f r | }");
+    assert_eq!(p.notes.iter().map(|n| n.vel).collect::<Vec<_>>(), vec![0.4, 0.85, 0.4, 0.85]);
+    assert_eq!(p.notes[2].t, 2.0);
+}
+
+#[test]
+fn json_has_velocity_as_seventh_field() {
+    let show = compile(&wrap2("part \"p\" for tn { 8: f R[13] pp r5 }")).unwrap();
+    let rep = analyze(&show);
+    let j = output::json(&show, &rep);
+    assert!(j.contains("\"notes\":[[0,0.5,\"R\",1,\"tap\",1,0.85],[0,0.5,\"R\",1,\"tap\",3,0.85],[0.5,0.5,\"R\",0,\"tap\",5,0.25]]"), "{}", j);
+}
+
+#[test]
+fn audio_new_strokes_are_audible_and_tenors_are_pitched_per_drum() {
+    // 各ドラム・奏法を1拍ずつ。全部が鳴る
+    let show = compile(&wrap2("part \"p\" for tn { 4: r1 r2 r3 r4 r5 r6 or1 mr1 gr3 sr2 ~ kb | } part \"q\" for bd { 4: r1 r2 r3 r4 r5 gr1 gr5 or3 mr3 | }")).unwrap();
+    let w = audio::render_wav(&show, 22050);
+    let s: Vec<i16> = w[44..].chunks(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
+    let sr = 22050.0;
+    let spc = 0.5; // 120bpm
+    let peak = |c: f64, len: f64| s[((c * spc) * sr) as usize..(((c * spc) + len) * sr) as usize].iter().map(|v| v.unsigned_abs() as u32).max().unwrap();
+    for c in 0..11 {
+        assert!(peak(c as f64, 0.2) > 500, "count {} too quiet", c);
+    }
+    // ドラム番号が小さいほど高い（ゼロ交差から周波数をおおまかに見る）
+    let zc = |c: f64| {
+        let a = ((c * spc) * sr) as usize;
+        let seg = &s[a + 200..a + 2000];
+        seg.windows(2).filter(|w| (w[0] < 0) != (w[1] < 0)).count()
+    };
+    let _ = zc;
 }

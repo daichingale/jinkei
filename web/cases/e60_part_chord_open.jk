@@ -1,0 +1,6 @@
+show "p" {
+  field gym
+  section sn "スネア" 2 instrument snare
+  set 1 hold 4 { sn : line (-3, 0) -> (3, 0) }
+  part "x" for sn { R[13 l }
+}

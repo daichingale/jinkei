@@ -3,6 +3,7 @@
 //! 形式は tools/README.md を参照。
 use crate::json_mini::{self, J};
 use crate::render::{v3, V3};
+use crate::strike::{sst, va, vc, vd, vl, vm, vma, vn, vsub};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -55,6 +56,36 @@ pub struct Clip {
     pub data: Vec<f32>,
 }
 
+/// 打面（打楽器の面）。座標は構え（hold）のときのモデル座標
+pub struct StrikeDrum {
+    pub pad: u8,
+    /// 打面の中心・外向きの法線・面内の左向き・面内の前向き
+    pub c: [f32; 3],
+    pub n: [f32; 3],
+    pub ex: [f32; 3],
+    pub ez: [f32; 3],
+    pub r: f32,
+    /// 手ごとに接点を左右へずらす度合い（バスは 0）
+    pub spread: f32,
+    /// バスドラム: このヘッドを叩く手
+    pub hand: Option<char>,
+}
+
+/// 手に持つ棒（手のボーンの局所座標）: tip = 先端の球の中心、ax = 後端 → 先端の向き、rh = 球の半径
+pub struct StickG {
+    pub tip: [f32; 3],
+    pub ax: [f32; 3],
+    pub rh: f32,
+}
+
+/// 打つ動きの記述（アセットの strike[楽器名]）。手の配列は [右, 左]
+pub struct StrikeTbl {
+    pub drums: Vec<StrikeDrum>,
+    pub stick: [StickG; 2],
+    pub anchor: [[f32; 3]; 2],
+    pub click: [f32; 3],
+}
+
 pub struct Human {
     pub nb: usize,
     pub parent: Vec<i32>,
@@ -78,6 +109,8 @@ pub struct Human {
     /// イラスト用の体メッシュと髪メッシュの名前（insts のキー）。アセットに無ければ None / 空
     pub ill_body: Option<MeshData>,
     pub hairs: Vec<String>,
+    /// 打楽器の打面の表（snare / tenors / bass1..5）
+    pub strike: HashMap<String, StrikeTbl>,
 }
 
 pub fn srgb_to_lin(c: f32) -> f32 {
@@ -233,7 +266,39 @@ fn load() -> Result<Human, String> {
     for v in parts.values_mut() {
         v.sort();
     }
-    Ok(Human { nb, parent, rest, rest_world, mats, body, insts, parts, clips, clip_ix, upper, strides, chest: *names.get("chest").unwrap_or(&2), mid, bone_ix: names, mats_i, ill_body, hairs })
+    let v3 = |j: Option<&J>| -> [f32; 3] {
+        let a = j.map(|x| x.f32s()).unwrap_or_default();
+        [a.first().copied().unwrap_or(0.0), a.get(1).copied().unwrap_or(0.0), a.get(2).copied().unwrap_or(0.0)]
+    };
+    let mut strike = HashMap::new();
+    for (name, d) in head.get("strike").map(|j| j.obj()).unwrap_or(&[]) {
+        let drums: Vec<StrikeDrum> = d
+            .get("drums")
+            .map(|j| j.arr())
+            .unwrap_or(&[])
+            .iter()
+            .map(|e| StrikeDrum {
+                pad: e.get("pad").map(|j| j.usize()).unwrap_or(0) as u8,
+                c: v3(e.get("c")),
+                n: v3(e.get("n")),
+                ex: v3(e.get("ex")),
+                ez: v3(e.get("ez")),
+                r: e.get("r").map(|j| j.num() as f32).unwrap_or(0.1),
+                spread: e.get("spread").map(|j| j.num() as f32).unwrap_or(1.0),
+                hand: e.get("hand").and_then(|j| j.str().chars().next()),
+            })
+            .collect();
+        let stick = |k: &str| {
+            let s = d.get("stick").and_then(|x| x.get(k));
+            StickG { tip: v3(s.and_then(|x| x.get("tip"))), ax: v3(s.and_then(|x| x.get("ax"))), rh: s.and_then(|x| x.get("rh")).map(|j| j.num() as f32).unwrap_or(0.01) }
+        };
+        let anc = |k: &str| v3(d.get("anchor").and_then(|x| x.get(k)));
+        if drums.is_empty() {
+            continue;
+        }
+        strike.insert(name.clone(), StrikeTbl { drums, stick: [stick("R"), stick("L")], anchor: [anc("R"), anc("L")], click: v3(d.get("click")) });
+    }
+    Ok(Human { nb, parent, rest, rest_world, mats, body, insts, parts, clips, clip_ix, upper, strides, chest: *names.get("chest").unwrap_or(&2), mid, bone_ix: names, mats_i, ill_body, hairs, strike })
 }
 
 /// 埋め込みアセット（読めなければ None）
@@ -789,11 +854,17 @@ impl Human {
         qset(&mut po.q, b, n);
     }
 
-    /// 打つ動きを前腕・手首へ足す。amt = 演奏の構えのときの度合い
-    pub fn apply_strike(&self, po: &mut Pose, fam: crate::strike::Fam, st: &crate::strike::StrikeSt, amt: f32) {
+    /// 打つ動きを上半身へ足す。amt = 演奏の構えのときの度合い。kind = 楽器のメッシュ名（打面の表を引く）
+    pub fn apply_strike(&self, po: &mut Pose, kind: &str, fam: crate::strike::Fam, st: &crate::strike::StrikeSt, amt: f32) {
         use crate::strike::{stick_base, Fam};
         if amt <= 0.001 {
             return;
+        }
+        if matches!(fam, Fam::Snare | Fam::Tenors | Fam::Bass) {
+            if let Some(tbl) = self.strike.get(kind) {
+                self.strike_ik(po, tbl, fam, st, amt);
+                return;
+            }
         }
         for right in [true, false] {
             if fam == Fam::Glock && !right {
@@ -811,12 +882,6 @@ impl Human {
                     fr = qmul(qy(-sd * c * 0.28), qx(up));
                     hr = qmul(qy(-sd * c * 0.1), qx(up * 0.5));
                 }
-                Fam::Bass => {
-                    let th = s.lift * amt;
-                    let yaw = sd * 0.5 * th;
-                    fr = qmul(qy(yaw * 0.4), qx(-th * 0.5));
-                    hr = qmul(qy(yaw * 0.6), qx(-th * 0.5));
-                }
                 _ => {
                     let th = s.lift * amt;
                     let yaw = (((s.x - stick_base(fam, right)) / 0.47).atan() + sd * s.rim * 0.28) * amt;
@@ -827,5 +892,215 @@ impl Human {
             self.rotate_joint(po, *fa, fr);
             self.rotate_joint(po, *hd, hr);
         }
+    }
+
+    /// 全ボーンのモデル座標の位置・回転
+    fn fk_world(&self, po: &Pose) -> (Vec<[f32; 3]>, Vec<[f32; 4]>) {
+        let mut wp: Vec<[f32; 3]> = Vec::with_capacity(self.nb);
+        let mut wq: Vec<[f32; 4]> = Vec::with_capacity(self.nb);
+        for i in 0..self.nb {
+            let lp = [po.p[i * 3], po.p[i * 3 + 1], po.p[i * 3 + 2]];
+            let lq = qget(&po.q, i);
+            if self.parent[i] < 0 {
+                wp.push(lp);
+                wq.push(lq);
+            } else {
+                let pa = self.parent[i] as usize;
+                wp.push(va(wp[pa], qrot(wq[pa], lp)));
+                wq.push(qmul(wq[pa], lq));
+            }
+        }
+        (wp, wq)
+    }
+
+    /// スネア・テナー・バス: 打面の接点へスティックの先が着くように、肩 → 肘 → 手首を IK で解く（strike.js の jkStrikeIK と同じ式）
+    fn strike_ik(&self, po: &mut Pose, tbl: &StrikeTbl, fam: crate::strike::Fam, st: &crate::strike::StrikeSt, amt: f32) {
+        use crate::strike::Fam;
+        if !(st.r.has || st.l.has) {
+            return;
+        }
+        let ix = |n: &str| self.bone_ix.get(n).copied().unwrap_or(0);
+        let (chest, neck, prop) = (ix("chest"), ix("neck"), ix("prop"));
+        let pr = self.rest_world[prop];
+        // 胴体のひねり（テナー。楽器の位置は変えない）
+        let th = if fam == Fam::Tenors && st.r.has && st.l.has {
+            let ar = ((st.r.p[0] - 0.02).max(0.0) / 0.40).min(1.0);
+            let al = ((-st.l.p[0] - 0.02).max(0.0) / 0.40).min(1.0);
+            0.34 * (sst(ar) - sst(al)) * amt
+        } else {
+            0.0
+        };
+        if th.abs() > 1e-4 {
+            let (wp0, wq0) = self.fk_world(po);
+            let (pw, pq) = (wp0[prop], wq0[prop]);
+            self.rotate_joint(po, chest, qy(th));
+            self.rotate_joint(po, neck, qy(-0.65 * th));
+            let (wp1, wq1) = self.fk_world(po);
+            let ci = qinv(wq1[chest]);
+            let pl = qrot(ci, vsub(pw, wp1[chest]));
+            let ql = qmul(ci, pq);
+            po.p[prop * 3..prop * 3 + 3].copy_from_slice(&pl);
+            qset(&mut po.q, prop, ql);
+        }
+        let (wp, wq) = self.fk_world(po);
+        // 越える腕
+        let (mut c_r, mut c_l) = (0.0f32, 0.0f32);
+        if fam == Fam::Tenors && st.r.has && st.l.has {
+            let (xr, xl) = (st.r.p[0], st.l.p[0]);
+            let (a_r, a_l) = (xr, -xl);
+            let c = sst((xr - xl + 0.08) / 0.16) * sst(a_r.max(a_l) / 0.12);
+            let k = sst(0.5 + (a_r - a_l) / 0.1);
+            c_r = c * k;
+            c_l = c * (1.0 - k);
+        }
+        for (right, s, cross) in [(true, &st.r, c_r), (false, &st.l, c_l)] {
+            if !s.has {
+                continue;
+            }
+            let sfx = if right { "R" } else { "L" };
+            let sd = if right { -1.0f32 } else { 1.0 };
+            let sk = &tbl.stick[if right { 0 } else { 1 }];
+            let (ua, fa, hb, cl) = (ix(&format!("upperArm{}", sfx)), ix(&format!("foreArm{}", sfx)), ix(&format!("hand{}", sfx)), ix(&format!("clav{}", sfx)));
+            let (tl, al) = (sk.tip, sk.ax);
+            let ell = vl(tl);
+            let (ht, cap, rise, upk) = match fam {
+                Fam::Bass => (0.80f32, 0.62f32, 0.12f32, 0.16f32),
+                _ => (0.30, 0.42, 0.07, 0.0),
+            };
+            let pm = |p: [f32; 3]| va(wp[prop], qrot(wq[prop], vsub(p, pr)));
+            // 構えのモデル座標で、手首を支点に棒が振れるとして先端の位置と向きを決める
+            let hh = (s.lift * ht + s.arc).min(cap);
+            let w = rise * s.lift.min(1.3);
+            let sb0 = s.b0.sin();
+            let sb = (sb0 - (hh - w) / ell).clamp(-0.96, 0.95);
+            let (cb0, cb) = (s.b0.cos(), (1.0 - sb * sb).sqrt());
+            let d0 = vsub(vm(s.f, cb0), vm(s.n, sb0));
+            let d = vsub(vm(s.f, cb), vm(s.n, sb));
+            let wc = vsub(vma(s.p, s.n, sk.rh), vm(d0, ell));
+            let wh = va(vma(wc, s.n, w), [0.0, upk * s.lift.min(1.3), 0.0]);
+            let tip = va(wh, vm(d, ell));
+            let t = pm(tip);
+            let dm = qrot(wq[prop], d);
+            // 手の向き: クリップの手の向きから、棒の軸を dm へ回す最短の回転
+            let qh = wq[hb];
+            let mut rh = qmul(qarc(qrot(qh, al), dm), qh);
+            let mut wr = vsub(t, qrot(rh, tl));
+            if cross > 0.0 {
+                let w2 = va(wr, [0.0, 0.085 * cross, 0.035 * cross]);
+                let u = vm(vn(vsub(t, w2)), ell);
+                rh = qmul(qarc(qrot(rh, tl), u), rh);
+                wr = vsub(t, u);
+            }
+            // 2 関節 IK（肩 → 肘 → 手首）
+            let sh = wp[ua];
+            let (lf, lh) = ([po.p[fa * 3], po.p[fa * 3 + 1], po.p[fa * 3 + 2]], [po.p[hb * 3], po.p[hb * 3 + 1], po.p[hb * 3 + 2]]);
+            let (a, b) = (vl(lf), vl(lh));
+            let dv = vsub(wr, sh);
+            let dist0 = vl(dv);
+            let dn = vm(dv, 1.0 / dist0);
+            let dist = dist0.min((a + b) * 0.9995);
+            let aa = (a * a - b * b + dist * dist) / (2.0 * dist);
+            let h2 = (a * a - aa * aa).max(0.0).sqrt();
+            let pole = if fam == Fam::Bass { [sd * 0.9, -0.5 + 0.9 * cross, -0.2] } else { [sd * 0.6, -1.0 + 1.3 * cross, -0.35] };
+            let pv = vn(vsub(pole, vm(dn, vd(pole, dn))));
+            let elbow = va(vma(sh, dn, aa), vm(pv, h2));
+            let wrist = vma(sh, dn, dist);
+            let q_u0 = wq[ua];
+            let (u_loc, f_loc) = (vn(lf), vn(lh));
+            let q_u = qmul(qarc(qrot(q_u0, u_loc), vsub(elbow, sh)), q_u0);
+            let q_f0 = qmul(q_u, qget(&po.q, fa));
+            let q_f = qmul(qarc(qrot(q_f0, f_loc), vsub(wrist, elbow)), q_f0);
+            let n_u = qmul(qinv(wq[cl]), q_u);
+            let n_f = qmul(qinv(q_u), q_f);
+            let n_h = qmul(qinv(q_f), rh);
+            for (bn, nq) in [(ua, n_u), (fa, n_f), (hb, n_h)] {
+                let o = qget(&po.q, bn);
+                qset(&mut po.q, bn, slerp(o, nq, amt));
+            }
+        }
+    }
+}
+
+fn qrot(q: [f32; 4], v: [f32; 3]) -> [f32; 3] {
+    let t = vm(vc([q[0], q[1], q[2]], v), 2.0);
+    va(va(v, vm(t, q[3])), vc([q[0], q[1], q[2]], t))
+}
+
+/// a を b へ回す最短の回転
+fn qarc(a: [f32; 3], b: [f32; 3]) -> [f32; 4] {
+    let (a, b) = (vn(a), vn(b));
+    let d = vd(a, b);
+    if d < -0.999999 {
+        let mut ax = vc([1.0, 0.0, 0.0], a);
+        if vl(ax) < 1e-3 {
+            ax = vc([0.0, 1.0, 0.0], a);
+        }
+        let ax = vn(ax);
+        return [ax[0], ax[1], ax[2], 0.0];
+    }
+    let c = vc(a, b);
+    let l = (c[0] * c[0] + c[1] * c[1] + c[2] * c[2] + (1.0 + d) * (1.0 + d)).sqrt();
+    [c[0] / l, c[1] / l, c[2] / l, (1.0 + d) / l]
+}
+
+#[cfg(test)]
+mod strike_tests {
+    use super::*;
+    use crate::build::Note;
+    use crate::strike;
+
+    fn nt(t: f64, dur: f64, hand: char, accent: u8, kind: &'static str, pad: u8, vel: f32) -> Note {
+        Note { t, dur, hand, accent, kind, pad, vel }
+    }
+    pub fn demo_notes() -> Vec<Note> {
+        vec![
+            nt(0.0, 0.5, 'R', 1, "tap", 1, 0.7),
+            nt(0.5, 0.5, 'L', 0, "tap", 2, 0.4),
+            nt(1.0, 0.5, 'R', 2, "tap", 4, 1.0),
+            nt(1.5, 0.5, 'L', 0, "tap", 2, 0.7),
+            nt(2.0, 1.0, 'R', 0, "scrape", 1, 0.7),
+            nt(3.5, 0.5, 'B', 0, "rimshot", 3, 0.7),
+            nt(4.5, 0.5, 'R', 0, "flam", 2, 0.7),
+            nt(5.0, 0.5, 'R', 0, "gock", 2, 0.7),
+            nt(6.0, 0.5, 'B', 0, "stickclick", 0, 0.7),
+            nt(7.0, 2.0, 'L', 0, "mute", 6, 0.5),
+            nt(9.5, 1.0, 'R', 0, "buzz", 0, 0.7),
+            nt(11.0, 0.5, 'L', 1, "diddle", 5, 0.9),
+        ]
+    }
+    pub const TS: [f32; 16] = [0.0, 0.25, 0.5, 0.9, 1.0, 1.2, 2.4, 3.0, 3.5, 4.4, 5.0, 6.0, 7.5, 9.6, 10.5, 11.0];
+
+    /// IK の結果が有限で、全ケースで先端の位置が出ること（JS との一致は手元で比較済み）
+    #[test]
+    fn ik_hits_targets() {
+        let h = human().expect("asset");
+        let mut out = String::new();
+        for kind in ["tenors", "bass3", "snare"] {
+            let notes = demo_notes();
+            let refs: Vec<&Note> = notes.iter().collect();
+            let spc = 0.6f32;
+            let sk = strike::strokes(&refs, kind, spc).unwrap();
+            let tbl = h.strike.get(kind).unwrap();
+            for &t in TS.iter() {
+                let st = strike::state(&sk, t + 1e-4, spc, Some(tbl));
+                let mut po = h.rest_pose();
+                for cn in ["stance/attention".to_string(), format!("hold/{}", kind)] {
+                    let c = &h.clips[h.clip_ix[&cn]];
+                    h.sample(c, 0.0, false, &mut po, 1.0);
+                }
+                h.apply_strike(&mut po, kind, sk.fam, &st, 1.0);
+                let (wp, wq) = h.fk_world(&po);
+                out += &format!("{} {:.3}", kind, t);
+                for (right, s) in [(true, &st.r), (false, &st.l)] {
+                    let sk_g = &tbl.stick[if right { 0 } else { 1 }];
+                    let hb = h.bone_ix[if right { "handR" } else { "handL" }];
+                    let tip = va(wp[hb], qrot(wq[hb], sk_g.tip));
+                    out += &format!(" {:.4} {:.4} {:.4}", tip[0], tip[1], tip[2]);
+                    let _ = s;
+                }
+                out += "\n";
+            }
+        }
+        assert!(out.lines().count() == 48 && !out.contains("NaN"));
     }
 }

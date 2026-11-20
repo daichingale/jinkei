@@ -1,0 +1,9 @@
+show "p" {
+  field gym
+  tempo 120
+  section tn "テナー" 3 instrument tenors
+  section bd "バス" 5 instrument bass_drum
+  set 1 hold 8 { tn : line (-3, 0) -> (3, 0)  bd : line (-4, 4) -> (4, 4) }
+  part "t" for tn { 8: R[13] l[24] B[12] B[3] ^R[1234] ~ r5 l6 | 4: R[12] ~ L[4] - |  }
+  part "b" for bd { 8: r1 l2 r3 l4 R5 B[15] r[135] gl[2] | }
+}

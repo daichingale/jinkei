@@ -225,11 +225,14 @@ fn pad_of(kit: Kit, step: &str) -> u8 {
         "E" => 2,
         "F" => 3,
         "G" => 4,
+        // A = スポック2（テナーだけ）
+        "A" if kit == Kit::Tenor => return 6,
         _ => return 0,
     };
     match kit {
         Kit::Snare => [1, 2, 3, 1, 1][i],
-        Kit::Tenor => [1, 2, 3, 4, 6][i],
+        // テナー: C = ロー … F = ハイ → ドラム 4 … 1（1 が最高音）、G = スポック1
+        Kit::Tenor => [4, 3, 2, 1, 5][i],
         Kit::Bass => [5, 4, 3, 2, 1][i],
         Kit::Cymbal => [2, 3, 1, 4, 1][i],
     }
@@ -246,8 +249,14 @@ struct Ev {
     click: bool,
     buzz: bool,
     flam: bool,
+    /// 符頭から決まる奏法の頭文字: o リムショット（slash）/ m ミュート（slash + スタッカート）/ g ゴック（triangle）/ k スティッククリック（circle-x）
+    pre: Option<char>,
     hand: Option<char>,
     pad: u8,
+    /// 同じ時刻の他の音（MusicXML の chord）: (打面, 手)
+    chord: Vec<(u8, Option<char>)>,
+    /// この音の前に置く強弱記号・cresc / dim
+    marks: Vec<&'static str>,
     /// (実際の数, 通常の数, 1スロットの音価の分母)
     tup: Option<(u32, u32, u32)>,
 }
@@ -345,6 +354,7 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
     let mut bars: Vec<Vec<Ev>> = vec![];
     let mut bar_len: Vec<f64> = vec![];
     let mut flam_next = false;
+    let mut marks: Vec<&'static str> = vec![];
     for m in part.kids_named("measure") {
         let mut cursor = 0.0f64;
         let mut evs: Vec<Ev> = vec![];
@@ -364,6 +374,31 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
                             got_time = true;
                         } else if nt != time {
                             warn("途中の拍子変更は最初の拍子にそろえました");
+                        }
+                    }
+                }
+                "direction" => {
+                    for dt in it.kids_named("direction-type") {
+                        if let Some(d) = dt.kid("dynamics") {
+                            for k in &d.kids {
+                                let t = match k.name.as_str() {
+                                    "pp" | "ppp" => "pp",
+                                    "p" => "p",
+                                    "mp" => "mp",
+                                    "mf" => "mf",
+                                    "f" => "f",
+                                    "ff" | "fff" => "ff",
+                                    _ => continue,
+                                };
+                                marks.push(t);
+                            }
+                        }
+                        if let Some(w) = dt.kid("wedge") {
+                            match w.attr("type") {
+                                "crescendo" => marks.push("cresc"),
+                                "diminuendo" => marks.push("dim"),
+                                _ => {}
+                            }
                         }
                     }
                 }
@@ -388,7 +423,17 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
                         }
                     };
                     if chord {
-                        warn("和音は先頭の音だけ読み込みました");
+                        // テナー・バスは和音にする。スネア・シンバルは先頭の音だけ
+                        let pad = it.kid("unpitched").map(|u| pad_of(kit, &u.val("display-step"))).unwrap_or(0);
+                        let lyric = it.kid("lyric").map(|l| l.val("text")).unwrap_or_default();
+                        let hand = match lyric.chars().next() {
+                            Some(c @ ('R' | 'L' | 'B' | 'r' | 'l' | 'b')) if lyric.chars().count() == 1 => Some(c),
+                            _ => None,
+                        };
+                        match evs.last_mut() {
+                            Some(last) if v == voice && matches!(kit, Kit::Tenor | Kit::Bass) && pad > 0 && last.pad > 0 => last.chord.push((pad, hand)),
+                            _ => warn("和音は先頭の音だけ読み込みました（和音にできるのはテナー・バスのドラム番号が分かる音だけです）"),
+                        }
                         continue;
                     }
                     let start = cursor;
@@ -431,6 +476,13 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
                         _ => None,
                     };
                     let nh = it.val("notehead");
+                    let staccato = has_n("staccato");
+                    let pre = match nh.as_str() {
+                        "triangle" | "inverted triangle" => Some('g'),
+                        "slash" => Some(if staccato { 'm' } else { 'o' }),
+                        "circle-x" => Some('k'),
+                        _ => None,
+                    };
                     let accent = if has_n("strong-accent") {
                         2
                     } else if has_n("accent") {
@@ -447,8 +499,11 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
                         click: nh == "x",
                         buzz: has_n("tremolo"),
                         flam: std::mem::take(&mut flam_next),
+                        pre,
                         hand,
                         pad,
+                        chord: vec![],
+                        marks: if rest { vec![] } else { std::mem::take(&mut marks) },
                         tup,
                     });
                 }
@@ -476,7 +531,7 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
                 match ev {
                     Some(e) if !e.rest => {
                         if pi == 0 && !(e.tie_stop && *prev_note) {
-                            o.toks.push(note_tok(e, kit, right));
+                            push_note(o, e, kit, right);
                             *prev_note = true;
                         } else {
                             o.toks.push("~".into());
@@ -520,7 +575,7 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
                                 o.toks.push("-".into());
                                 prev_note = false;
                             } else if si == 0 && !(ev.tie_stop && prev_note) {
-                                o.toks.push(note_tok(ev, kit, &mut right));
+                                push_note(&mut o, ev, kit, &mut right);
                                 prev_note = true;
                             } else {
                                 o.toks.push("~".into());
@@ -572,8 +627,16 @@ pub fn import(src: &str, want: Option<&str>) -> Result<Imported> {
     Ok(Imported { text, meter, notation, name, warnings, parts: names })
 }
 
+/// 強弱記号・cresc / dim を置いてから音符を出す
+fn push_note(o: &mut Out, e: &Ev, kit: Kit, right: &mut bool) {
+    for m in &e.marks {
+        o.toks.push((*m).to_string());
+    }
+    o.toks.push(note_tok(e, kit, right));
+}
+
 fn note_tok(e: &Ev, kit: Kit, right: &mut bool) -> String {
-    let h = match e.hand {
+    let mut h = match e.hand {
         Some(c) => {
             // 指定された手の次は逆の手
             *right = c.to_ascii_uppercase() != 'R';
@@ -590,12 +653,33 @@ fn note_tok(e: &Ev, kit: Kit, right: &mut bool) -> String {
     if e.accent == 2 {
         s.push('^');
     }
-    if e.click {
+    if e.pre == Some('k') {
+        s.push('k');
+    } else if e.click {
         s.push('x');
+    } else if let Some(p) = e.pre {
+        s.push(p);
     } else if e.flam {
         s.push('f');
     } else if e.buzz {
         s.push('z');
+    }
+    if !e.chord.is_empty() {
+        // 和音: 右手と左手が1つずつなら B[右 左]、そうでなければ同じ手で R[135]
+        let mut pads = vec![e.pad];
+        pads.extend(e.chord.iter().map(|c| c.0));
+        let two_hands = pads.len() == 2 && e.hand.is_some_and(|c| c.eq_ignore_ascii_case(&'R')) && e.chord[0].1.is_some_and(|c| c.eq_ignore_ascii_case(&'L'));
+        if two_hands {
+            h = 'B';
+            *right = true;
+        }
+        s.push(if loud { h } else { h.to_ascii_lowercase() });
+        s.push('[');
+        for p in pads {
+            s.push((b'0' + p.min(9)) as char);
+        }
+        s.push(']');
+        return s;
     }
     s.push(if loud { h } else { h.to_ascii_lowercase() });
     if e.pad > 1 || (e.pad == 1 && matches!(kit, Kit::Tenor | Kit::Bass)) {

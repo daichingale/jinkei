@@ -1,0 +1,11 @@
+show "p" {
+  field gym
+  tempo 120
+  section sn "スネア" 4 instrument snare
+  set 1 hold 16 { sn : line (-3, 0) -> (3, 0) }
+  part "d" for sn {
+    8: pp R l r l cresc r l r l | ff R l r l f R l r l | dim mf R l r l r l r l | 16: cresc R r l r R r l r mf R r l r p R r l r | cresc R l
+    repeat 2 { 4: mp R L | dim R L | }
+    8: 3[ cresc R l r ] 3[ f L r l ]
+  }
+}

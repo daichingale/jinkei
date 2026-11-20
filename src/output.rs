@@ -158,7 +158,7 @@ pub fn json(s: &Show, r: &Report) -> String {
                     p.bars.iter().map(|x| num(*x)).collect::<Vec<_>>().join(","),
                     p.notes
                         .iter()
-                        .map(|n| format!("[{},{},\"{}\",{},\"{}\",{}]", num(n.t), num(n.dur), n.hand, n.accent, n.kind, n.pad))
+                        .map(|n| format!("[{},{},\"{}\",{},\"{}\",{},{}]", num(n.t), num(n.dur), n.hand, n.accent, n.kind, n.pad, num(n.vel as f64)))
                         .collect::<Vec<_>>()
                         .join(",")
                 )
@@ -498,8 +498,16 @@ $('trails').onchange = draw;
 document.addEventListener('keydown', e => { if (e.target.tagName === 'SELECT') return; if (e.code === 'Space') { e.preventDefault(); $('play').click(); } if (e.code === 'ArrowRight') $('next').click(); if (e.code === 'ArrowLeft') $('prev').click(); });
 
 // ---- 楽譜と音（パートがあるときだけ） ----
-// 描画側（3D など）から使う入口: window.jkAudioSync() = 今の再生状態に合わせて音を鳴らし直す/止める
+// 楽器の違うパートが 2 つ以上あるときは、段を重ねた楽譜の「全パート」を末尾に足す（楽譜を持たない見せかけのパート。縦分割レイアウトの帯とここの楽譜が使う）
+{
+  const idx = jkReel.pickParts(D);
+  if (idx.length >= 2) {
+    const q = D.parts[idx[0]];
+    D.parts.push({name: D.name, members: [], meter: q.meter, start: Math.min(...idx.map(i => D.parts[i].start)), end: Math.max(...idx.map(i => D.parts[i].end)), bars: q.bars, notes: [], stack: idx});
+  }
+}
 const hasParts = !!(D.parts && D.parts.some(p => p.notes.length));
+// 描画側（3D など）から使う入口: window.jkAudioSync() = 今の再生状態に合わせて音を鳴らし直す/止める
 function audioSync() {
   if (!hasParts) return;
   if (playing && $('snd').checked) jkAudio.play(D, t, +$('speed').value); else jkAudio.stop();
@@ -509,12 +517,14 @@ if (hasParts) {
   $('sndl').style.display = ''; $('scoresec').style.display = '';
   $('snd').onchange = audioSync;
   $('speed').addEventListener('change', audioSync);
-  $('partsel').innerHTML = D.parts.map((p, i) => `<option value="${i}">${p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}（${p.members.length}人）</option>`).join('');
-  $('partsel').value = D.parts.reduce((b, p, i) => p.members.length > D.parts[b].members.length ? i : b, 0);   // 人数が最も多いパートを初期表示（縦分割レイアウトの楽譜にも使う）
-  $('partsel').onchange = () => draw();
+  const partName = (p) => p.stack ? `全パートを重ねる（${p.stack.map(i => jkStaff.labelOf(jkStaff.instOf(D, D.parts[i]), D.parts[i])).join(' / ')}）` : `${p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}（${p.members.length}人）`;
+  $('partsel').innerHTML = D.parts.map((p, i) => `<option value="${i}">${partName(p)}</option>`).join('');
+  const stackAt = D.parts.findIndex(p => p.stack);
+  $('partsel').value = stackAt >= 0 ? stackAt : D.parts.reduce((b, p, i) => p.members.length > D.parts[b].members.length ? i : b, 0);   // 重ね表示があればそれ、なければ人数が最も多いパートを初期表示（縦分割レイアウトの楽譜にも使う）
+  $('partsel').onchange = () => { draw(); window.dispatchEvent(new Event('resize')); };   // 段数が変わると楽譜の帯の高さも変わる
   window.updateStaff = () => {
     const p = D.parts[+$('partsel').value || 0], w = $('staff').clientWidth || 400;
-    $('staff').innerHTML = jkStaff(p, t - 1.5, t + 4.5, w, 96, t);
+    $('staff').innerHTML = p.stack ? jkStaff.stack(p.stack.map(i => ({part: D.parts[i], inst: jkStaff.instOf(D, D.parts[i])})), w, 96 * p.stack.length, t, {paged: true, header: true}) : jkStaff(p, t - 1.5, t + 4.5, w, 96, t);
   };
 }
 window.addEventListener('jinkei-end', () => jkAudio.stop());

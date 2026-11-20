@@ -210,6 +210,10 @@
   })();
   const NB = H ? H.json.bones.length : 0, BI = {}, PAR = [];
   if (H) H.json.bones.forEach((b, i) => { BI[b.name] = i; PAR[i] = b.parent; });
+  // 小道具ボーンの静止位置（構えのモデル座標 → 実行時の小道具ボーンの変換へ直すのに使う）
+  const PROP_REST = [0, 0, 0];
+  if (H) for (let k = BI.prop; k >= 0; k = PAR[k]) { const bp = H.json.bones[k].pos; PROP_REST[0] += bp[0]; PROP_REST[1] += bp[1]; PROP_REST[2] += bp[2]; }
+  const strikeTbl = kind => (H && H.json.strike && H.json.strike[kind]) || null;
 
   // 素材: 頂点ごとの素材 ID から色・粗さ・金属感を引く（1つのマテリアル＝1ドローコールで全素材を描く）
   const MATC = [], MATR = [];
@@ -348,7 +352,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
 
   function figure(sec, idx, mi, mn) {
     const kind = meshOf(sec.instrument, mi, mn);
-    const fam = jkStrikeFam(kind), o = {kind, fam, strk: fam ? jkStrokes(jkNotesFor(D, idx), kind, 60 / D.tempo) : null, P: new Float32Array(NB * 3), Qa: new Float32Array(NB * 4), tmpP: new Float32Array(NB * 3), tmpQ: new Float32Array(NB * 4), wk: 0, lastT: -1e9, upKey: '', tr: 1, upP: new Float32Array(NB * 3), upQ: new Float32Array(NB * 4)};
+    const fam = jkStrikeFam(kind), o = {kind, fam, strk: fam ? jkStrokes(jkNotesFor(D, idx), kind, 60 / D.tempo, strikeTbl(kind)) : null, tbl: strikeTbl(kind), P: new Float32Array(NB * 3), Qa: new Float32Array(NB * 4), tmpP: new Float32Array(NB * 3), tmpQ: new Float32Array(NB * 4), wk: 0, lastT: -1e9, upKey: '', tr: 1, upP: new Float32Array(NB * 3), upQ: new Float32Array(NB * 4)};
     const g = new THREE.Group();
     o.g = g;
     if (!H) { scene.add(g); return o; }
@@ -508,7 +512,9 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
     if (o.strk && !act) {
       const spc = 60 / jkTempoAt(D, t), tof = c => (c || 'play') === 'play' ? 1 : 0, cb = st.carryBlend == null ? 1 : st.carryBlend;
       const amt = tof(st.carryFrom) + (tof(st.carry) - tof(st.carryFrom)) * cb;
-      jkStrikeApply(Q, PAR, BI, o.fam, jkStrikeState(o.strk, o.fam, t, spc), amt * (1 - pb));
+      const sst = jkStrikeState(o.strk, o.fam, t, spc, o.tbl);
+      if (o.strk.ik) jkStrikeIK(P, Q, PAR, BI, PROP_REST, o.fam, o.tbl, sst, amt * (1 - pb));
+      else jkStrikeApply(Q, PAR, BI, o.fam, sst, amt * (1 - pb));
     }
     if (yaw) { const i = BI.chest * 4; _qq.set(Q[i], Q[i + 1], Q[i + 2], Q[i + 3]); qYaw.setFromAxisAngle(_ay, yaw); qYaw.multiply(_qq); Q[i] = qYaw.x; Q[i + 1] = qYaw.y; Q[i + 2] = qYaw.z; Q[i + 3] = qYaw.w; }
     for (let i = 0; i < NB; i++) { o.bones[i].position.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); o.bones[i].quaternion.set(Q[i * 4], Q[i * 4 + 1], Q[i * 4 + 2], Q[i * 4 + 3]); }
@@ -625,7 +631,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
       at([B.cx + r * Math.sin(a), r * 0.45, B.cz + r * Math.cos(a)], [B.cx, 0, B.cz], 42);
     } else if (camMode === 'zoom') {
       const o = people[zoom.idx], ang = o.g.rotation.y + zoom.ang * Math.PI / 180, tgt = [o.g.position.x, zoom.h, o.g.position.z];
-      at([tgt[0] + zoom.d * Math.sin(ang), zoom.h + zoom.d * 0.12, tgt[2] + zoom.d * Math.cos(ang)], tgt, zoom.fov);
+      at([tgt[0] + zoom.d * Math.sin(ang), zoom.h + zoom.d * zoom.el, tgt[2] + zoom.d * Math.cos(ang)], tgt, zoom.fov);
     } else if (camMode === 'low') {
       at([B.cx, F.type === 'stage' ? 1.0 : 2.2, B.cz + B.hd + (F.type === 'stage' ? 6 : 3)], [B.cx, 1, B.cz], 55);
     } else {
@@ -856,12 +862,12 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
 
   // ---- 切り替え ----
   let on = false;
-  // 個体を近くで見る: #zoom=<id>[&za=向きからの角度&zd=距離&zh=高さ&zf=画角]
-  const zoom = {idx: -1, ang: 25, d: 2.6, h: 1.2, fov: 40};
+  // 個体を近くで見る: #zoom=<id>[&za=向きからの角度&zd=距離&zh=高さ&zf=画角&ze=カメラの高さ/距離]
+  const zoom = {idx: -1, ang: 25, d: 2.6, h: 1.2, fov: 40, el: 0.12};
   (() => {
     const q = new URLSearchParams(location.hash.slice(1)), id = q.get('zoom');
     if (id) { zoom.idx = D.performers.findIndex(p => p.id === id); if (zoom.idx < 0 && /^\d+$/.test(id)) zoom.idx = +id; }
-    if (q.has('za')) zoom.ang = +q.get('za'); if (q.has('zd')) zoom.d = +q.get('zd'); if (q.has('zh')) zoom.h = +q.get('zh'); if (q.has('zf')) zoom.fov = +q.get('zf');
+    if (q.has('za')) zoom.ang = +q.get('za'); if (q.has('zd')) zoom.d = +q.get('zd'); if (q.has('zh')) zoom.h = +q.get('zh'); if (q.has('zf')) zoom.fov = +q.get('zf'); if (q.has('ze')) zoom.el = +q.get('ze');
   })();
   const btn = document.getElementById('mode3d');
   btn.onclick = () => {

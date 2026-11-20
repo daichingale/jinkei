@@ -68,7 +68,7 @@ const jkAudio = (function () {
         let g;
         if (tau < 0.002) g = vol * tau / 0.002;
         else { ge = ge < 0 ? vol * Math.pow(0.0001 / vol, (tau - 0.002) / (dur - 0.002)) : ge * step; g = ge; }
-        const x = this.noise[off + i];
+        const x = this.noise[(off + i) % this.noise.length];
         const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
         x2 = x1; x1 = x; y2 = y1; y1 = y;
         o[i] = y * g;
@@ -95,36 +95,94 @@ const jkAudio = (function () {
       }
       return o;
     }
-    drum(fam, idx, level) {
+    // 時間とともに中心周波数が f0 → f1 に動くノイズ（スティックを面にこする音）
+    sweepNoise(dur, f0, f1, q, vol) {
+      this.hits++;
+      const sr = this.sr, n = Math.floor(dur * sr);
+      const off = (this.hits * 7919) % Math.floor(this.noise.length / 2);
+      let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      const o = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const tau = i / sr, k = tau / dur, freq = f0 + (f1 - f0) * k;
+        const w0 = TAU * freq / sr, alpha = Math.sin(w0) / (2 * q), a0 = 1 + alpha;
+        const b0 = alpha / a0, b2 = -alpha / a0, a1 = -2 * Math.cos(w0) / a0, a2 = (1 - alpha) / a0;
+        // 立ち上がり 15ms、終わりに向けて弱まり、スティックの凹凸でゆらぐ
+        const g = vol * Math.min(tau / 0.015, 1) * (1 - 0.7 * k * k) * (0.72 + 0.28 * Math.sin(TAU * 19 * tau));
+        const x = this.noise[(off + i) % this.noise.length];
+        const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+        x2 = x1; x1 = x; y2 = y1; y1 = y;
+        o[i] = y * g;
+      }
+      return o;
+    }
+    // 打楽器1打（src/audio.rs の Synth::drum と同じ）。tenor の idx 0..5 = ドラム1..4・スポック1・2。
+    // br = 明るさ（強弱・アクセントで変わる。既定 1）、kind = rimshot / mute / gock / scrape / stickclick（他は通常）、dsec = 音符の長さ（秒）
+    drum(fam, idx, level, br, kind, dsec) {
       const o = [];
       const add = (b) => o.push(b);
+      const isDrum = fam === 'snare' || fam === 'tenor' || fam === 'bass';
+      const fin = () => {
+        let len = 0;
+        for (const b of o) len = Math.max(len, b.length);
+        const r = new Float32Array(len);
+        for (const b of o) for (let i = 0; i < b.length; i++) r[i] += b[i];
+        return r;
+      };
+      if (kind === 'stickclick') {
+        add(this.body(2400, 0.02, level * 0.5, true, 0.97));
+        add(this.body(3300, 0.012, level * 0.3, true, 0.98));
+        add(this.noiseHit(0.016, 4000 * br, 1.5, level * 0.6));
+        return fin();
+      }
+      if (kind === 'gock' && isDrum) {
+        const f = fam === 'snare' ? 760 : fam === 'tenor' ? [900, 780, 680, 600, 1300, 1450][Math.min(idx, 5)] : [520, 600, 690, 800, 920][Math.min(idx, 4)];
+        add(this.body(f, 0.05, level * 0.9, true, 0.9));
+        add(this.body(f * 2.3, 0.025, level * 0.3, true, 0.95));
+        add(this.noiseHit(0.03, f * 3 * br, 2.5, level * 0.5));
+        return fin();
+      }
+      if (kind === 'scrape' && isDrum) {
+        const d = Math.min(Math.max(dsec, 0.08), 0.95);
+        const [f0, f1] = fam === 'snare' ? [4200, 2200] : fam === 'tenor' ? [3200, 1800] : [900, 400];
+        add(this.sweepNoise(d, f0 * br, f1 * br, 1.0, level * 1.6));
+        return fin();
+      }
+      // 通常・リムショット・ミュート（ds は鳴りの長さの倍率）
+      const ds = kind === 'mute' ? 0.3 : 1.0;
+      const crack = (f, vol, d) => {
+        add(this.body(f, d, level * vol, false, 0.9));
+        add(this.noiseHit(d * 0.8, 4800 * br, 0.8, level * vol * 1.3));
+      };
       if (fam === 'snare') {
-        if (idx === 2) { add(this.body(1800, 0.045, level * 0.65, true, 0.92)); add(this.noiseHit(0.035, 3500, 1, level * 0.3)); }
+        if (idx === 2) { add(this.body(1800, 0.045, level * 0.65, true, 0.92)); add(this.noiseHit(0.035, 3500 * br, 1, level * 0.3)); }
         else {
-          add(this.body(idx === 1 ? 650 : 390, 0.13, level * 0.8, true, 0.72));
-          add(this.noiseHit(idx === 1 ? 0.15 : 0.22, 2600, 0.65, level * 1.8));
-          if (idx === 1) add(this.body(1850, 0.065, level * 0.5, false, 0.9));
+          add(this.body(idx === 1 ? 650 : 390, Math.max(0.13 * ds, 0.03), level * 0.8, true, 0.72));
+          add(this.noiseHit(Math.max((idx === 1 ? 0.15 : 0.22) * ds, 0.035), 2600 * br, 0.65, level * 1.8));
+          if (idx === 1) add(this.body(1850, 0.065 * Math.max(ds, 0.5), level * 0.5, false, 0.9));
         }
+        if (kind === 'rimshot') crack(2100, 0.55, 0.07);
+        else if (kind === 'mute') add(this.body(1850, 0.02, level * 0.35, false, 0.9));
       } else if (fam === 'tenor') {
-        const f = [145, 185, 235, 300, 365, 430][Math.min(idx, 5)];
-        add(this.body(f * 1.35, 0.28, level, false, 0.72));
-        add(this.body(f * 2.12, 0.13, level * 0.25, true, 0.86));
-        add(this.noiseHit(0.035, 2400, 1, level * 0.4));
+        const f = [300, 225, 168, 126, 560, 700][Math.min(idx, 5)];
+        const spock = idx >= 4;
+        const [d1, d2, dn] = spock ? [0.1, 0.05, 0.03] : [0.28, 0.13, 0.035];
+        add(this.body(f * 1.35, Math.max(d1 * ds, 0.03), level * (spock ? 0.85 : 1.0), false, spock ? 0.9 : 0.72));
+        add(this.body(f * 2.12, Math.max(d2 * ds, 0.02), level * 0.25 * br * br, true, 0.86));
+        add(this.noiseHit(Math.max(dn, 0.03), (spock ? 3800 : 2400) * br, 1, level * (spock ? 0.9 : 0.4)));
+        if (kind === 'rimshot') crack(f * 3.4, 0.5, 0.06);
+        else if (kind === 'mute') add(this.body(f * 3.4, 0.02, level * 0.3, false, 0.9));
       } else if (fam === 'bass') {
         const f = [55, 68, 82, 100, 125][Math.min(idx, 4)];
-        add(this.body(f * 1.6, 0.48, level * 1.6, false, 0.65));
-        add(this.body(f * 2.1, 0.2, level * 0.18, false, 0.8));
-        add(this.noiseHit(0.045, 1200, 0.8, level * 0.5));
+        add(this.body(f * 1.6, Math.max(0.48 * ds, 0.09), level * 1.6, false, 0.65));
+        add(this.body(f * 2.1, Math.max(0.2 * ds, 0.05), level * 0.18, false, 0.8));
+        add(this.noiseHit(0.045, 1200 * br, 0.8, level * 0.5));
+        if (kind === 'rimshot') crack(1100, 0.45, 0.05);
       } else {
         const i = Math.min(idx, 3), dur = [0.07, 0.55, 1.2, 0.055][i];
         add(this.noiseHit(dur, i < 2 ? 8500 : 6500, i < 2 ? 0.7 : 0.45, level * (i === 3 ? 0.65 : 1.3)));
         for (const f of [2190, 3070, 4310, 5870]) add(this.body(f, dur * 0.8, level * (i < 2 ? 0.045 : 0.09), true, 0.998));
       }
-      let len = 0;
-      for (const b of o) len = Math.max(len, b.length);
-      const r = new Float32Array(len);
-      for (const b of o) for (let i = 0; i < b.length; i++) r[i] += b[i];
-      return r;
+      return fin();
     }
     // 部分音の和（鍵盤）
     tone(parts, dur, attack, vol) {
@@ -156,13 +214,17 @@ const jkAudio = (function () {
     const drumLike = fam.f === 'snare' || fam.f === 'tenor' || fam.f === 'bass' || fam.f === 'cymbal';
     part.notes.forEach((n, ni) => {
       const [nt, nd, hand, accent, kind, pad] = n;
+      const vel = n.length > 6 ? n[6] : 0.7;
       const t0 = secAt(D, nt) + jitter(pi, member, ni);
       const dsec = Math.max(secAt(D, nt + nd) - secAt(D, nt), 0.02);
-      const base = [0.5, 0.8, 1.0][Math.min(accent, 2)] * (hand === 'B' ? 1.15 : 1.0);
+      // 強弱（mf = 0.7 を 1 とする）とアクセントで音量と明るさが変わる
+      const base = [0.5, 0.8, 1.0][Math.min(accent, 2)] * (hand === 'B' ? 1.15 : 1.0) * Math.pow(vel / 0.7, 1.2);
+      const br = Math.min(Math.max(1.0 + 0.6 * (vel - 0.7) + 0.12 * Math.min(accent, 2), 0.6), 1.4);
       let idx = 0, cym = null;
-      if (fam.f === 'snare') idx = kind === 'click' ? 2 : (pad === 2 ? 1 : pad === 3 ? 2 : 0);
-      else if (fam.f === 'tenor') idx = pad === 0 ? ni % 5 : Math.min(pad - 1, 5);
-      else if (fam.f === 'bass') { if (pad !== 0 && pad !== fam.k) return; idx = 5 - fam.k; }
+      if (fam.f === 'snare') idx = kind === 'click' ? 2 : kind === 'rimshot' ? 1 : (pad === 2 ? 1 : pad === 3 ? 2 : 0);
+      // テナー: 1〜4 = 主ドラム（1 が最高音）、5・6 = スポック。0 は主ドラムを順に回す
+      else if (fam.f === 'tenor') idx = pad === 0 ? ni % 4 : Math.min(pad - 1, 5);
+      else if (fam.f === 'bass') { if (kind !== 'stickclick' && pad !== 0 && pad !== fam.k) return; idx = 5 - fam.k; }
       else if (fam.f === 'cymbal') { idx = pad === 2 ? 0 : pad === 3 ? 1 : pad === 4 ? 3 : 2; cym = idx; }
       let hits;
       if (kind === 'flam') hits = [[-0.03, base * 0.45], [0, base]];
@@ -175,7 +237,7 @@ const jkAudio = (function () {
       for (const [off, lv] of hits) {
         const at = Math.floor(Math.max(t0 + off, 0) * sr);
         let buf;
-        if (drumLike) buf = syn.drum(fam.f, idx, lv * 0.3);
+        if (drumLike) buf = syn.drum(fam.f, idx, lv * 0.3, br, fam.f === 'cymbal' && kind !== 'stickclick' ? 'tap' : kind, dsec);
         else if (fam.f === 'xylo') {
           const f = [523.25, 587.33, 659.25, 783.99, 880.0][ni % 5];
           buf = syn.tone([[f, 1.0, 0.35], [f * 3.9, 0.35, 0.12]], 0.5, 0.001, lv * 0.35);

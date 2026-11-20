@@ -60,6 +60,7 @@ J.instruments = {};
   }
 }
 J.clips = [];
+J.strike = {};
 J.groups = {lower: A.LOWER, upper: A.UPPER};
 // クリップ: 指定ボーンだけの局所変換（位置3 + クォータニオン4）を frames 枚ぶん。counts は1周のカウント数（静止は 0）
 function clip(name, boneNames, poses, counts) {
@@ -158,6 +159,17 @@ function packPart(pmb, boneName, holdPose) {
   if (n > 65535) throw new Error('部品の頂点数が多すぎます');
   return {attach: {bone: boneName, pos: [0, 0, 0], quat: [0, 0, 0, 1]}, vertices: n, indices: m.idx.length, triangles: m.idx.length / 3, pos: put(new Float32Array(m.pos)), nor: put(new Float32Array(m.nor)), mat: put(new Uint8Array(m.mat)), index: put(new Uint16Array(m.idx))};
 }
+// 打つ動きの記述を書き出す（strike.js / strike.rs が読む）。棒は手のボーンの局所座標（tip = 先端の球の中心、ax = 後端→先端の向き、rh = 球の半径）にする。
+// 打面・待機位置は構えのときのモデル座標のまま（実行時に小道具のボーンの変換で動かす）
+function packStrike(sp, fk) {
+  const r5 = v => v.map(x => +x.toFixed(5)), out = {drums: sp.drums.map(d => ({pad: d.pad, c: r5(d.c), n: r5(d.n), ex: r5(d.ex), ez: r5(d.ez), r: +d.r.toFixed(5), spread: d.spread, ...(d.hand ? {hand: d.hand} : {})})), stick: {}, anchor: {}, click: r5(sp.click)};
+  for (const k of ['R', 'L']) {
+    const w = fk[S.id('hand' + k)], qi = Q.inv(w.q), st = sp.sticks[k];
+    out.stick[k] = {tip: r5(Q.rot(qi, V.sub(st.b, w.p))), ax: r5(V.norm(Q.rot(qi, V.sub(st.b, st.a)))), rh: st.rh};
+    out.anchor[k] = r5(sp.anchor[k]);
+  }
+  return out;
+}
 // 構え 4 種類（right / left / front / diag）のクリップ
 function styleClips(kind, spec, mb, parts) {
   const cfg = ST.CFG[kind], pts = mb.P, r = {};
@@ -187,6 +199,7 @@ for (const [kind, build] of Object.entries(I.KINDS)) {
   if (mb.T.length) J.instruments[kind] = {attach: {bone: 'prop', pos: [0, 0, 0], quat: [0, 0, 0, 1]}, ...packRigid(mb)};
   if (kind === 'guard') continue; // 旗は下で個別に作る
   const hold = armPose(spec, null);
+  if (spec.strike) J.strike[kind] = packStrike(spec.strike, S.fk(hold.pose));
   for (const [k, bone] of [['R', 'handR'], ['L', 'handL']]) { const pk = packPart(parts[k], bone, hold.pose); if (pk) J.instruments[kind + '+' + k] = pk; }
   clip('hold/' + kind, A.UPPER, [hold.pose], 0);
   const keep = KEEP.includes(kind);
