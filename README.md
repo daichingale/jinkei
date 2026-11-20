@@ -1,3 +1,18 @@
+## クラウドから編集する（2026-11-20 改良版）
+
+- [GitHub のソース一式](https://github.com/daichingale/jinkei)
+- [github.dev でソースを開く](https://github.dev/daichingale/jinkei) — ブラウザだけでコードを編集し GitHub にコミット可能（GitHubログインが必要）。
+- [ブラウザ版エディタの生成物](docs/index.html) — HTML1ファイルで開くドリルエディタ。
+- [7人のスネア・4分割プレビュー](docs/snare-preview.html) — 斜め3D / 打楽器譜 / 正面3D / 隊形俯瞰。
+
+**GitHub Pagesを有効にするには** このリポジトリの `Settings → Pages → Build and deployment` で「Deploy from a branch」「main」「/docs」を指定して保存します。公開後のURLは `https://daichingale.github.io/jinkei/` です。Pages設定前はサイトURLにアクセスできません。
+
+**重要:** ブラウザアプリのローカル保存と、GitHubでのコード編集は別です。現在、プロジェクトデータをクラウド保存・別端末へ自動同期する機能と、複数人のリアルタイム共同編集は未実装です。ブラウザ録画は実機検証が必要です。
+
+ビルド・リリース用の参考ワークフローは [docs/ci/release.yml.example](docs/ci/release.yml.example) に保存しています。GitHub App権限の制約により、現時点では自動リリース用ワークフローは有効化していません。
+
+---
+
 # 陣形 (Jinkei)
 
 マーチングのドリル（隊形と移動）を設計するための言語とエンジン（Rust製・外部依存なし）。
