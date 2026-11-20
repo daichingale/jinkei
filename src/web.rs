@@ -4,6 +4,7 @@ use crate::output::{js, preview_template, FIELD2D_JS, MOTION_JS};
 use crate::server::{EDITOR, PRINTER_JS, TEMPLATE_SHOW};
 
 const ENGINE_JS: &str = include_str!("../web/engine.js");
+const PROJECT_JS: &str = include_str!("../web/project.js");
 const SHIM_JS: &str = include_str!("../web/shim.js");
 const MAIN_SCRIPT: &str = "<script>\n'use strict';";
 /// `</script` や `<!--` を <script type="text/plain"> に安全に入れるための目印（読み出し時に `<` へ戻す）
@@ -15,10 +16,11 @@ pub fn page() -> String {
     let tpl = preview_template().replace("</script", &format!("{}/script", ESC)).replace("<!--", &format!("{}!--", ESC));
     let shim = SHIM_JS.replace("__JK_TEMPLATE_SHOW__", &js(TEMPLATE_SHOW));
     let inject = format!(
-        "<script type=\"text/plain\" id=\"jk-preview-tpl\">{}</script>\n<script>window.JK_ESC = {};</script>\n<script>{}</script>\n<script>{}</script>\n{}",
+        "<script type=\"text/plain\" id=\"jk-preview-tpl\">{}</script>\n<script>window.JK_ESC = {};</script>\n<script>{}</script>\n<script>{}</script>\n<script>{}</script>\n{}",
         tpl,
         js(ESC),
         ENGINE_JS,
+        PROJECT_JS,
         shim,
         MAIN_SCRIPT
     );

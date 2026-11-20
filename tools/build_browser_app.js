@@ -24,7 +24,7 @@ const marker = "<script>\n'use strict';";
 if (!html.includes(marker)) throw new Error('エディタのスクリプト挿入位置が見つかりません');
 const inject = `<script type="text/plain" id="jk-preview-tpl">${tpl}</script>\n` +
   `<script>window.JK_ESC = ${js(esc)};</script>\n` +
-  `<script>${read('web/engine.js')}</script>\n<script>${shim}</script>\n${marker}`;
+  `<script>${read('web/engine.js')}</script>\n<script>${read('web/project.js')}</script>\n<script>${shim}</script>\n${marker}`;
 html = html.replace(marker, inject);
 fs.writeFileSync(out, html);
 console.log(path.resolve(out), `(${(Buffer.byteLength(html) / 1024 / 1024).toFixed(1)} MiB)`);

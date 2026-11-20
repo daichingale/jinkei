@@ -1,20 +1,13 @@
 // ブラウザ版（jinkei web）用: エディタが呼ぶ /api/* をブラウザ内のエンジンで処理する。
 (function () {
   const TEMPLATE = __JK_TEMPLATE_SHOW__;
-  const KEY = 'jinkei-autosave';
   const realFetch = window.fetch.bind(window);
-  const st = { name: 'show.jk', handle: null };
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
-  if (saved && saved.name) st.name = saved.name;
+  const saved = window.JK_PROJECT.initial;
+  const st = { name: saved?.name || 'show.jk', handle: null };
 
   const json = x => new Response(JSON.stringify(x), { headers: { 'Content-Type': 'application/json' } });
   const baseName = () => st.name.replace(/\.jk$/i, '') + '.jk';
-  function autosave(source) {
-    try { localStorage.setItem(KEY, JSON.stringify({ name: st.name, source })); } catch (e) { /* 容量超過などは無視 */ }
-  }
   async function save(source) {
-    autosave(source);
     try {
       if (st.handle && st.handle.createWritable) {
         const w = await st.handle.createWritable();
@@ -23,7 +16,6 @@
       }
       if (window.showSaveFilePicker) {
         st.handle = await window.showSaveFilePicker({ suggestedName: baseName(), types: [{ description: '陣形ファイル', accept: { 'text/plain': ['.jk'] } }] });
-        st.name = st.handle.name; autosave(source);
         const w = await st.handle.createWritable();
         await w.write(source); await w.close();
         return { ok: true, path: st.name };
@@ -44,7 +36,7 @@
     const u = typeof url === 'string' ? url : (url && url.url) || '';
     const body = opt && opt.body;
     if (u === '/api/source') return Promise.resolve(json({ path: '', name: st.name, source: saved && typeof saved.source === 'string' ? saved.source : TEMPLATE }));
-    if (u === '/api/compile') { const src = String(body); const r = jinkeiCompile(src); if (r.ok) autosave(src); return Promise.resolve(json(r)); }
+    if (u === '/api/compile') return Promise.resolve(json(jinkeiCompile(String(body))));
     if (u === '/api/fix') return Promise.resolve(json(jinkeiFix(String(body))));
     if (u === '/api/save') return save(String(body)).then(json);
     return realFetch(url, opt);
