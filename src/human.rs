@@ -26,6 +26,69 @@ pub struct MeshData {
     pub idx: Vec<u32>,
     pub skin_i: Vec<[u16; 4]>,
     pub skin_w: Vec<[f32; 4]>,
+    /// 顔パッチの UV（無いメッシュは空）
+    pub uv: Vec<[f32; 2]>,
+}
+
+/// 顔テクスチャ（目・眉・口・ほおを 8 チャンネルに焼いたもの）。ミップマップつき。
+/// チャンネル: 0 墨 1 眉 2 白目 3 虹彩 4 虹彩のグラデーション 5 ハイライト 6 ほお 7 口（0.5 = くちびる, 1 = 線）
+pub struct FaceTex {
+    /// 各レベルの (幅, 高さ, 画素)。0 が最も細かい
+    pub lv: Vec<(usize, usize, Vec<[f32; 8]>)>,
+}
+
+impl FaceTex {
+    /// レベル l（小数可）を双一次補間で引く。UV は [0,1]、v は上が 0
+    pub fn sample(&self, u: f32, v: f32, l: f32) -> [f32; 8] {
+        let l0 = (l.floor().max(0.0) as usize).min(self.lv.len() - 1);
+        let l1 = (l0 + 1).min(self.lv.len() - 1);
+        let a = self.bilinear(l0, u, v);
+        if l1 == l0 {
+            return a;
+        }
+        let t = (l - l0 as f32).clamp(0.0, 1.0);
+        let b = self.bilinear(l1, u, v);
+        let mut o = [0.0f32; 8];
+        for k in 0..8 {
+            o[k] = a[k] + (b[k] - a[k]) * t;
+        }
+        o
+    }
+    fn bilinear(&self, l: usize, u: f32, v: f32) -> [f32; 8] {
+        let (w, h, px) = &self.lv[l];
+        let x = (u * *w as f32 - 0.5).clamp(0.0, *w as f32 - 1.0);
+        let y = (v * *h as f32 - 0.5).clamp(0.0, *h as f32 - 1.0);
+        let (x0, y0) = (x.floor() as usize, y.floor() as usize);
+        let (x1, y1) = ((x0 + 1).min(w - 1), (y0 + 1).min(h - 1));
+        let (fx, fy) = (x - x0 as f32, y - y0 as f32);
+        let mut o = [0.0f32; 8];
+        for k in 0..8 {
+            let top = px[y0 * w + x0][k] * (1.0 - fx) + px[y0 * w + x1][k] * fx;
+            let bot = px[y1 * w + x0][k] * (1.0 - fx) + px[y1 * w + x1][k] * fx;
+            o[k] = top * (1.0 - fy) + bot * fy;
+        }
+        o
+    }
+}
+
+/// 顔まわりのアセット: パッチのメッシュ・テクスチャ・目の色と髪の色の表・顔の色・髪メッシュの名前
+pub struct Face {
+    pub mesh: MeshData,
+    pub tex: FaceTex,
+    /// 目の色・髪の色（0xRRGGBB）、髪の色の出現表（hair_cols への添字）
+    pub eyes: Vec<u32>,
+    pub hair_cols: Vec<u32>,
+    pub hair_slots: Vec<usize>,
+    /// 顔の色（0xRRGGBB）: 白目・墨・くちびる・口の線・ほお・眉に混ぜる色
+    pub sclera: u32,
+    pub ink: u32,
+    pub lip: u32,
+    pub line: u32,
+    pub blush: u32,
+    pub brow: u32,
+    /// 髪メッシュの名前（insts のキー）。リアル用（帽子の下）とイラスト用
+    pub hairs_real: Vec<String>,
+    pub hairs_ill: Vec<String>,
 }
 
 pub struct Inst {
@@ -108,7 +171,8 @@ pub struct Human {
     pub mats_i: Vec<Mat>,
     /// イラスト用の体メッシュと髪メッシュの名前（insts のキー）。アセットに無ければ None / 空
     pub ill_body: Option<MeshData>,
-    pub hairs: Vec<String>,
+    /// 顔のテクスチャ・髪（アセットに無ければ None）
+    pub face: Option<Face>,
     /// 打楽器の打面の表（snare / tenors / bass1..5）
     pub strike: HashMap<String, StrikeTbl>,
 }
@@ -146,6 +210,9 @@ fn mesh_of(blob: &[u8], d: &J, skinned: bool) -> MeshData {
         idx: rd_u16(blob, off("index"), ni).into_iter().map(|i| i as u32).collect(),
         ..Default::default()
     };
+    if d.get("uv").is_some() {
+        m.uv = rd_f32(blob, off("uv"), nv * 2).chunks(2).map(|c| [c[0], c[1]]).collect();
+    }
     if skinned {
         m.skin_i = blob[off("skinIndex")..off("skinIndex") + nv * 4].chunks(4).map(|c| [c[0] as u16, c[1] as u16, c[2] as u16, c[3] as u16]).collect();
         m.skin_w = rd_f32(blob, off("skinWeight"), nv * 4).chunks(4).map(|c| [c[0], c[1], c[2], c[3]]).collect();
@@ -213,7 +280,6 @@ fn load() -> Result<Human, String> {
         })
         .collect();
     let ill_body = head.get("illust").and_then(|i| i.get("body")).map(|d| mesh_of(blob, d, true));
-    let hairs: Vec<String> = head.get("illust").and_then(|i| i.get("hairs")).map(|j| j.arr().iter().map(|h| h.str().to_string()).collect()).unwrap_or_default();
     let body = mesh_of(blob, head.get("body").ok_or("body がありません")?, true);
     let mut insts = HashMap::new();
     for (name, d) in head.get("instruments").map(|j| j.obj()).unwrap_or(&[]) {
@@ -236,6 +302,58 @@ fn load() -> Result<Human, String> {
         let flag_box = if name == "guard" && x0 <= x1 { Some([x1, (x1 - x0).max(0.01), y1, (y1 - y0).max(0.01)]) } else { None };
         insts.insert(name.clone(), Inst { mesh, bone, apos: [ap[0], ap[1], ap[2]], aquat: [aq[0], aq[1], aq[2], aq[3]], flag_box });
     }
+    let face = head.get("face").map(|f| {
+        let t = f.get("tex");
+        let (tw, th) = (t.and_then(|x| x.get("w")).map(|j| j.usize()).unwrap_or(1), t.and_then(|x| x.get("h")).map(|j| j.usize()).unwrap_or(1));
+        let (oa, ob) = (t.and_then(|x| x.get("a")).map(|j| j.usize()).unwrap_or(0), t.and_then(|x| x.get("b")).map(|j| j.usize()).unwrap_or(0));
+        let mut base: Vec<[f32; 8]> = Vec::with_capacity(tw * th);
+        for k in 0..tw * th {
+            let mut p = [0.0f32; 8];
+            for c in 0..4 {
+                p[c] = blob[oa + k * 4 + c] as f32 / 255.0;
+                p[4 + c] = blob[ob + k * 4 + c] as f32 / 255.0;
+            }
+            base.push(p);
+        }
+        // ミップマップ（2x2 の平均）
+        let mut lv = vec![(tw, th, base)];
+        while lv.last().unwrap().0 > 8 && lv.last().unwrap().1 > 8 {
+            let (w, h, src) = lv.last().unwrap();
+            let (nw, nh) = (w / 2, h / 2);
+            let mut dst = Vec::with_capacity(nw * nh);
+            for y in 0..nh {
+                for x in 0..nw {
+                    let mut o = [0.0f32; 8];
+                    for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                        let p = &src[(2 * y + dy) * w + 2 * x + dx];
+                        for k in 0..8 {
+                            o[k] += p[k] * 0.25;
+                        }
+                    }
+                    dst.push(o);
+                }
+            }
+            lv.push((nw, nh, dst));
+        }
+        let col = |k: &str| f.get("colors").and_then(|c| c.get(k)).map(|j| j.num() as u32).unwrap_or(0xffffff);
+        let list = |k: &str| -> Vec<u32> { f.get(k).map(|j| j.arr().iter().map(|x| x.num() as u32).collect()).unwrap_or_default() };
+        let names = |k: &str| -> Vec<String> { f.get("hairs").and_then(|h| h.get(k)).map(|j| j.arr().iter().map(|x| x.str().to_string()).collect()).unwrap_or_default() };
+        Face {
+            mesh: mesh_of(blob, f.get("mesh").expect("face.mesh"), true),
+            tex: FaceTex { lv },
+            eyes: list("eyes"),
+            hair_cols: list("hairCols"),
+            hair_slots: list("hairSlots").into_iter().map(|x| x as usize).collect(),
+            sclera: col("sclera"),
+            ink: col("ink"),
+            lip: col("lip"),
+            line: col("line"),
+            blush: col("blush"),
+            brow: col("brow"),
+            hairs_real: names("real"),
+            hairs_ill: names("illust"),
+        }
+    });
     let mut clips = vec![];
     let mut clip_ix = HashMap::new();
     for c in head.get("clips").map(|j| j.arr()).unwrap_or(&[]) {
@@ -298,7 +416,7 @@ fn load() -> Result<Human, String> {
         }
         strike.insert(name.clone(), StrikeTbl { drums, stick: [stick("R"), stick("L")], anchor: [anc("R"), anc("L")], click: v3(d.get("click")) });
     }
-    Ok(Human { nb, parent, rest, rest_world, mats, body, insts, parts, clips, clip_ix, upper, strides, chest: *names.get("chest").unwrap_or(&2), mid, bone_ix: names, mats_i, ill_body, hairs, strike })
+    Ok(Human { nb, parent, rest, rest_world, mats, body, insts, parts, clips, clip_ix, upper, strides, chest: *names.get("chest").unwrap_or(&2), mid, bone_ix: names, mats_i, ill_body, face, strike })
 }
 
 /// 埋め込みアセット（読めなければ None）

@@ -11,7 +11,8 @@ const {buildBody} = require('./human/body');
 const A = require('./human/anim');
 const I = require('./human/instruments');
 const ST = require('./human/styles');
-const {V, Q} = require('./human/math');
+const {V, Q, ss} = require('./human/math');
+const hws = S.W('head');
 
 const OUT = path.join(__dirname, '..', 'assets');
 const blobParts = []; let blobLen = 0;
@@ -41,22 +42,47 @@ buildBody(body);
 const bm = body.finalize(S.bones.length);
 J.body = packMesh(bm);
 J.instruments = {};
-// ---- イラスト（look illust）: 専用の体（白Tシャツ・色スリーブ・アニメ調の顔）と髪5種類 ----
+// ---- イラスト（look illust）: 専用の体（白Tシャツ・色スリーブ）。顔と髪はリアルと共通（face.js / hair.js）----
 {
   const IL = require('./human/illust');
   const ib = new MeshBuilder();
   IL.buildIllust(ib);
-  J.illust = {body: packMesh(ib.finalize(S.bones.length)), hairs: []};
-  // 髪: 頭の骨に付く剛体。頂点は頭の骨の局所座標（静止姿勢で回転なし）
-  const hw = S.W('head');
-  for (const name of Object.keys(IL.HAIR_STYLES)) {
+  J.illust = {body: packMesh(ib.finalize(S.bones.length))};
+}
+// ---- 顔（テクスチャとパッチ）・髪 ----
+{
+  const F = require('./human/face'), HR = require('./human/hair');
+  const tex = F.bakeFace();
+  const fp = F.facePatch(), pos = [], nor = [], uv = [], skin = [], skinW = [], mat = [];
+  const hw = (y) => { const t = ss(1.46, 1.50, y); return [[S.id('head'), 0.4 + 0.6 * t], [S.id('neck'), 0.6 * (1 - t)]]; };
+  fp.P.forEach((p, i) => {
+    const w = hw(p[1]), q = F.headS(p);
+    pos.push(...q); nor.push(...fp.N[i]); uv.push(...fp.UV[i]); mat.push(M.SKIN);
+    for (let k = 0; k < 4; k++) { skin.push(w[k] ? w[k][0] : 0); skinW.push(w[k] ? w[k][1] : 0); }
+  });
+  const nv = pos.length / 3;
+  J.face = {
+    tex: {w: tex.w, h: tex.h, a: put(tex.a), b: put(tex.b)},
+    mesh: {vertices: nv, indices: fp.idx.length, triangles: fp.idx.length / 3, pos: put(new Float32Array(pos)), nor: put(new Float32Array(nor)), uv: put(new Float32Array(uv)),
+      skinIndex: put(new Uint8Array(skin)), skinWeight: put(new Float32Array(skinW)), mat: put(new Uint8Array(mat)), index: put(new Uint16Array(fp.idx))},
+    hairs: {real: [], illust: []},
+    // 虹彩の色（目の色）。隊員ごとに添字で選ぶ: 茶・濃い茶・ヘーゼル・青灰・すみれ・琥珀・緑
+    eyes: [0x7a4a2a, 0x4a2c1c, 0x8a6a2a, 0x5f7f9f, 0x7a5ab0, 0xc0842a, 0x3f8a5a],
+    // 髪の色。hairSlots が出現の重み（ピンク・ラベンダー・シルバーは 1/20 ずつ）
+    hairCols: [0x1e1a22, 0x3b2a22, 0x6a3f2c, 0x9a6b44, 0x8c8279, 0x8d4130, 0x2a2024, 0xd2a860, 0x232b45, 0xe79ab8, 0xb9a4dd, 0xcfd3dc],
+    hairSlots: [0, 0, 6, 1, 1, 2, 2, 3, 3, 4, 5, 5, 7, 8, 0, 1, 2, 9, 10, 11],
+    // 顔の色（sRGB）: 白目・墨・くちびる・口の線・ほお・眉に混ぜる色・ハイライト
+    colors: {sclera: 0xf3f1f4, ink: 0x1c1216, lip: 0xdc6e78, line: 0x8c3744, blush: 0xf08c96, brow: 0x3a2a26},
+  };
+  for (const real of [false, true]) for (const name of HR.NAMES) {
     const hb = new MeshBuilder();
-    IL.HAIR_STYLES[name](hb);
+    HR.build(hb, name, real);
     const m = hb.finalize(S.bones.length);
-    for (let i = 0; i < m.pos.length; i += 3) { m.pos[i] -= hw[0]; m.pos[i + 1] -= hw[1]; m.pos[i + 2] -= hw[2]; }
-    J.instruments['hair/' + name] = {attach: {bone: 'head', pos: [0, 0, 0], quat: [0, 0, 0, 1]}, vertices: m.pos.length / 3, indices: m.idx.length, triangles: m.idx.length / 3,
-      pos: put(new Float32Array(m.pos)), nor: put(new Float32Array(m.nor)), mat: put(new Uint8Array(m.mat)), index: put(new Uint16Array(m.idx))};
-    J.illust.hairs.push('hair/' + name);
+    for (let i = 0; i < m.pos.length; i += 3) { m.pos[i] -= hws[0]; m.pos[i + 1] -= hws[1]; m.pos[i + 2] -= hws[2]; }
+    const key = (real ? 'hairr/' : 'hair/') + name;
+    J.instruments[key] = {attach: {bone: 'head', pos: [0, 0, 0], quat: [0, 0, 0, 1]}, vertices: m.pos.length / 3, indices: m.idx.length, triangles: m.idx.length / 3,
+      pos: put(new Float32Array(m.pos)), nor: put(new Float32Array(m.nor)), mat: put(new Uint8Array(m.mat)), index: put(new Uint16Array(m.idx)), outlineIdx: hb.noOutline * 3};
+    (real ? J.face.hairs.real : J.face.hairs.illust).push(key);
   }
 }
 J.clips = [];
