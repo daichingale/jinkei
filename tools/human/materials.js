@@ -28,6 +28,17 @@ const list = [
   ['rosewood', 0x5a2716, 0.36, 0.0, false],
   ['cane', 0xd8b872, 0.6, 0.0, false],
   ['darksteel', 0x3a3c42, 0.35, 0.9, false],
+  // ---- 楽器の仕上げ（真鍮のラッカー・ニッケル・パール・パッドなど）----
+  ['brassin', 0xa8741f, 0.42, 1.0, false],      // ベルの内側（暗めの金色）
+  ['pearl', 0xf1ecdf, 0.22, 0.0, false],        // 指のボタン
+  ['nickel', 0xc6c9cf, 0.30, 1.0, false],       // スライド・ニッケルシルバー
+  ['chrome', 0xf2f4f7, 0.10, 1.0, false],       // ドラムのフープ・ラグ
+  ['pad', 0xb89258, 0.80, 0.0, false],          // キーのパッド（革）
+  ['ebonite', 0x16161b, 0.22, 0.0, false],      // マウスピース
+  ['cork', 0xb48e5c, 0.92, 0.0, false],
+  ['maple', 0x8e3f20, 0.38, 0.0, false],        // ファゴットのメイプル（赤茶）
+  ['bar2', 0x74391f, 0.34, 0.0, false],         // シロフォンのバー（濃い色）
+  ['gold', 0xf0c24a, 0.22, 1.0, false],         // 金メッキのキー・ベルのトリム
   // ---- イラストの見た目（look illust）用。リアルでは使わない ----
   ['tshirt', 0xf7f7f5, 0.9, 0.0, false],
   ['ipants', 0x1c1d24, 0.9, 0.0, false],
