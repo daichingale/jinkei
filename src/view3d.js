@@ -401,7 +401,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
       im.position.set(...ins.attach.pos); im.quaternion.set(...ins.attach.quat);
       bones[BI[ins.attach.bone]].add(im);
       o.inst = im;
-      if (ill && kind !== 'guard') outline(instGeos[kind], bones[BI[ins.attach.bone]]).position.set(...ins.attach.pos);
+      if (ill && kind !== 'guard') outline(instGeos[kind], bones[BI[ins.attach.bone]], 0.5).position.set(...ins.attach.pos);
     }
     // 手に付く部品（スティック・マレット・シンバルの板）: 楽器名 + "+R" / "+L"。手のボーンに付ける
     for (const sfx of ['+R', '+L']) {
@@ -619,6 +619,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
 
   function placeCamera() {
     const B = bounds(), size = Math.max(B.hw * 2, B.hd * 3.2);
+    if (camMode !== 'zoom') for (const b of backdrop) if (b.isMesh) b.visible = true;
     const at = (e, tg, fov) => { camera.position.set(...e); camera.lookAt(...tg); camera.fov = fov; camera.up.set(0, 1, 0); camera.updateProjectionMatrix(); };
     if (camMode === 'audience') {
       if (F.type === 'stage') at([0, 9.5, B.hw * 1.25], [0, 2.2, B.cz * 0.85], 40);
@@ -631,7 +632,12 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
       at([B.cx + r * Math.sin(a), r * 0.45, B.cz + r * Math.cos(a)], [B.cx, 0, B.cz], 42);
     } else if (camMode === 'zoom') {
       const o = people[zoom.idx], ang = o.g.rotation.y + zoom.ang * Math.PI / 180, tgt = [o.g.position.x, zoom.h, o.g.position.z];
-      at([tgt[0] + zoom.d * Math.sin(ang), zoom.h + zoom.d * zoom.el, tgt[2] + zoom.d * Math.cos(ang)], tgt, zoom.fov);
+      const cp = [tgt[0] + zoom.d * Math.sin(ang), zoom.h + zoom.d * zoom.el, tgt[2] + zoom.d * Math.cos(ang)];
+      // 袖の黒い幕などが人物とカメラの間に入って画面が真っ黒になるときは、その幕だけ隠す
+      const rc = new THREE.Raycaster(), tv = new THREE.Vector3(...tgt), dv = new THREE.Vector3(...cp).sub(tv), dl = dv.length();
+      rc.set(tv, dv.normalize()); rc.far = dl;
+      for (const b of backdrop) if (b.isMesh) b.visible = rc.intersectObject(b, false).length === 0;
+      at(cp, tgt, zoom.fov);
     } else if (camMode === 'low') {
       at([B.cx, F.type === 'stage' ? 1.0 : 2.2, B.cz + B.hd + (F.type === 'stage' ? 6 : 3)], [B.cx, 1, B.cz], 55);
     } else {
