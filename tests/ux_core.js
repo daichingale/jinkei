@@ -46,6 +46,6 @@ for (const v of X.VENUES) for (const p of X.PRESETS) {
   // 4) 埋め込み用ファイルの構文と、エディタのプレースホルダ
   for (const file of ['ux.js', 'ux_core.js']) new Function(fs.readFileSync(path.join(root, 'src', file), 'utf8'));
   const html = fs.readFileSync(path.join(root, 'src', 'editor.html'), 'utf8');
-  for (const ph of ['__UX_CSS__', '__UI_ICONS__', '__EXAMPLES__', '__UX_CORE__', '__UX__']) assert(html.includes(ph), ph);
+  for (const ph of ['__UX_CSS__', '__UI_ICONS__', '__EXAMPLES__', '__UX_CORE__', '__UX__', '__SC_CORE__', '__SC__']) assert(html.includes(ph), ph);
   console.log(`OK ux_core: ${n}通りの会場×編成、既定の流れ4通りの自動仕上げ、部品`);
 })().catch(e => { console.error(e); process.exit(1); });

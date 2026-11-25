@@ -272,3 +272,134 @@ dialog.uxdlg.help{width:min(980px,calc(100vw - 20px));height:min(700px,calc(100v
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+
+/* ===== キーボードショートカット・コマンドパレット・人の削除/追加（src/shortcuts.js） ===== */
+.kc{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid #4a5268;border-bottom-width:2px;border-radius:5px;background:linear-gradient(#343c50,#272d3c);color:#eef1f8;font:600 11px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans JP",monospace;text-align:center;white-space:nowrap;box-shadow:0 1px 0 #0007}
+.kc-s{min-width:0;padding:0 4px;font-size:10px;line-height:1.45}
+.kcs{display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
+.kcs i{font-style:normal;color:#7f8794;font-size:10px}
+.kcs-s .kc{padding:0 4px;font-size:10px}
+i.or{font-style:normal;color:#6b7280;margin:0 5px;font-size:11px}
+.nokey{color:#6b7280;font-size:11px}
+.sci{display:inline-block;vertical-align:middle;flex:none}
+header .scbtn{display:inline-flex;align-items:center;gap:5px;padding:4px 9px}
+header #scbtn{padding:4px 7px}
+@media (max-width:760px){header .scbtn{display:none}}
+/* トースト（元に戻す付き） */
+.toast.sct{align-items:center;gap:12px;padding:10px 12px 10px 14px}
+.toast.sct .sct-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#2f3a52;color:#cfe0ff;flex:none}
+.toast.sct.info .sct-ic{background:#2b3a55}
+.toast.sct.err .sct-ic{background:#4a2b30;color:#ffb3b3}
+.toast.sct .sct-t{display:flex;flex-direction:column;min-width:0}
+.toast.sct .sct-t b{font-weight:600;font-size:13.5px}
+.toast.sct .sct-t small{color:#9aa4b8;font-size:11px;line-height:1.4;margin-top:1px}
+.toast.sct .sct-undo{margin-left:6px;background:#3a4a6e;border-color:#5b7cc4;color:#fff;border-radius:9px;padding:5px 10px;display:inline-flex;gap:7px;align-items:center;font-weight:600}
+.toast.sct .sct-undo:hover{background:#46598a}
+/* 選んだ人のそばの小さなツールバー */
+#scfloat{position:absolute;z-index:4;display:none;gap:2px;align-items:center;background:#1c2029f2;border:1px solid #3d4a6a;border-radius:11px;padding:3px;box-shadow:0 6px 20px #000a;backdrop-filter:blur(4px)}
+#scfloat::after{content:"";position:absolute;left:50%;bottom:-6px;width:10px;height:10px;margin-left:-5px;background:#1c2029;border-right:1px solid #3d4a6a;border-bottom:1px solid #3d4a6a;transform:rotate(45deg);z-index:-1}
+#scfloat[data-side=bottom]::after{bottom:auto;top:-6px;transform:rotate(225deg)}
+#scfloat[data-side=left]::after,#scfloat[data-side=right]::after{display:none}
+#scfloat button{display:inline-flex;align-items:center;gap:4px;border:none;background:none;border-radius:8px;padding:5px 8px;color:#cdd5e6;font-size:12px;min-height:30px}
+#scfloat button:hover:not([disabled]){background:#2c3550;color:#fff}
+#scfloat button.dg{color:#ff9d9d}
+#scfloat button.dg:hover{background:#4a2b30;color:#ffd0d0}
+#scfloat button[disabled]{opacity:.3}
+@media (min-width:761px){#seladd,#seldup,#seldel,.scvs{display:none}}
+#selbar .dangerbtn{color:#ff9d9d}
+/* 右クリックメニュー */
+#ctx .mi{display:flex;align-items:center;gap:8px}
+#ctx .mi .ks{margin-left:auto;padding-left:18px;color:#7f8794;font-size:11px}
+#ctx .mi.dg{color:#ff9d9d}
+#ctx .mi .sci{opacity:.85}
+/* 「セクション」タブのメンバー一覧 */
+#scmem{margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--line)}
+#scmem .scmem-h{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+#scmem .scmem-h .hint{font-size:11px}
+#scmem .scchk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);margin-bottom:8px}
+.scsec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;margin-bottom:7px}
+.scsec-h{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.scsec-h .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.scsec-h .cnt{color:var(--mut);font-size:11px}
+.scsec-h .sp{flex:1}
+.scsec-h button{padding:2px 8px;font-size:11px;border-radius:12px}
+.scsec-h button.dg{color:#ff9d9d;padding:2px 6px}
+.scchips{display:flex;flex-wrap:wrap;gap:4px}
+.scchip{display:inline-flex;align-items:stretch;border:1px solid #3a4152;border-radius:14px;overflow:hidden;background:#1a1d23}
+.scchip button{border:none;border-radius:0;background:none;padding:1px 7px;font-size:12px;color:#cfd6e4;min-width:26px;line-height:20px}
+.scchip button.n:hover{background:#2b3345}
+.scchip button.x{padding:1px 6px;color:#7f8794;border-left:1px solid #2e333c}
+.scchip button.x:hover{background:#4a2b30;color:#ffb3b3}
+.scchip.on{border-color:var(--c,#8fb3ff);box-shadow:0 0 0 1px var(--c,#8fb3ff) inset}
+.scchip.on button.n{background:color-mix(in srgb,var(--c,#5b8def) 35%,#1a1d23);color:#fff;font-weight:700}
+body.easy #scmem .scmem-h .hint{display:block}
+/* 「次にやること」の一度だけの案内 */
+#nextbar .nb-sc{display:flex;align-items:center;gap:7px;margin-left:auto;padding:4px 10px;border-radius:999px;background:#242c3f;color:#aab4ca;font-size:11px;white-space:nowrap}
+/* コマンドパレット */
+#scpal,#scsheet{position:fixed;inset:0;z-index:150;background:#070a10b8;align-items:flex-start;justify-content:center;backdrop-filter:blur(2px);animation:scfade .12s ease}
+@keyframes scfade{from{opacity:0}to{opacity:1}}
+.scp-box{margin-top:11vh;width:min(640px,94vw);background:#1b1f2a;border:1px solid #3d4764;border-radius:14px;box-shadow:0 20px 60px #000d;overflow:hidden;display:flex;flex-direction:column;max-height:76vh}
+.scp-in{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #2c3347;color:#8fb3ff}
+.scp-in input{flex:1;background:none;border:none;font-size:15px;padding:2px 0;color:#f2f5fb}
+.scp-in input:focus{outline:none}
+.scp-list{overflow:auto;padding:6px;flex:1;min-height:60px}
+.scp-h{color:#7f8794;font-size:11px;font-weight:600;letter-spacing:.06em;padding:8px 10px 3px}
+.scp-i{display:flex;align-items:center;gap:11px;padding:7px 10px;border-radius:9px;cursor:pointer;color:#dfe5f2}
+.scp-i .sci{color:#8fb3ff}
+.scp-i .nm{flex:1;min-width:0;display:flex;flex-direction:column;font-size:13.5px}
+.scp-i .nm small{color:#8a93a6;font-size:11px}
+.scp-i .gp{color:#6b7488;font-size:10.5px;border:1px solid #2f3750;border-radius:8px;padding:0 6px}
+.scp-i .ky{display:inline-flex;align-items:center;min-width:60px;justify-content:flex-end}
+.scp-i.on{background:#27324f}
+.scp-i.on .gp{border-color:#46598a;color:#a9b8de}
+.scp-i.off{opacity:.5}
+.scp-none{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 10px;color:#8a93a6;text-align:center}
+.scp-none b{color:#cfd6e4}
+.scp-foot{display:flex;align-items:center;gap:14px;padding:7px 14px;border-top:1px solid #2c3347;color:#7f8794;font-size:11px}
+.scp-foot .sp{flex:1}
+.scp-foot span{display:inline-flex;align-items:center;gap:4px}
+/* ショートカット一覧 */
+.scs-box{margin-top:5vh;width:min(1020px,96vw);max-height:90vh;background:#1b1f2a;border:1px solid #3d4764;border-radius:16px;box-shadow:0 20px 60px #000d;display:flex;flex-direction:column;overflow:hidden}
+.scs-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #2c3347;color:#8fb3ff}
+.scs-head h2{margin:0;font-size:17px;color:#f2f5fb}
+.scs-head p{margin:2px 0 0;font-size:11.5px;color:#8a93a6}
+.scs-head .sp{flex:1}
+.scs-search{display:flex;align-items:center;gap:6px;background:#12151c;border:1px solid #2f3750;border-radius:999px;padding:4px 12px;color:#7f8794}
+.scs-search input{background:none;border:none;width:190px;padding:2px 0}
+.scs-search input:focus{outline:none}
+.scs-search:focus-within{border-color:var(--blue)}
+.scs-head .x{font-size:15px}
+.scs-conf{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 18px;background:#3a2f1c;border-bottom:1px solid #6b5426;color:#ffe3a0;font-size:12.5px}
+.scs-conf[hidden]{display:none}
+.scs-body{overflow:auto;padding:12px 18px 16px;columns:2 420px;column-gap:28px;flex:1;outline:none}
+.scs-g{break-inside:avoid;margin-bottom:14px}
+.scs-g h3{margin:0 0 4px;font-size:12px;color:#8fb3ff;letter-spacing:.06em;font-weight:700;padding-bottom:3px;border-bottom:1px solid #2c3347}
+.scs-r{display:flex;align-items:center;gap:9px;padding:4px 4px;border-radius:8px;min-height:32px}
+.scs-r:hover{background:#222a3c}
+.scs-r .sci{color:#7f93bd}
+.scs-r .nm{flex:1;min-width:0;font-size:13px;color:#dfe5f2}
+.scs-r .nm .lk{margin-left:6px;color:#6b7488;vertical-align:-1px}
+.scs-r .ky{display:inline-flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px}
+.scs-r.info .ky{color:#aab4ca;font-size:12px;gap:4px}
+.scs-r.cus .nm::after{content:"変更済み";margin-left:8px;font-size:10px;color:#ffd23f;border:1px solid #6b5426;border-radius:8px;padding:0 6px}
+.kcw{display:inline-flex;align-items:center;border-radius:8px;position:relative}
+.kcw.bad .kc{border-color:#ff6b6b}
+.kbtn{background:none;border:1px dashed transparent;border-radius:8px;padding:2px 3px;cursor:pointer}
+.kbtn:hover{border-color:#5b7cc4;background:#26324f}
+.kbtn.empty{color:#8fb3ff;font-size:11px;padding:2px 9px;border-color:#3d4a6a}
+.kx{display:none;position:absolute;right:-6px;top:-8px;width:16px;height:16px;padding:0;border-radius:50%;line-height:14px;font-size:11px;background:#4a2b30;border-color:#7a4048;color:#ffb3b3}
+.kcw:hover .kx,.kcw:focus-within .kx{display:block}
+.kplus{width:22px;height:22px;padding:0;border-radius:50%;font-size:13px;line-height:18px;margin-left:5px;background:none;border-style:dashed;color:#7f93bd;opacity:.55}
+.scs-r:hover .kplus{opacity:1}
+.kreset,.kreset-sp{width:24px;flex:none;text-align:center}
+.kreset{padding:0;border:none;background:none;color:#ffd23f;font-size:14px}
+.cap-wait{display:inline-block;padding:2px 10px;border:1px dashed var(--acc);border-radius:8px;color:var(--acc);font-size:12px;animation:scpulse 1s ease-in-out infinite}
+@keyframes scpulse{50%{background:#3a331a}}
+.scs-foot{display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid #2c3347;color:#7f8794;font-size:11.5px}
+.scs-foot .sp{flex:1}
+@media (max-width:760px){.scs-body{columns:1}.scs-search input{width:110px}.scs-head p{display:none}}
+@media (prefers-reduced-motion:reduce){#scpal,#scsheet,.cap-wait{animation:none}}
+
+.scs-note{margin:0 0 4px;padding:4px 8px;font-size:11px;line-height:1.5;color:#8a93a6;background:#1f2432;border-radius:7px}
+.scs-un{display:flex;align-items:center;gap:6px;cursor:pointer}
+.scs-un input{margin:0}
