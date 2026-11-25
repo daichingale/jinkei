@@ -542,18 +542,18 @@
   }
  ],
  "body": {
-  "vertices": 5075,
-  "indices": 27744,
-  "triangles": 9248,
+  "vertices": 5433,
+  "indices": 30012,
+  "triangles": 10004,
   "pos": 0,
-  "nor": 60900,
-  "skinIndex": 121800,
-  "skinWeight": 142100,
-  "mat": 223300,
-  "index": 228376
+  "nor": 65196,
+  "skinIndex": 130392,
+  "skinWeight": 152124,
+  "mat": 239052,
+  "index": 244488
  },
  "instruments": {
-  "hair/short": {
+  "hair/hime": {
    "attach": {
     "bone": "head",
     "pos": [
@@ -568,82 +568,14 @@
      1
     ]
    },
-   "vertices": 1159,
-   "indices": 6576,
-   "triangles": 2192,
-   "pos": 542012,
-   "nor": 555920,
-   "mat": 569828,
-   "index": 570988
-  },
-  "hair/bob": {
-   "attach": {
-    "bone": "head",
-    "pos": [
-     0,
-     0,
-     0
-    ],
-    "quat": [
-     0,
-     0,
-     0,
-     1
-    ]
-   },
-   "vertices": 1403,
-   "indices": 8016,
-   "triangles": 2672,
-   "pos": 584140,
-   "nor": 600976,
-   "mat": 617812,
-   "index": 619216
-  },
-  "hair/pony": {
-   "attach": {
-    "bone": "head",
-    "pos": [
-     0,
-     0,
-     0
-    ],
-    "quat": [
-     0,
-     0,
-     0,
-     1
-    ]
-   },
-   "vertices": 1519,
-   "indices": 8700,
-   "triangles": 2900,
-   "pos": 635248,
-   "nor": 653476,
-   "mat": 671704,
-   "index": 673224
-  },
-  "hair/long": {
-   "attach": {
-    "bone": "head",
-    "pos": [
-     0,
-     0,
-     0
-    ],
-    "quat": [
-     0,
-     0,
-     0,
-     1
-    ]
-   },
-   "vertices": 1403,
-   "indices": 8016,
-   "triangles": 2672,
-   "pos": 690624,
-   "nor": 707460,
-   "mat": 724296,
-   "index": 725700
+   "vertices": 1535,
+   "indices": 8712,
+   "triangles": 2904,
+   "pos": 1767816,
+   "nor": 1786236,
+   "mat": 1804656,
+   "index": 1806192,
+   "outlineIdx": 2592
   },
   "hair/twin": {
    "attach": {
@@ -660,13 +592,302 @@
      1
     ]
    },
-   "vertices": 1677,
-   "indices": 9624,
-   "triangles": 3208,
-   "pos": 741732,
-   "nor": 761856,
-   "mat": 781980,
-   "index": 783660
+   "vertices": 1841,
+   "indices": 10536,
+   "triangles": 3512,
+   "pos": 1823616,
+   "nor": 1845708,
+   "mat": 1867800,
+   "index": 1869644,
+   "outlineIdx": 6216
+  },
+  "hair/pony": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1599,
+   "indices": 9120,
+   "triangles": 3040,
+   "pos": 1890716,
+   "nor": 1909904,
+   "mat": 1929092,
+   "index": 1930692,
+   "outlineIdx": 5160
+  },
+  "hair/bob": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1411,
+   "indices": 7992,
+   "triangles": 2664,
+   "pos": 1948932,
+   "nor": 1965864,
+   "mat": 1982796,
+   "index": 1984208,
+   "outlineIdx": 2592
+  },
+  "hair/side": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1471,
+   "indices": 8364,
+   "triangles": 2788,
+   "pos": 2000192,
+   "nor": 2017844,
+   "mat": 2035496,
+   "index": 2036968,
+   "outlineIdx": 4404
+  },
+  "hair/wavy": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1865,
+   "indices": 10692,
+   "triangles": 3564,
+   "pos": 2053696,
+   "nor": 2076076,
+   "mat": 2098456,
+   "index": 2100324,
+   "outlineIdx": 6372
+  },
+  "hair/braid": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1925,
+   "indices": 10944,
+   "triangles": 3648,
+   "pos": 2121708,
+   "nor": 2144808,
+   "mat": 2167908,
+   "index": 2169836,
+   "outlineIdx": 6984
+  },
+  "hairr/hime": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1415,
+   "indices": 7536,
+   "triangles": 2512,
+   "pos": 2191724,
+   "nor": 2208704,
+   "mat": 2225684,
+   "index": 2227100,
+   "outlineIdx": 2592
+  },
+  "hairr/twin": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2031,
+   "indices": 11160,
+   "triangles": 3720,
+   "pos": 2242172,
+   "nor": 2266544,
+   "mat": 2290916,
+   "index": 2292948,
+   "outlineIdx": 6216
+  },
+  "hairr/pony": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1851,
+   "indices": 10104,
+   "triangles": 3368,
+   "pos": 2315268,
+   "nor": 2337480,
+   "mat": 2359692,
+   "index": 2361544,
+   "outlineIdx": 5160
+  },
+  "hairr/bob": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1415,
+   "indices": 7536,
+   "triangles": 2512,
+   "pos": 2381752,
+   "nor": 2398732,
+   "mat": 2415712,
+   "index": 2417128,
+   "outlineIdx": 2592
+  },
+  "hairr/side": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 1723,
+   "indices": 9348,
+   "triangles": 3116,
+   "pos": 2432200,
+   "nor": 2452876,
+   "mat": 2473552,
+   "index": 2475276,
+   "outlineIdx": 4404
+  },
+  "hairr/wavy": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2055,
+   "indices": 11316,
+   "triangles": 3772,
+   "pos": 2493972,
+   "nor": 2518632,
+   "mat": 2543292,
+   "index": 2545348,
+   "outlineIdx": 6372
+  },
+  "hairr/braid": {
+   "attach": {
+    "bone": "head",
+    "pos": [
+     0,
+     0,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "vertices": 2177,
+   "indices": 11928,
+   "triangles": 3976,
+   "pos": 2567980,
+   "nor": 2594104,
+   "mat": 2620228,
+   "index": 2622408,
+   "outlineIdx": 6984
   },
   "trumpet": {
    "attach": {
@@ -686,10 +907,10 @@
    "vertices": 4620,
    "indices": 26388,
    "triangles": 8796,
-   "pos": 981408,
-   "nor": 1036848,
-   "mat": 1092288,
-   "index": 1096908
+   "pos": 2824764,
+   "nor": 2880204,
+   "mat": 2935644,
+   "index": 2940264
   },
   "mellophone": {
    "attach": {
@@ -709,10 +930,10 @@
    "vertices": 4620,
    "indices": 26388,
    "triangles": 8796,
-   "pos": 1151448,
-   "nor": 1206888,
-   "mat": 1262328,
-   "index": 1266948
+   "pos": 2994804,
+   "nor": 3050244,
+   "mat": 3105684,
+   "index": 3110304
   },
   "marching_horn": {
    "attach": {
@@ -732,10 +953,10 @@
    "vertices": 5290,
    "indices": 30384,
    "triangles": 10128,
-   "pos": 1321488,
-   "nor": 1384968,
-   "mat": 1448448,
-   "index": 1453740
+   "pos": 3164844,
+   "nor": 3228324,
+   "mat": 3291804,
+   "index": 3297096
   },
   "horn": {
    "attach": {
@@ -755,10 +976,10 @@
    "vertices": 5542,
    "indices": 32316,
    "triangles": 10772,
-   "pos": 1516272,
-   "nor": 1582776,
-   "mat": 1649280,
-   "index": 1654824
+   "pos": 3359628,
+   "nor": 3426132,
+   "mat": 3492636,
+   "index": 3498180
   },
   "trombone": {
    "attach": {
@@ -778,10 +999,10 @@
    "vertices": 3850,
    "indices": 22176,
    "triangles": 7392,
-   "pos": 1721220,
-   "nor": 1767420,
-   "mat": 1813620,
-   "index": 1817472
+   "pos": 3564576,
+   "nor": 3610776,
+   "mat": 3656976,
+   "index": 3660828
   },
   "euphonium": {
    "attach": {
@@ -801,10 +1022,10 @@
    "vertices": 6012,
    "indices": 34236,
    "triangles": 11412,
-   "pos": 1863588,
-   "nor": 1935732,
-   "mat": 2007876,
-   "index": 2013888
+   "pos": 3706944,
+   "nor": 3779088,
+   "mat": 3851232,
+   "index": 3857244
   },
   "marching_euphonium": {
    "attach": {
@@ -824,10 +1045,10 @@
    "vertices": 5478,
    "indices": 31536,
    "triangles": 10512,
-   "pos": 2084124,
-   "nor": 2149860,
-   "mat": 2215596,
-   "index": 2221076
+   "pos": 3927480,
+   "nor": 3993216,
+   "mat": 4058952,
+   "index": 4064432
   },
   "tuba": {
    "attach": {
@@ -847,10 +1068,10 @@
    "vertices": 6012,
    "indices": 34236,
    "triangles": 11412,
-   "pos": 2285912,
-   "nor": 2358056,
-   "mat": 2430200,
-   "index": 2436212
+   "pos": 4129268,
+   "nor": 4201412,
+   "mat": 4273556,
+   "index": 4279568
   },
   "marching_tuba": {
    "attach": {
@@ -870,10 +1091,10 @@
    "vertices": 6462,
    "indices": 37380,
    "triangles": 12460,
-   "pos": 2506448,
-   "nor": 2583992,
-   "mat": 2661536,
-   "index": 2668000
+   "pos": 4349804,
+   "nor": 4427348,
+   "mat": 4504892,
+   "index": 4511356
   },
   "sousaphone": {
    "attach": {
@@ -893,10 +1114,10 @@
    "vertices": 8298,
    "indices": 48360,
    "triangles": 16120,
-   "pos": 2744524,
-   "nor": 2844100,
-   "mat": 2943676,
-   "index": 2951976
+   "pos": 4587880,
+   "nor": 4687456,
+   "mat": 4787032,
+   "index": 4795332
   },
   "piccolo": {
    "attach": {
@@ -916,10 +1137,10 @@
    "vertices": 752,
    "indices": 4092,
    "triangles": 1364,
-   "pos": 3050460,
-   "nor": 3059484,
-   "mat": 3068508,
-   "index": 3069260
+   "pos": 4893816,
+   "nor": 4902840,
+   "mat": 4911864,
+   "index": 4912616
   },
   "flute": {
    "attach": {
@@ -939,10 +1160,10 @@
    "vertices": 1214,
    "indices": 6540,
    "triangles": 2180,
-   "pos": 3079208,
-   "nor": 3093776,
-   "mat": 3108344,
-   "index": 3109560
+   "pos": 4922564,
+   "nor": 4937132,
+   "mat": 4951700,
+   "index": 4952916
   },
   "oboe": {
    "attach": {
@@ -962,10 +1183,10 @@
    "vertices": 2701,
    "indices": 15078,
    "triangles": 5026,
-   "pos": 3124404,
-   "nor": 3156816,
-   "mat": 3189228,
-   "index": 3191932
+   "pos": 4967760,
+   "nor": 5000172,
+   "mat": 5032584,
+   "index": 5035288
   },
   "bassoon": {
    "attach": {
@@ -985,10 +1206,10 @@
    "vertices": 3701,
    "indices": 20874,
    "triangles": 6958,
-   "pos": 3223852,
-   "nor": 3268264,
-   "mat": 3312676,
-   "index": 3316380
+   "pos": 5067208,
+   "nor": 5111620,
+   "mat": 5156032,
+   "index": 5159736
   },
   "eb_clarinet": {
    "attach": {
@@ -1008,10 +1229,10 @@
    "vertices": 2831,
    "indices": 15810,
    "triangles": 5270,
-   "pos": 3359892,
-   "nor": 3393864,
-   "mat": 3427836,
-   "index": 3430668
+   "pos": 5203248,
+   "nor": 5237220,
+   "mat": 5271192,
+   "index": 5274024
   },
   "clarinet": {
    "attach": {
@@ -1031,10 +1252,10 @@
    "vertices": 2831,
    "indices": 15810,
    "triangles": 5270,
-   "pos": 3464052,
-   "nor": 3498024,
-   "mat": 3531996,
-   "index": 3534828
+   "pos": 5307408,
+   "nor": 5341380,
+   "mat": 5375352,
+   "index": 5378184
   },
   "alto_clarinet": {
    "attach": {
@@ -1054,10 +1275,10 @@
    "vertices": 3713,
    "indices": 21066,
    "triangles": 7022,
-   "pos": 3568212,
-   "nor": 3612768,
-   "mat": 3657324,
-   "index": 3661040
+   "pos": 5411568,
+   "nor": 5456124,
+   "mat": 5500680,
+   "index": 5504396
   },
   "bass_clarinet": {
    "attach": {
@@ -1077,10 +1298,10 @@
    "vertices": 3713,
    "indices": 21066,
    "triangles": 7022,
-   "pos": 3704936,
-   "nor": 3749492,
-   "mat": 3794048,
-   "index": 3797764
+   "pos": 5548292,
+   "nor": 5592848,
+   "mat": 5637404,
+   "index": 5641120
   },
   "soprano_sax": {
    "attach": {
@@ -1100,10 +1321,10 @@
    "vertices": 3713,
    "indices": 21066,
    "triangles": 7022,
-   "pos": 3841660,
-   "nor": 3886216,
-   "mat": 3930772,
-   "index": 3934488
+   "pos": 5685016,
+   "nor": 5729572,
+   "mat": 5774128,
+   "index": 5777844
   },
   "alto_sax": {
    "attach": {
@@ -1123,10 +1344,10 @@
    "vertices": 6608,
    "indices": 38370,
    "triangles": 12790,
-   "pos": 3978384,
-   "nor": 4057680,
-   "mat": 4136976,
-   "index": 4143584
+   "pos": 5821740,
+   "nor": 5901036,
+   "mat": 5980332,
+   "index": 5986940
   },
   "tenor_sax": {
    "attach": {
@@ -1146,10 +1367,10 @@
    "vertices": 6608,
    "indices": 38370,
    "triangles": 12790,
-   "pos": 4222088,
-   "nor": 4301384,
-   "mat": 4380680,
-   "index": 4387288
+   "pos": 6065444,
+   "nor": 6144740,
+   "mat": 6224036,
+   "index": 6230644
   },
   "baritone_sax": {
    "attach": {
@@ -1169,10 +1390,10 @@
    "vertices": 8912,
    "indices": 52194,
    "triangles": 17398,
-   "pos": 4465792,
-   "nor": 4572736,
-   "mat": 4679680,
-   "index": 4688592
+   "pos": 6309148,
+   "nor": 6416092,
+   "mat": 6523036,
+   "index": 6531948
   },
   "snare": {
    "attach": {
@@ -1192,10 +1413,10 @@
    "vertices": 3529,
    "indices": 18756,
    "triangles": 6252,
-   "pos": 4794744,
-   "nor": 4837092,
-   "mat": 4879440,
-   "index": 4882972
+   "pos": 6638100,
+   "nor": 6680448,
+   "mat": 6722796,
+   "index": 6726328
   },
   "snare+R": {
    "attach": {
@@ -1215,10 +1436,10 @@
    "vertices": 48,
    "indices": 264,
    "triangles": 88,
-   "pos": 4920484,
-   "nor": 4921060,
-   "mat": 4921636,
-   "index": 4921684
+   "pos": 6763840,
+   "nor": 6764416,
+   "mat": 6764992,
+   "index": 6765040
   },
   "snare+L": {
    "attach": {
@@ -1238,10 +1459,10 @@
    "vertices": 48,
    "indices": 264,
    "triangles": 88,
-   "pos": 4922212,
-   "nor": 4922788,
-   "mat": 4923364,
-   "index": 4923412
+   "pos": 6765568,
+   "nor": 6766144,
+   "mat": 6766720,
+   "index": 6766768
   },
   "tenors": {
    "attach": {
@@ -1261,10 +1482,10 @@
    "vertices": 9606,
    "indices": 52080,
    "triangles": 17360,
-   "pos": 4925704,
-   "nor": 5040976,
-   "mat": 5156248,
-   "index": 5165856
+   "pos": 6769060,
+   "nor": 6884332,
+   "mat": 6999604,
+   "index": 7009212
   },
   "tenors+R": {
    "attach": {
@@ -1284,10 +1505,10 @@
    "vertices": 48,
    "indices": 264,
    "triangles": 88,
-   "pos": 5270016,
-   "nor": 5270592,
-   "mat": 5271168,
-   "index": 5271216
+   "pos": 7113372,
+   "nor": 7113948,
+   "mat": 7114524,
+   "index": 7114572
   },
   "tenors+L": {
    "attach": {
@@ -1307,10 +1528,10 @@
    "vertices": 48,
    "indices": 264,
    "triangles": 88,
-   "pos": 5271744,
-   "nor": 5272320,
-   "mat": 5272896,
-   "index": 5272944
+   "pos": 7115100,
+   "nor": 7115676,
+   "mat": 7116252,
+   "index": 7116300
   },
   "bass1": {
    "attach": {
@@ -1330,10 +1551,10 @@
    "vertices": 3455,
    "indices": 18744,
    "triangles": 6248,
-   "pos": 5275236,
-   "nor": 5316696,
-   "mat": 5358156,
-   "index": 5361612
+   "pos": 7118592,
+   "nor": 7160052,
+   "mat": 7201512,
+   "index": 7204968
   },
   "bass1+R": {
    "attach": {
@@ -1353,10 +1574,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5399100,
-   "nor": 5400156,
-   "mat": 5401212,
-   "index": 5401300
+   "pos": 7242456,
+   "nor": 7243512,
+   "mat": 7244568,
+   "index": 7244656
   },
   "bass1+L": {
    "attach": {
@@ -1376,10 +1597,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5402308,
-   "nor": 5403364,
-   "mat": 5404420,
-   "index": 5404508
+   "pos": 7245664,
+   "nor": 7246720,
+   "mat": 7247776,
+   "index": 7247864
   },
   "bass2": {
    "attach": {
@@ -1399,10 +1620,10 @@
    "vertices": 3455,
    "indices": 18744,
    "triangles": 6248,
-   "pos": 5407280,
-   "nor": 5448740,
-   "mat": 5490200,
-   "index": 5493656
+   "pos": 7250636,
+   "nor": 7292096,
+   "mat": 7333556,
+   "index": 7337012
   },
   "bass2+R": {
    "attach": {
@@ -1422,10 +1643,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5531144,
-   "nor": 5532200,
-   "mat": 5533256,
-   "index": 5533344
+   "pos": 7374500,
+   "nor": 7375556,
+   "mat": 7376612,
+   "index": 7376700
   },
   "bass2+L": {
    "attach": {
@@ -1445,10 +1666,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5534352,
-   "nor": 5535408,
-   "mat": 5536464,
-   "index": 5536552
+   "pos": 7377708,
+   "nor": 7378764,
+   "mat": 7379820,
+   "index": 7379908
   },
   "bass3": {
    "attach": {
@@ -1468,10 +1689,10 @@
    "vertices": 3455,
    "indices": 18744,
    "triangles": 6248,
-   "pos": 5539324,
-   "nor": 5580784,
-   "mat": 5622244,
-   "index": 5625700
+   "pos": 7382680,
+   "nor": 7424140,
+   "mat": 7465600,
+   "index": 7469056
   },
   "bass3+R": {
    "attach": {
@@ -1491,10 +1712,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5663188,
-   "nor": 5664244,
-   "mat": 5665300,
-   "index": 5665388
+   "pos": 7506544,
+   "nor": 7507600,
+   "mat": 7508656,
+   "index": 7508744
   },
   "bass3+L": {
    "attach": {
@@ -1514,10 +1735,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5666396,
-   "nor": 5667452,
-   "mat": 5668508,
-   "index": 5668596
+   "pos": 7509752,
+   "nor": 7510808,
+   "mat": 7511864,
+   "index": 7511952
   },
   "bass4": {
    "attach": {
@@ -1537,10 +1758,10 @@
    "vertices": 3455,
    "indices": 18744,
    "triangles": 6248,
-   "pos": 5671368,
-   "nor": 5712828,
-   "mat": 5754288,
-   "index": 5757744
+   "pos": 7514724,
+   "nor": 7556184,
+   "mat": 7597644,
+   "index": 7601100
   },
   "bass4+R": {
    "attach": {
@@ -1560,10 +1781,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5795232,
-   "nor": 5796288,
-   "mat": 5797344,
-   "index": 5797432
+   "pos": 7638588,
+   "nor": 7639644,
+   "mat": 7640700,
+   "index": 7640788
   },
   "bass4+L": {
    "attach": {
@@ -1583,10 +1804,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5798440,
-   "nor": 5799496,
-   "mat": 5800552,
-   "index": 5800640
+   "pos": 7641796,
+   "nor": 7642852,
+   "mat": 7643908,
+   "index": 7643996
   },
   "bass5": {
    "attach": {
@@ -1606,10 +1827,10 @@
    "vertices": 3455,
    "indices": 18744,
    "triangles": 6248,
-   "pos": 5803412,
-   "nor": 5844872,
-   "mat": 5886332,
-   "index": 5889788
+   "pos": 7646768,
+   "nor": 7688228,
+   "mat": 7729688,
+   "index": 7733144
   },
   "bass5+R": {
    "attach": {
@@ -1629,10 +1850,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5927276,
-   "nor": 5928332,
-   "mat": 5929388,
-   "index": 5929476
+   "pos": 7770632,
+   "nor": 7771688,
+   "mat": 7772744,
+   "index": 7772832
   },
   "bass5+L": {
    "attach": {
@@ -1652,10 +1873,10 @@
    "vertices": 88,
    "indices": 504,
    "triangles": 168,
-   "pos": 5930484,
-   "nor": 5931540,
-   "mat": 5932596,
-   "index": 5932684
+   "pos": 7773840,
+   "nor": 7774896,
+   "mat": 7775952,
+   "index": 7776040
   },
   "cymbals_mid+R": {
    "attach": {
@@ -1675,10 +1896,10 @@
    "vertices": 4112,
    "indices": 15492,
    "triangles": 5164,
-   "pos": 5935456,
-   "nor": 5984800,
-   "mat": 6034144,
-   "index": 6038256
+   "pos": 7778812,
+   "nor": 7828156,
+   "mat": 7877500,
+   "index": 7881612
   },
   "cymbals_mid+L": {
    "attach": {
@@ -1698,10 +1919,10 @@
    "vertices": 4112,
    "indices": 15492,
    "triangles": 5164,
-   "pos": 6069240,
-   "nor": 6118584,
-   "mat": 6167928,
-   "index": 6172040
+   "pos": 7912596,
+   "nor": 7961940,
+   "mat": 8011284,
+   "index": 8015396
   },
   "cymbals_high+R": {
    "attach": {
@@ -1721,10 +1942,10 @@
    "vertices": 4112,
    "indices": 15492,
    "triangles": 5164,
-   "pos": 6204788,
-   "nor": 6254132,
-   "mat": 6303476,
-   "index": 6307588
+   "pos": 8048144,
+   "nor": 8097488,
+   "mat": 8146832,
+   "index": 8150944
   },
   "cymbals_high+L": {
    "attach": {
@@ -1744,10 +1965,10 @@
    "vertices": 4112,
    "indices": 15492,
    "triangles": 5164,
-   "pos": 6338572,
-   "nor": 6387916,
-   "mat": 6437260,
-   "index": 6441372
+   "pos": 8181928,
+   "nor": 8231272,
+   "mat": 8280616,
+   "index": 8284728
   },
   "glockenspiel": {
    "attach": {
@@ -1767,10 +1988,10 @@
    "vertices": 1822,
    "indices": 7956,
    "triangles": 2652,
-   "pos": 6474120,
-   "nor": 6495984,
-   "mat": 6517848,
-   "index": 6519672
+   "pos": 8317476,
+   "nor": 8339340,
+   "mat": 8361204,
+   "index": 8363028
   },
   "glockenspiel+R": {
    "attach": {
@@ -1790,10 +2011,10 @@
    "vertices": 66,
    "indices": 372,
    "triangles": 124,
-   "pos": 6535584,
-   "nor": 6536376,
-   "mat": 6537168,
-   "index": 6537236
+   "pos": 8378940,
+   "nor": 8379732,
+   "mat": 8380524,
+   "index": 8380592
   },
   "xylophone": {
    "attach": {
@@ -1813,10 +2034,10 @@
    "vertices": 2916,
    "indices": 11916,
    "triangles": 3972,
-   "pos": 6539744,
-   "nor": 6574736,
-   "mat": 6609728,
-   "index": 6612644
+   "pos": 8383100,
+   "nor": 8418092,
+   "mat": 8453084,
+   "index": 8456000
   },
   "xylophone+R": {
    "attach": {
@@ -1836,10 +2057,10 @@
    "vertices": 66,
    "indices": 372,
    "triangles": 124,
-   "pos": 6636476,
-   "nor": 6637268,
-   "mat": 6638060,
-   "index": 6638128
+   "pos": 8479832,
+   "nor": 8480624,
+   "mat": 8481416,
+   "index": 8481484
   },
   "xylophone+L": {
    "attach": {
@@ -1859,10 +2080,10 @@
    "vertices": 66,
    "indices": 372,
    "triangles": 124,
-   "pos": 6638872,
-   "nor": 6639664,
-   "mat": 6640456,
-   "index": 6640524
+   "pos": 8482228,
+   "nor": 8483020,
+   "mat": 8483812,
+   "index": 8483880
   },
   "guard": {
    "attach": {
@@ -1882,31 +2103,117 @@
    "vertices": 1176,
    "indices": 6168,
    "triangles": 2056,
-   "pos": 6643032,
-   "nor": 6657144,
-   "mat": 6671256,
-   "index": 6672432
+   "pos": 8486388,
+   "nor": 8500500,
+   "mat": 8514612,
+   "index": 8515788
   }
  },
  "illust": {
   "body": {
-   "vertices": 4575,
-   "indices": 26136,
-   "triangles": 8712,
-   "pos": 283864,
-   "nor": 338764,
-   "skinIndex": 393664,
-   "skinWeight": 411964,
-   "mat": 485164,
-   "index": 489740
+   "vertices": 4317,
+   "indices": 24804,
+   "triangles": 8268,
+   "pos": 304512,
+   "nor": 356316,
+   "skinIndex": 408120,
+   "skinWeight": 425388,
+   "mat": 494460,
+   "index": 498780
+  }
+ },
+ "face": {
+  "tex": {
+   "w": 384,
+   "h": 384,
+   "a": 548388,
+   "b": 1138212
   },
-  "hairs": [
-   "hair/short",
-   "hair/bob",
-   "hair/pony",
-   "hair/long",
-   "hair/twin"
-  ]
+  "mesh": {
+   "vertices": 621,
+   "indices": 3432,
+   "triangles": 1144,
+   "pos": 1728036,
+   "nor": 1735488,
+   "uv": 1742940,
+   "skinIndex": 1747908,
+   "skinWeight": 1750392,
+   "mat": 1760328,
+   "index": 1760952
+  },
+  "hairs": {
+   "real": [
+    "hairr/hime",
+    "hairr/twin",
+    "hairr/pony",
+    "hairr/bob",
+    "hairr/side",
+    "hairr/wavy",
+    "hairr/braid"
+   ],
+   "illust": [
+    "hair/hime",
+    "hair/twin",
+    "hair/pony",
+    "hair/bob",
+    "hair/side",
+    "hair/wavy",
+    "hair/braid"
+   ]
+  },
+  "eyes": [
+   8014378,
+   4860956,
+   9071146,
+   6258591,
+   8018608,
+   12616746,
+   4164186
+  ],
+  "hairCols": [
+   1972770,
+   3877410,
+   6962988,
+   10120004,
+   9208441,
+   9257264,
+   2760740,
+   13805664,
+   2304837,
+   15178424,
+   12166365,
+   13620188
+  ],
+  "hairSlots": [
+   0,
+   0,
+   6,
+   1,
+   1,
+   2,
+   2,
+   3,
+   3,
+   4,
+   5,
+   5,
+   7,
+   8,
+   0,
+   1,
+   2,
+   9,
+   10,
+   11
+  ],
+  "colors": {
+   "sclera": 15987188,
+   "ink": 1839638,
+   "lip": 14446200,
+   "line": 9189188,
+   "blush": 15764630,
+   "brow": 3811878
+  }
  },
  "clips": [
   {
@@ -1928,7 +2235,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 802908
+   "off": 2646264
   },
   {
    "name": "stance/rest",
@@ -1949,7 +2256,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 803272
+   "off": 2646628
   },
   {
    "name": "stance/wide",
@@ -1970,7 +2277,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 803636
+   "off": 2646992
   },
   {
    "name": "stance/cross",
@@ -1991,7 +2298,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 804000
+   "off": 2647356
   },
   {
    "name": "stance/kneel",
@@ -2012,7 +2319,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 804364
+   "off": 2647720
   },
   {
    "name": "stance/kneel2",
@@ -2033,7 +2340,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 804728
+   "off": 2648084
   },
   {
    "name": "stance/lunge",
@@ -2054,7 +2361,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 805092
+   "off": 2648448
   },
   {
    "name": "stance/crouch",
@@ -2075,7 +2382,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 805456
+   "off": 2648812
   },
   {
    "name": "stance/toe",
@@ -2096,7 +2403,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 805820
+   "off": 2649176
   },
   {
    "name": "walk/glide/0",
@@ -2117,7 +2424,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 806184
+   "off": 2649540
   },
   {
    "name": "walk/glide/0.3",
@@ -2138,7 +2445,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 813464
+   "off": 2656820
   },
   {
    "name": "walk/glide/0.5",
@@ -2159,7 +2466,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 820744
+   "off": 2664100
   },
   {
    "name": "walk/glide/0.75",
@@ -2180,7 +2487,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 828024
+   "off": 2671380
   },
   {
    "name": "walk/jazz/0",
@@ -2201,7 +2508,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 835304
+   "off": 2678660
   },
   {
    "name": "walk/jazz/0.3",
@@ -2222,7 +2529,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 842584
+   "off": 2685940
   },
   {
    "name": "walk/jazz/0.5",
@@ -2243,7 +2550,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 849864
+   "off": 2693220
   },
   {
    "name": "walk/jazz/0.75",
@@ -2264,7 +2571,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 857144
+   "off": 2700500
   },
   {
    "name": "walk/high/0",
@@ -2285,7 +2592,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 864424
+   "off": 2707780
   },
   {
    "name": "walk/high/0.3",
@@ -2306,7 +2613,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 871704
+   "off": 2715060
   },
   {
    "name": "walk/high/0.5",
@@ -2327,7 +2634,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 878984
+   "off": 2722340
   },
   {
    "name": "walk/high/0.75",
@@ -2348,7 +2655,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 886264
+   "off": 2729620
   },
   {
    "name": "walk/back/0",
@@ -2369,7 +2676,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 893544
+   "off": 2736900
   },
   {
    "name": "walk/back/0.3",
@@ -2390,7 +2697,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 900824
+   "off": 2744180
   },
   {
    "name": "walk/back/0.5",
@@ -2411,7 +2718,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 908104
+   "off": 2751460
   },
   {
    "name": "walk/back/0.75",
@@ -2432,7 +2739,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 915384
+   "off": 2758740
   },
   {
    "name": "walk/slideL/0",
@@ -2453,7 +2760,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 922664
+   "off": 2766020
   },
   {
    "name": "walk/slideL/0.3",
@@ -2474,7 +2781,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 929944
+   "off": 2773300
   },
   {
    "name": "walk/slideL/0.5",
@@ -2495,7 +2802,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 937224
+   "off": 2780580
   },
   {
    "name": "walk/slideL/0.75",
@@ -2516,7 +2823,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 944504
+   "off": 2787860
   },
   {
    "name": "walk/slideR/0",
@@ -2537,7 +2844,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 951784
+   "off": 2795140
   },
   {
    "name": "walk/slideR/0.3",
@@ -2558,7 +2865,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 959064
+   "off": 2802420
   },
   {
    "name": "walk/slideR/0.5",
@@ -2579,7 +2886,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 966344
+   "off": 2809700
   },
   {
    "name": "walk/slideR/0.75",
@@ -2600,7 +2907,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 973624
+   "off": 2816980
   },
   {
    "name": "idle",
@@ -2617,7 +2924,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 980904
+   "off": 2824260
   },
   {
    "name": "behind",
@@ -2634,7 +2941,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 981156
+   "off": 2824512
   },
   {
    "name": "hold/trumpet",
@@ -2651,7 +2958,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1149684
+   "off": 2993040
   },
   {
    "name": "carry/trumpet",
@@ -2668,7 +2975,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1149936
+   "off": 2993292
   },
   {
    "name": "up/trumpet",
@@ -2685,7 +2992,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1150188
+   "off": 2993544
   },
   {
    "name": "style/right/trumpet",
@@ -2702,7 +3009,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1150440
+   "off": 2993796
   },
   {
    "name": "style/left/trumpet",
@@ -2719,7 +3026,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1150692
+   "off": 2994048
   },
   {
    "name": "style/front/trumpet",
@@ -2736,7 +3043,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1150944
+   "off": 2994300
   },
   {
    "name": "style/diag/trumpet",
@@ -2753,7 +3060,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1151196
+   "off": 2994552
   },
   {
    "name": "hold/mellophone",
@@ -2770,7 +3077,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1319724
+   "off": 3163080
   },
   {
    "name": "carry/mellophone",
@@ -2787,7 +3094,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1319976
+   "off": 3163332
   },
   {
    "name": "up/mellophone",
@@ -2804,7 +3111,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1320228
+   "off": 3163584
   },
   {
    "name": "style/right/mellophone",
@@ -2821,7 +3128,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1320480
+   "off": 3163836
   },
   {
    "name": "style/left/mellophone",
@@ -2838,7 +3145,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1320732
+   "off": 3164088
   },
   {
    "name": "style/front/mellophone",
@@ -2855,7 +3162,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1320984
+   "off": 3164340
   },
   {
    "name": "style/diag/mellophone",
@@ -2872,7 +3179,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1321236
+   "off": 3164592
   },
   {
    "name": "hold/marching_horn",
@@ -2889,7 +3196,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1514508
+   "off": 3357864
   },
   {
    "name": "carry/marching_horn",
@@ -2906,7 +3213,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1514760
+   "off": 3358116
   },
   {
    "name": "up/marching_horn",
@@ -2923,7 +3230,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1515012
+   "off": 3358368
   },
   {
    "name": "style/right/marching_horn",
@@ -2940,7 +3247,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1515264
+   "off": 3358620
   },
   {
    "name": "style/left/marching_horn",
@@ -2957,7 +3264,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1515516
+   "off": 3358872
   },
   {
    "name": "style/front/marching_horn",
@@ -2974,7 +3281,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1515768
+   "off": 3359124
   },
   {
    "name": "style/diag/marching_horn",
@@ -2991,7 +3298,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1516020
+   "off": 3359376
   },
   {
    "name": "hold/horn",
@@ -3008,7 +3315,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1719456
+   "off": 3562812
   },
   {
    "name": "carry/horn",
@@ -3025,7 +3332,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1719708
+   "off": 3563064
   },
   {
    "name": "up/horn",
@@ -3042,7 +3349,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1719960
+   "off": 3563316
   },
   {
    "name": "style/right/horn",
@@ -3059,7 +3366,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1720212
+   "off": 3563568
   },
   {
    "name": "style/left/horn",
@@ -3076,7 +3383,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1720464
+   "off": 3563820
   },
   {
    "name": "style/front/horn",
@@ -3093,7 +3400,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1720716
+   "off": 3564072
   },
   {
    "name": "style/diag/horn",
@@ -3110,7 +3417,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1720968
+   "off": 3564324
   },
   {
    "name": "hold/trombone",
@@ -3127,7 +3434,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1861824
+   "off": 3705180
   },
   {
    "name": "carry/trombone",
@@ -3144,7 +3451,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1862076
+   "off": 3705432
   },
   {
    "name": "up/trombone",
@@ -3161,7 +3468,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1862328
+   "off": 3705684
   },
   {
    "name": "style/right/trombone",
@@ -3178,7 +3485,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1862580
+   "off": 3705936
   },
   {
    "name": "style/left/trombone",
@@ -3195,7 +3502,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1862832
+   "off": 3706188
   },
   {
    "name": "style/front/trombone",
@@ -3212,7 +3519,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1863084
+   "off": 3706440
   },
   {
    "name": "style/diag/trombone",
@@ -3229,7 +3536,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 1863336
+   "off": 3706692
   },
   {
    "name": "hold/euphonium",
@@ -3246,7 +3553,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2082360
+   "off": 3925716
   },
   {
    "name": "carry/euphonium",
@@ -3263,7 +3570,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2082612
+   "off": 3925968
   },
   {
    "name": "up/euphonium",
@@ -3280,7 +3587,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2082864
+   "off": 3926220
   },
   {
    "name": "style/right/euphonium",
@@ -3297,7 +3604,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2083116
+   "off": 3926472
   },
   {
    "name": "style/left/euphonium",
@@ -3314,7 +3621,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2083368
+   "off": 3926724
   },
   {
    "name": "style/front/euphonium",
@@ -3331,7 +3638,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2083620
+   "off": 3926976
   },
   {
    "name": "style/diag/euphonium",
@@ -3348,7 +3655,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2083872
+   "off": 3927228
   },
   {
    "name": "hold/marching_euphonium",
@@ -3365,7 +3672,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2284148
+   "off": 4127504
   },
   {
    "name": "carry/marching_euphonium",
@@ -3382,7 +3689,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2284400
+   "off": 4127756
   },
   {
    "name": "up/marching_euphonium",
@@ -3399,7 +3706,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2284652
+   "off": 4128008
   },
   {
    "name": "style/right/marching_euphonium",
@@ -3416,7 +3723,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2284904
+   "off": 4128260
   },
   {
    "name": "style/left/marching_euphonium",
@@ -3433,7 +3740,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2285156
+   "off": 4128512
   },
   {
    "name": "style/front/marching_euphonium",
@@ -3450,7 +3757,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2285408
+   "off": 4128764
   },
   {
    "name": "style/diag/marching_euphonium",
@@ -3467,7 +3774,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2285660
+   "off": 4129016
   },
   {
    "name": "hold/tuba",
@@ -3484,7 +3791,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2504684
+   "off": 4348040
   },
   {
    "name": "carry/tuba",
@@ -3501,7 +3808,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2504936
+   "off": 4348292
   },
   {
    "name": "up/tuba",
@@ -3518,7 +3825,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2505188
+   "off": 4348544
   },
   {
    "name": "style/right/tuba",
@@ -3535,7 +3842,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2505440
+   "off": 4348796
   },
   {
    "name": "style/left/tuba",
@@ -3552,7 +3859,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2505692
+   "off": 4349048
   },
   {
    "name": "style/front/tuba",
@@ -3569,7 +3876,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2505944
+   "off": 4349300
   },
   {
    "name": "style/diag/tuba",
@@ -3586,7 +3893,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2506196
+   "off": 4349552
   },
   {
    "name": "hold/marching_tuba",
@@ -3603,7 +3910,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2742760
+   "off": 4586116
   },
   {
    "name": "carry/marching_tuba",
@@ -3620,7 +3927,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2743012
+   "off": 4586368
   },
   {
    "name": "up/marching_tuba",
@@ -3637,7 +3944,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2743264
+   "off": 4586620
   },
   {
    "name": "style/right/marching_tuba",
@@ -3654,7 +3961,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2743516
+   "off": 4586872
   },
   {
    "name": "style/left/marching_tuba",
@@ -3671,7 +3978,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2743768
+   "off": 4587124
   },
   {
    "name": "style/front/marching_tuba",
@@ -3688,7 +3995,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2744020
+   "off": 4587376
   },
   {
    "name": "style/diag/marching_tuba",
@@ -3705,7 +4012,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 2744272
+   "off": 4587628
   },
   {
    "name": "hold/sousaphone",
@@ -3722,7 +4029,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3048696
+   "off": 4892052
   },
   {
    "name": "carry/sousaphone",
@@ -3739,7 +4046,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3048948
+   "off": 4892304
   },
   {
    "name": "up/sousaphone",
@@ -3756,7 +4063,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3049200
+   "off": 4892556
   },
   {
    "name": "style/right/sousaphone",
@@ -3773,7 +4080,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3049452
+   "off": 4892808
   },
   {
    "name": "style/left/sousaphone",
@@ -3790,7 +4097,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3049704
+   "off": 4893060
   },
   {
    "name": "style/front/sousaphone",
@@ -3807,7 +4114,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3049956
+   "off": 4893312
   },
   {
    "name": "style/diag/sousaphone",
@@ -3824,7 +4131,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3050208
+   "off": 4893564
   },
   {
    "name": "hold/piccolo",
@@ -3841,7 +4148,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3077444
+   "off": 4920800
   },
   {
    "name": "carry/piccolo",
@@ -3858,7 +4165,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3077696
+   "off": 4921052
   },
   {
    "name": "up/piccolo",
@@ -3875,7 +4182,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3077948
+   "off": 4921304
   },
   {
    "name": "style/right/piccolo",
@@ -3892,7 +4199,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3078200
+   "off": 4921556
   },
   {
    "name": "style/left/piccolo",
@@ -3909,7 +4216,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3078452
+   "off": 4921808
   },
   {
    "name": "style/front/piccolo",
@@ -3926,7 +4233,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3078704
+   "off": 4922060
   },
   {
    "name": "style/diag/piccolo",
@@ -3943,7 +4250,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3078956
+   "off": 4922312
   },
   {
    "name": "hold/flute",
@@ -3960,7 +4267,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3122640
+   "off": 4965996
   },
   {
    "name": "carry/flute",
@@ -3977,7 +4284,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3122892
+   "off": 4966248
   },
   {
    "name": "up/flute",
@@ -3994,7 +4301,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3123144
+   "off": 4966500
   },
   {
    "name": "style/right/flute",
@@ -4011,7 +4318,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3123396
+   "off": 4966752
   },
   {
    "name": "style/left/flute",
@@ -4028,7 +4335,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3123648
+   "off": 4967004
   },
   {
    "name": "style/front/flute",
@@ -4045,7 +4352,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3123900
+   "off": 4967256
   },
   {
    "name": "style/diag/flute",
@@ -4062,7 +4369,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3124152
+   "off": 4967508
   },
   {
    "name": "hold/oboe",
@@ -4079,7 +4386,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3222088
+   "off": 5065444
   },
   {
    "name": "carry/oboe",
@@ -4096,7 +4403,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3222340
+   "off": 5065696
   },
   {
    "name": "up/oboe",
@@ -4113,7 +4420,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3222592
+   "off": 5065948
   },
   {
    "name": "style/right/oboe",
@@ -4130,7 +4437,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3222844
+   "off": 5066200
   },
   {
    "name": "style/left/oboe",
@@ -4147,7 +4454,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3223096
+   "off": 5066452
   },
   {
    "name": "style/front/oboe",
@@ -4164,7 +4471,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3223348
+   "off": 5066704
   },
   {
    "name": "style/diag/oboe",
@@ -4181,7 +4488,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3223600
+   "off": 5066956
   },
   {
    "name": "hold/bassoon",
@@ -4198,7 +4505,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3358128
+   "off": 5201484
   },
   {
    "name": "carry/bassoon",
@@ -4215,7 +4522,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3358380
+   "off": 5201736
   },
   {
    "name": "up/bassoon",
@@ -4232,7 +4539,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3358632
+   "off": 5201988
   },
   {
    "name": "style/right/bassoon",
@@ -4249,7 +4556,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3358884
+   "off": 5202240
   },
   {
    "name": "style/left/bassoon",
@@ -4266,7 +4573,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3359136
+   "off": 5202492
   },
   {
    "name": "style/front/bassoon",
@@ -4283,7 +4590,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3359388
+   "off": 5202744
   },
   {
    "name": "style/diag/bassoon",
@@ -4300,7 +4607,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3359640
+   "off": 5202996
   },
   {
    "name": "hold/eb_clarinet",
@@ -4317,7 +4624,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3462288
+   "off": 5305644
   },
   {
    "name": "carry/eb_clarinet",
@@ -4334,7 +4641,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3462540
+   "off": 5305896
   },
   {
    "name": "up/eb_clarinet",
@@ -4351,7 +4658,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3462792
+   "off": 5306148
   },
   {
    "name": "style/right/eb_clarinet",
@@ -4368,7 +4675,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3463044
+   "off": 5306400
   },
   {
    "name": "style/left/eb_clarinet",
@@ -4385,7 +4692,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3463296
+   "off": 5306652
   },
   {
    "name": "style/front/eb_clarinet",
@@ -4402,7 +4709,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3463548
+   "off": 5306904
   },
   {
    "name": "style/diag/eb_clarinet",
@@ -4419,7 +4726,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3463800
+   "off": 5307156
   },
   {
    "name": "hold/clarinet",
@@ -4436,7 +4743,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3566448
+   "off": 5409804
   },
   {
    "name": "carry/clarinet",
@@ -4453,7 +4760,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3566700
+   "off": 5410056
   },
   {
    "name": "up/clarinet",
@@ -4470,7 +4777,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3566952
+   "off": 5410308
   },
   {
    "name": "style/right/clarinet",
@@ -4487,7 +4794,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3567204
+   "off": 5410560
   },
   {
    "name": "style/left/clarinet",
@@ -4504,7 +4811,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3567456
+   "off": 5410812
   },
   {
    "name": "style/front/clarinet",
@@ -4521,7 +4828,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3567708
+   "off": 5411064
   },
   {
    "name": "style/diag/clarinet",
@@ -4538,7 +4845,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3567960
+   "off": 5411316
   },
   {
    "name": "hold/alto_clarinet",
@@ -4555,7 +4862,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3703172
+   "off": 5546528
   },
   {
    "name": "carry/alto_clarinet",
@@ -4572,7 +4879,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3703424
+   "off": 5546780
   },
   {
    "name": "up/alto_clarinet",
@@ -4589,7 +4896,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3703676
+   "off": 5547032
   },
   {
    "name": "style/right/alto_clarinet",
@@ -4606,7 +4913,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3703928
+   "off": 5547284
   },
   {
    "name": "style/left/alto_clarinet",
@@ -4623,7 +4930,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3704180
+   "off": 5547536
   },
   {
    "name": "style/front/alto_clarinet",
@@ -4640,7 +4947,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3704432
+   "off": 5547788
   },
   {
    "name": "style/diag/alto_clarinet",
@@ -4657,7 +4964,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3704684
+   "off": 5548040
   },
   {
    "name": "hold/bass_clarinet",
@@ -4674,7 +4981,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3839896
+   "off": 5683252
   },
   {
    "name": "carry/bass_clarinet",
@@ -4691,7 +4998,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3840148
+   "off": 5683504
   },
   {
    "name": "up/bass_clarinet",
@@ -4708,7 +5015,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3840400
+   "off": 5683756
   },
   {
    "name": "style/right/bass_clarinet",
@@ -4725,7 +5032,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3840652
+   "off": 5684008
   },
   {
    "name": "style/left/bass_clarinet",
@@ -4742,7 +5049,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3840904
+   "off": 5684260
   },
   {
    "name": "style/front/bass_clarinet",
@@ -4759,7 +5066,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3841156
+   "off": 5684512
   },
   {
    "name": "style/diag/bass_clarinet",
@@ -4776,7 +5083,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3841408
+   "off": 5684764
   },
   {
    "name": "hold/soprano_sax",
@@ -4793,7 +5100,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3976620
+   "off": 5819976
   },
   {
    "name": "carry/soprano_sax",
@@ -4810,7 +5117,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3976872
+   "off": 5820228
   },
   {
    "name": "up/soprano_sax",
@@ -4827,7 +5134,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3977124
+   "off": 5820480
   },
   {
    "name": "style/right/soprano_sax",
@@ -4844,7 +5151,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3977376
+   "off": 5820732
   },
   {
    "name": "style/left/soprano_sax",
@@ -4861,7 +5168,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3977628
+   "off": 5820984
   },
   {
    "name": "style/front/soprano_sax",
@@ -4878,7 +5185,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3977880
+   "off": 5821236
   },
   {
    "name": "style/diag/soprano_sax",
@@ -4895,7 +5202,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 3978132
+   "off": 5821488
   },
   {
    "name": "hold/alto_sax",
@@ -4912,7 +5219,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4220324
+   "off": 6063680
   },
   {
    "name": "carry/alto_sax",
@@ -4929,7 +5236,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4220576
+   "off": 6063932
   },
   {
    "name": "up/alto_sax",
@@ -4946,7 +5253,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4220828
+   "off": 6064184
   },
   {
    "name": "style/right/alto_sax",
@@ -4963,7 +5270,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4221080
+   "off": 6064436
   },
   {
    "name": "style/left/alto_sax",
@@ -4980,7 +5287,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4221332
+   "off": 6064688
   },
   {
    "name": "style/front/alto_sax",
@@ -4997,7 +5304,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4221584
+   "off": 6064940
   },
   {
    "name": "style/diag/alto_sax",
@@ -5014,7 +5321,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4221836
+   "off": 6065192
   },
   {
    "name": "hold/tenor_sax",
@@ -5031,7 +5338,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4464028
+   "off": 6307384
   },
   {
    "name": "carry/tenor_sax",
@@ -5048,7 +5355,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4464280
+   "off": 6307636
   },
   {
    "name": "up/tenor_sax",
@@ -5065,7 +5372,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4464532
+   "off": 6307888
   },
   {
    "name": "style/right/tenor_sax",
@@ -5082,7 +5389,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4464784
+   "off": 6308140
   },
   {
    "name": "style/left/tenor_sax",
@@ -5099,7 +5406,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4465036
+   "off": 6308392
   },
   {
    "name": "style/front/tenor_sax",
@@ -5116,7 +5423,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4465288
+   "off": 6308644
   },
   {
    "name": "style/diag/tenor_sax",
@@ -5133,7 +5440,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4465540
+   "off": 6308896
   },
   {
    "name": "hold/baritone_sax",
@@ -5150,7 +5457,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4792980
+   "off": 6636336
   },
   {
    "name": "carry/baritone_sax",
@@ -5167,7 +5474,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4793232
+   "off": 6636588
   },
   {
    "name": "up/baritone_sax",
@@ -5184,7 +5491,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4793484
+   "off": 6636840
   },
   {
    "name": "style/right/baritone_sax",
@@ -5201,7 +5508,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4793736
+   "off": 6637092
   },
   {
    "name": "style/left/baritone_sax",
@@ -5218,7 +5525,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4793988
+   "off": 6637344
   },
   {
    "name": "style/front/baritone_sax",
@@ -5235,7 +5542,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4794240
+   "off": 6637596
   },
   {
    "name": "style/diag/baritone_sax",
@@ -5252,7 +5559,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4794492
+   "off": 6637848
   },
   {
    "name": "hold/snare",
@@ -5269,7 +5576,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4923940
+   "off": 6767296
   },
   {
    "name": "carry/snare",
@@ -5286,7 +5593,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4924192
+   "off": 6767548
   },
   {
    "name": "up/snare",
@@ -5303,7 +5610,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4924444
+   "off": 6767800
   },
   {
    "name": "style/right/snare",
@@ -5320,7 +5627,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4924696
+   "off": 6768052
   },
   {
    "name": "style/left/snare",
@@ -5337,7 +5644,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4924948
+   "off": 6768304
   },
   {
    "name": "style/front/snare",
@@ -5354,7 +5661,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4925200
+   "off": 6768556
   },
   {
    "name": "style/diag/snare",
@@ -5371,7 +5678,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 4925452
+   "off": 6768808
   },
   {
    "name": "hold/tenors",
@@ -5388,7 +5695,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5273472
+   "off": 7116828
   },
   {
    "name": "carry/tenors",
@@ -5405,7 +5712,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5273724
+   "off": 7117080
   },
   {
    "name": "up/tenors",
@@ -5422,7 +5729,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5273976
+   "off": 7117332
   },
   {
    "name": "style/right/tenors",
@@ -5439,7 +5746,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5274228
+   "off": 7117584
   },
   {
    "name": "style/left/tenors",
@@ -5456,7 +5763,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5274480
+   "off": 7117836
   },
   {
    "name": "style/front/tenors",
@@ -5473,7 +5780,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5274732
+   "off": 7118088
   },
   {
    "name": "style/diag/tenors",
@@ -5490,7 +5797,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5274984
+   "off": 7118340
   },
   {
    "name": "hold/bass1",
@@ -5507,7 +5814,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5405516
+   "off": 7248872
   },
   {
    "name": "carry/bass1",
@@ -5524,7 +5831,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5405768
+   "off": 7249124
   },
   {
    "name": "up/bass1",
@@ -5541,7 +5848,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5406020
+   "off": 7249376
   },
   {
    "name": "style/right/bass1",
@@ -5558,7 +5865,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5406272
+   "off": 7249628
   },
   {
    "name": "style/left/bass1",
@@ -5575,7 +5882,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5406524
+   "off": 7249880
   },
   {
    "name": "style/front/bass1",
@@ -5592,7 +5899,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5406776
+   "off": 7250132
   },
   {
    "name": "style/diag/bass1",
@@ -5609,7 +5916,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5407028
+   "off": 7250384
   },
   {
    "name": "hold/bass2",
@@ -5626,7 +5933,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5537560
+   "off": 7380916
   },
   {
    "name": "carry/bass2",
@@ -5643,7 +5950,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5537812
+   "off": 7381168
   },
   {
    "name": "up/bass2",
@@ -5660,7 +5967,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5538064
+   "off": 7381420
   },
   {
    "name": "style/right/bass2",
@@ -5677,7 +5984,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5538316
+   "off": 7381672
   },
   {
    "name": "style/left/bass2",
@@ -5694,7 +6001,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5538568
+   "off": 7381924
   },
   {
    "name": "style/front/bass2",
@@ -5711,7 +6018,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5538820
+   "off": 7382176
   },
   {
    "name": "style/diag/bass2",
@@ -5728,7 +6035,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5539072
+   "off": 7382428
   },
   {
    "name": "hold/bass3",
@@ -5745,7 +6052,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5669604
+   "off": 7512960
   },
   {
    "name": "carry/bass3",
@@ -5762,7 +6069,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5669856
+   "off": 7513212
   },
   {
    "name": "up/bass3",
@@ -5779,7 +6086,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5670108
+   "off": 7513464
   },
   {
    "name": "style/right/bass3",
@@ -5796,7 +6103,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5670360
+   "off": 7513716
   },
   {
    "name": "style/left/bass3",
@@ -5813,7 +6120,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5670612
+   "off": 7513968
   },
   {
    "name": "style/front/bass3",
@@ -5830,7 +6137,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5670864
+   "off": 7514220
   },
   {
    "name": "style/diag/bass3",
@@ -5847,7 +6154,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5671116
+   "off": 7514472
   },
   {
    "name": "hold/bass4",
@@ -5864,7 +6171,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5801648
+   "off": 7645004
   },
   {
    "name": "carry/bass4",
@@ -5881,7 +6188,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5801900
+   "off": 7645256
   },
   {
    "name": "up/bass4",
@@ -5898,7 +6205,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5802152
+   "off": 7645508
   },
   {
    "name": "style/right/bass4",
@@ -5915,7 +6222,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5802404
+   "off": 7645760
   },
   {
    "name": "style/left/bass4",
@@ -5932,7 +6239,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5802656
+   "off": 7646012
   },
   {
    "name": "style/front/bass4",
@@ -5949,7 +6256,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5802908
+   "off": 7646264
   },
   {
    "name": "style/diag/bass4",
@@ -5966,7 +6273,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5803160
+   "off": 7646516
   },
   {
    "name": "hold/bass5",
@@ -5983,7 +6290,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5933692
+   "off": 7777048
   },
   {
    "name": "carry/bass5",
@@ -6000,7 +6307,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5933944
+   "off": 7777300
   },
   {
    "name": "up/bass5",
@@ -6017,7 +6324,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5934196
+   "off": 7777552
   },
   {
    "name": "style/right/bass5",
@@ -6034,7 +6341,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5934448
+   "off": 7777804
   },
   {
    "name": "style/left/bass5",
@@ -6051,7 +6358,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5934700
+   "off": 7778056
   },
   {
    "name": "style/front/bass5",
@@ -6068,7 +6375,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5934952
+   "off": 7778308
   },
   {
    "name": "style/diag/bass5",
@@ -6085,7 +6392,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 5935204
+   "off": 7778560
   },
   {
    "name": "hold/cymbals_mid",
@@ -6102,7 +6409,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6203024
+   "off": 8046380
   },
   {
    "name": "carry/cymbals_mid",
@@ -6119,7 +6426,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6203276
+   "off": 8046632
   },
   {
    "name": "up/cymbals_mid",
@@ -6136,7 +6443,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6203528
+   "off": 8046884
   },
   {
    "name": "style/right/cymbals_mid",
@@ -6153,7 +6460,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6203780
+   "off": 8047136
   },
   {
    "name": "style/left/cymbals_mid",
@@ -6170,7 +6477,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6204032
+   "off": 8047388
   },
   {
    "name": "style/front/cymbals_mid",
@@ -6187,7 +6494,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6204284
+   "off": 8047640
   },
   {
    "name": "style/diag/cymbals_mid",
@@ -6204,7 +6511,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6204536
+   "off": 8047892
   },
   {
    "name": "hold/cymbals_high",
@@ -6221,7 +6528,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6472356
+   "off": 8315712
   },
   {
    "name": "carry/cymbals_high",
@@ -6238,7 +6545,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6472608
+   "off": 8315964
   },
   {
    "name": "up/cymbals_high",
@@ -6255,7 +6562,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6472860
+   "off": 8316216
   },
   {
    "name": "style/right/cymbals_high",
@@ -6272,7 +6579,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6473112
+   "off": 8316468
   },
   {
    "name": "style/left/cymbals_high",
@@ -6289,7 +6596,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6473364
+   "off": 8316720
   },
   {
    "name": "style/front/cymbals_high",
@@ -6306,7 +6613,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6473616
+   "off": 8316972
   },
   {
    "name": "style/diag/cymbals_high",
@@ -6323,7 +6630,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6473868
+   "off": 8317224
   },
   {
    "name": "hold/glockenspiel",
@@ -6340,7 +6647,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6537980
+   "off": 8381336
   },
   {
    "name": "carry/glockenspiel",
@@ -6357,7 +6664,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6538232
+   "off": 8381588
   },
   {
    "name": "up/glockenspiel",
@@ -6374,7 +6681,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6538484
+   "off": 8381840
   },
   {
    "name": "style/right/glockenspiel",
@@ -6391,7 +6698,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6538736
+   "off": 8382092
   },
   {
    "name": "style/left/glockenspiel",
@@ -6408,7 +6715,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6538988
+   "off": 8382344
   },
   {
    "name": "style/front/glockenspiel",
@@ -6425,7 +6732,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6539240
+   "off": 8382596
   },
   {
    "name": "style/diag/glockenspiel",
@@ -6442,7 +6749,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6539492
+   "off": 8382848
   },
   {
    "name": "hold/xylophone",
@@ -6459,7 +6766,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6641268
+   "off": 8484624
   },
   {
    "name": "carry/xylophone",
@@ -6476,7 +6783,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6641520
+   "off": 8484876
   },
   {
    "name": "up/xylophone",
@@ -6493,7 +6800,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6641772
+   "off": 8485128
   },
   {
    "name": "style/right/xylophone",
@@ -6510,7 +6817,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6642024
+   "off": 8485380
   },
   {
    "name": "style/left/xylophone",
@@ -6527,7 +6834,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6642276
+   "off": 8485632
   },
   {
    "name": "style/front/xylophone",
@@ -6544,7 +6851,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6642528
+   "off": 8485884
   },
   {
    "name": "style/diag/xylophone",
@@ -6561,7 +6868,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6642780
+   "off": 8486136
   },
   {
    "name": "guard/hold",
@@ -6578,7 +6885,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6684768
+   "off": 8528124
   },
   {
    "name": "guard/carry",
@@ -6595,7 +6902,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6685020
+   "off": 8528376
   },
   {
    "name": "style/right/guard",
@@ -6612,7 +6919,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6685272
+   "off": 8528628
   },
   {
    "name": "style/left/guard",
@@ -6629,7 +6936,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6685524
+   "off": 8528880
   },
   {
    "name": "style/front/guard",
@@ -6646,7 +6953,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6685776
+   "off": 8529132
   },
   {
    "name": "style/diag/guard",
@@ -6663,7 +6970,7 @@
    ],
    "frames": 1,
    "counts": 0,
-   "off": 6686028
+   "off": 8529384
   },
   {
    "name": "guard/spin",
@@ -6680,7 +6987,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 6686280
+   "off": 8529636
   },
   {
    "name": "guard/swing",
@@ -6697,7 +7004,7 @@
    ],
    "frames": 20,
    "counts": 2,
-   "off": 6691320
+   "off": 8534676
   },
   {
    "name": "guard/toss",
@@ -6714,7 +7021,7 @@
    ],
    "frames": 40,
    "counts": 4,
-   "off": 6696360
+   "off": 8539716
   }
  ],
  "strike": {

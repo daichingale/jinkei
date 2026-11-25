@@ -4,6 +4,7 @@ const {V, Q, ss, lerp} = require('./math');
 const S = require('./skeleton');
 const M = require('./materials');
 const {id: B, W: BW} = S;
+const F = require('./face');
 
 const norm = a => { const s = a.reduce((x, y) => x + y[1], 0) || 1; return a.map(([b, w]) => [b, w / s]); };
 const bidx = n => B(n);
@@ -93,27 +94,14 @@ function buildBody(mb) {
       wt: (r, p) => { const t = ss(1.44, 1.50, p[1]); return norm([[bi('neck'), 1 - t], [bi('head'), t]]); },
     });
   }
-  // ---------- 頭 ----------
+  // ---------- 頭（顔の目・眉・口・ほおは顔テクスチャ。髪は別メッシュ。どちらも face.js / hair.js）----------
   const headW = (r, p) => { const t = ss(1.46, 1.50, p[1]); return norm([[bi('head'), 0.4 + 0.6 * t], [bi('neck'), 0.6 * (1 - t)]]); };
+  const headFrom = mb.P.length;
   {
-    const prof = [[1.462, 0.014, 0.020, 0.062], [1.470, 0.034, 0.048, 0.052], [1.485, 0.054, 0.072, 0.036], [1.505, 0.067, 0.088, 0.018],
-      [1.53, 0.074, 0.095, 0.010], [1.56, 0.077, 0.099, 0.008], [1.595, 0.078, 0.101, 0.006], [1.630, 0.076, 0.099, 0.003], [1.665, 0.066, 0.086, 0.0], [1.69, 0.046, 0.062, -0.002], [1.703, 0.0, 0.0, 0]];
-    mb.loft(prof.map(([y, rx, rz, zc]) => ({c: [0, y, 0], rx, rz, oz: zc, n: y < 1.5 ? 2.0 : 2.3})), {N: 24, mat: M.SKIN, capS: true, wt: headW});
+    mb.loft(F.headRings().map(r => ({...r})), {N: 36, mat: M.SKIN, capS: true, capE: true, wt: headW});
     const hd = {wt: () => [[bi('head'), 1]]};
-    // 鼻・耳・目（白目＋黒目）・眉・口。ひさしの影でも見えるよう、目と眉は少し大きめにする
-    mb.ellipsoid([0, 1.542, 0.104], [0.014, 0.025, 0.020], M.SKIN, {axis: V.norm([0, 1, 0.35]), lat: 6, N: 10, ...hd});
-    mb.ellipsoid([0, 1.529, 0.112], [0.015, 0.0075, 0.010], M.SKIN, {axis: [0, 0, 1], u: [1, 0, 0], lat: 4, N: 10, ...hd}); // 鼻先
-    for (const s of [-1, 1]) {
-      mb.ellipsoid([s * 0.0775, 1.562, -0.006], [0.0085, 0.026, 0.017], M.SKIN, {lat: 6, N: 8, ...hd});
-      mb.ellipsoid([s * 0.032, 1.577, 0.0975], [0.0135, 0.0092, 0.0045], M.FELT, {axis: [0, 0, 1], u: [1, 0, 0], lat: 5, N: 10, ...hd});
-      mb.ellipsoid([s * 0.032, 1.577, 0.1005], [0.0072, 0.0072, 0.0035], M.EYE, {axis: [0, 0, 1], u: [1, 0, 0], lat: 5, N: 10, ...hd});
-      mb.ellipsoid([s * 0.034, 1.596, 0.0975], [0.021, 0.0050, 0.0075], M.HAIR, {axis: [0, 0, 1], u: [1, 0, 0], lat: 4, N: 10, ...hd});
-    }
-    mb.ellipsoid([0, 1.508, 0.091], [0.022, 0.0055, 0.011], M.LIP, {axis: [0, 0, 1], u: [1, 0, 0], lat: 4, N: 10, ...hd});
-    // 髪（シャコー帽の下から見える後頭部・耳のまわり・もみあげ）。頭より一回り大きく、後ろへずらして生え際を作る
-    const headR = y => { const t = [[1.53, 0.074, 0.095, 0.010], [1.56, 0.077, 0.099, 0.008], [1.595, 0.078, 0.101, 0.006], [1.63, 0.076, 0.099, 0.003], [1.665, 0.066, 0.086, 0.0], [1.69, 0.046, 0.062, -0.002], [1.703, 0.0, 0.0, 0]]; for (let i = 0; i + 1 < t.length; i++) if (y >= t[i][0] && y <= t[i + 1][0]) { const k = (y - t[i][0]) / (t[i + 1][0] - t[i][0]); return [1, 2, 3].map(j => lerp(t[i][j], t[i + 1][j], k)); } return t[t.length - 1].slice(1); };
-    const hair = [1.538, 1.552, 1.575, 1.61, 1.65, 1.685, 1.707].map((y, i) => { const [rx, rz, zc] = headR(y), g = i === 0 ? 0.002 : 0.0055; return [y, i === 6 ? 0 : rx + g, i === 6 ? 0 : rz + g, zc - (i === 0 ? 0.004 : 0.016)]; });
-    mb.loft(hair.map(([y, rx, rz, zc]) => ({c: [0, y, 0], rx, rz, oz: zc, n: 2.2})), {N: 28, mat: M.HAIR, capS: true, wt: () => [[bi('head'), 1]]});
+    // 耳
+    for (const s of [-1, 1]) mb.ellipsoid([s * 0.0795, 1.560, -0.006], [0.0085, 0.024, 0.016], M.SKIN, {lat: 6, N: 8, ...hd});
   }
   // ---------- シャコー帽（紺・金のバンド・黒いひさし・白い羽根）----------
   {
@@ -135,6 +123,7 @@ function buildBody(mb) {
     // あご紐（黒い細い帯）
     for (const s of [-1, 1]) mb.tube([s * 0.080, 1.60, 0.03], [s * 0.040, 1.472, 0.07], 0.003, 0.003, M.LEATHER, {N: 5, wt: hw});
   }
+  F.scaleHeadVerts(mb, headFrom, mb.P.length); // 頭・帽子を拡大（口の位置は動かさない）
   // ---------- 腕 ----------
   for (const sd of [1, -1]) {
     const L = sd > 0 ? 'L' : 'R', mx = v => [v[0] * sd, v[1], v[2]];

@@ -1148,6 +1148,61 @@ struct Surf {
     metal: f32,
     /// 髪（イラストの天使の輪）
     hair: bool,
+    /// 肌・顔（リアルでは地の色を足して、帽子のかげで沈まないようにする）
+    skin: bool,
+}
+
+/// 顔の三角形 1 枚ぶんの情報（テクスチャを引いて肌の色に目・眉・口・ほおを重ねる）
+struct FaceTri<'a> {
+    tex: &'a crate::human::FaceTex,
+    uv: [[f32; 2]; 3],
+    /// ミップのレベル（この三角形の画面上の大きさから決める）
+    lod: f32,
+    cols: &'a FaceCols,
+}
+
+/// 隊員ごとの顔の色（線形）
+struct FaceCols {
+    eye: Rgb,
+    hair: Rgb,
+    sclera: Rgb,
+    ink: Rgb,
+    lip: Rgb,
+    line: Rgb,
+    blush: Rgb,
+    brow: Rgb,
+    blush_k: f32,
+}
+
+impl FaceTri<'_> {
+    /// 遠近補正した重みから顔の色を求める。何も描かれない画素は None（肌のまま = 画素を捨てる）
+    #[inline]
+    fn shade(&self, p: (f32, f32, f32), skin: Rgb) -> Option<Rgb> {
+        let u = self.uv[0][0] * p.0 + self.uv[1][0] * p.1 + self.uv[2][0] * p.2;
+        let v = self.uv[0][1] * p.0 + self.uv[1][1] * p.1 + self.uv[2][1] * p.2;
+        let t = self.tex.sample(u, v, self.lod);
+        let (ink, brow, sclera, iris, iris_t, hi, blush, mouth) = (t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7]);
+        let cov = ink.max(brow).max(sclera).max(iris).max(hi).max(blush).max(mouth * 2.0);
+        if cov < 0.02 {
+            return None;
+        }
+        let fc = self.cols;
+        let ss = |a: f32, b: f32, x: f32| {
+            let k = ((x - a) / (b - a)).clamp(0.0, 1.0);
+            k * k * (3.0 - 2.0 * k)
+        };
+        let mut c = skin;
+        c = mix3(c, fc.blush, (blush * fc.blush_k).clamp(0.0, 1.0));
+        c = mix3(c, fc.sclera, sclera);
+        let dark = [fc.eye[0] * 0.36, fc.eye[1] * 0.36, fc.eye[2] * 0.36];
+        let light = mix3(fc.eye, [1.0; 3], 0.32);
+        c = mix3(c, mix3(dark, light, iris_t), iris);
+        c = mix3(c, mix3(fc.lip, fc.line, ss(0.55, 0.95, mouth)), (mouth * 2.0).clamp(0.0, 1.0));
+        c = mix3(c, mix3([fc.hair[0] * 0.8, fc.hair[1] * 0.8, fc.hair[2] * 0.8], fc.brow, 0.4), brow * 0.92);
+        c = mix3(c, fc.ink, ink);
+        c = mix3(c, [1.0; 3], hi);
+        Some(c)
+    }
 }
 
 /// 光源・環境の設定（venue ごとに固定）
@@ -1627,7 +1682,7 @@ impl Frame {
                     [lin_fast(c[0]), lin_fast(c[1]), lin_fast(c[2])]
                 };
                 let v = cx.eye.sub(v3(x, fl.y, z)).norm();
-                let sf = Surf { albedo, rough: fl.mt.rough, metal: 0.0, hair: false };
+                let sf = Surf { albedo, rough: fl.mt.rough, metal: 0.0, hair: false, skin: false };
                 let c = lit.pbr_core(&sf, up, v, v.y.max(1e-3), vis_at(v3(x, fl.y, z), up), fl.mt.env, spec.at(px, py), dif_up);
                 lit.fog(c, t)
             };
@@ -1644,7 +1699,7 @@ impl Frame {
                 self.clip_raster(cx, t.p, z3, |_, _, z, _| lit.fog(col, z));
                 continue;
             }
-            let sf = Surf { albedo: lin(t.mt.c), rough: t.mt.rough, metal: 0.0, hair: false };
+            let sf = Surf { albedo: lin(t.mt.c), rough: t.mt.rough, metal: 0.0, hair: false, skin: false };
             match &t.n {
                 None => {
                     let mut n = t.p[1].sub(t.p[0]).cross(t.p[2].sub(t.p[0])).norm();
@@ -1766,7 +1821,7 @@ impl Frame {
     /// 人物の三角形の1画素: 深度テストに通れば、法線を補間してライティング・影を計算して書く
     #[inline(always)]
     #[allow(clippy::too_many_arguments)]
-    fn emit(&mut self, cx: &Cx, lit: &Lit, sm: (&ShadowMap, &ShadowMap), a: (f32, f32, f32), b: (f32, f32, f32), c: (f32, f32, f32), nrm: &[&V3; 3], sf: &Surf, idx: usize, px: f32, py: f32, w0: f32, w1: f32, w2: f32) {
+    fn emit(&mut self, cx: &Cx, lit: &Lit, sm: (&ShadowMap, &ShadowMap), a: (f32, f32, f32), b: (f32, f32, f32), c: (f32, f32, f32), nrm: &[&V3; 3], sf: &Surf, ft: Option<&FaceTri>, idx: usize, px: f32, py: f32, w0: f32, w1: f32, w2: f32) {
         let iz = w0 * a.2 + w1 * b.2 + w2 * c.2;
         if iz <= self.z[idx] {
             return;
@@ -1774,6 +1829,18 @@ impl Frame {
         // 遠近補正した重み
         let z = 1.0 / iz;
         let (p0, p1, p2) = (w0 * a.2 * z, w1 * b.2 * z, w2 * c.2 * z);
+        // 顔: テクスチャで何も描かれない画素は捨てる（肌のまま）。描かれるなら肌の色に重ねた色を使う
+        let sf2;
+        let sf = match ft {
+            Some(ft) => match ft.shade((p0, p1, p2), sf.albedo) {
+                Some(col) => {
+                    sf2 = Surf { albedo: col, ..*sf };
+                    &sf2
+                }
+                None => return,
+            },
+            None => sf,
+        };
         let n = v3(
             nrm[0].x * p0 + nrm[1].x * p1 + nrm[2].x * p2,
             nrm[0].y * p0 + nrm[1].y * p1 + nrm[2].y * p2,
@@ -1791,22 +1858,44 @@ impl Frame {
             let mut c = lit.toon_shade(sf.albedo, n, v, vis, true);
             if sf.hair {
                 // 髪の天使の輪: 画面の上向きの面に白い帯
-                let ny = n.dot(cx.u);
-                let ring = ((ny - 0.50) / 0.05).clamp(0.0, 1.0) * (1.0 - ((ny - 0.64) / 0.06).clamp(0.0, 1.0));
+                let (ny, nx) = (n.dot(cx.u), n.dot(cx.r));
+                let rt = ny + 0.35 * nx * nx;
+                let ring = ((rt - 0.48) / 0.04).clamp(0.0, 1.0) * (1.0 - ((rt - 0.56) / 0.04).clamp(0.0, 1.0));
                 for k in 0..3 {
-                    c[k] += (1.0 - c[k]) * ring * 0.38;
+                    let tg = sf.albedo[k] * 0.2 + 0.8;
+                    c[k] += (tg - c[k]) * ring * 0.5;
                 }
             }
             c
         } else {
-            lit.pbr(sf, n, v, vis, 0.4)
+            let mut c = lit.pbr(sf, n, v, vis, 0.4);
+            if sf.skin {
+                // 肌と顔は地の色をやわらかく足して、かげで灰色に沈まないようにする（view3d.js と同じ）
+                c[0] += sf.albedo[0] * 0.15;
+                c[1] += sf.albedo[1] * 0.125;
+                c[2] += sf.albedo[2] * 0.11;
+            }
+            if sf.hair {
+                // リアル: 髪のやわらかい光沢の帯（画面の上向きの面にひとすじ。明るい面ほど強く出る）
+                let ny = n.dot(cx.u);
+                let sm = |a: f32, b: f32, x: f32| {
+                    let k = ((x - a) / (b - a)).clamp(0.0, 1.0);
+                    k * k * (3.0 - 2.0 * k)
+                };
+                let band = sm(0.34, 0.56, ny) * (1.0 - sm(0.58, 0.82, ny));
+                let lum = (c[0] + c[1] + c[2]) / 3.0;
+                for k in 0..3 {
+                    c[k] += (sf.albedo[k] * 0.55 + 0.45) * band * (0.04 + 0.34 * lum);
+                }
+            }
+            c
         };
         self.col[idx] = lit.fog(c, z);
     }
 
     /// 人物の三角形（画面で時計回りの面だけを渡す）
     #[allow(clippy::too_many_arguments)]
-    fn raster_shaded(&mut self, cx: &Cx, lit: &Lit, sm: (&ShadowMap, &ShadowMap), a: (f32, f32, f32), b: (f32, f32, f32), c: (f32, f32, f32), nrm: [&V3; 3], sf: &Surf) {
+    fn raster_shaded(&mut self, cx: &Cx, lit: &Lit, sm: (&ShadowMap, &ShadowMap), a: (f32, f32, f32), b: (f32, f32, f32), c: (f32, f32, f32), nrm: [&V3; 3], sf: &Surf, ft: Option<&FaceTri>) {
         let area = (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0);
         if area.abs() < 1e-9 {
             return;
@@ -1832,7 +1921,7 @@ impl Frame {
                     if w0 < -1e-5 || w1 < -1e-5 || w2 < -1e-5 {
                         continue;
                     }
-                    self.emit(cx, lit, sm, a, b, c, &nrm, sf, row + x as usize, px, py, w0, w1, w2);
+                    self.emit(cx, lit, sm, a, b, c, &nrm, sf, ft, row + x as usize, px, py, w0, w1, w2);
                 }
             }
             return;
@@ -1874,7 +1963,7 @@ impl Frame {
                 if w0 < -1e-5 || w1 < -1e-5 || w2 < -1e-5 {
                     continue;
                 }
-                self.emit(cx, lit, sm, a, b, c, &nrm, sf, row + x as usize, px, py, w0, w1, w2);
+                self.emit(cx, lit, sm, a, b, c, &nrm, sf, ft, row + x as usize, px, py, w0, w1, w2);
             }
         }
     }
@@ -2067,6 +2156,9 @@ struct Prep {
     hair_off: usize,
     /// イラストの体メッシュを使っている
     ill: bool,
+    /// 顔パッチのスキニング済み頂点の先頭（無ければ usize::MAX）と、その隊員の顔の色
+    face_off: usize,
+    fcols: FaceCols,
 }
 
 /// 会場・照明まわりの、ショー全体で共通の設定
@@ -2274,22 +2366,29 @@ fn yaw_of(show: &Show, st: &State) -> f32 {
     (fa.cos() as f32).atan2(-(fa.sin() as f32))
 }
 
-/// 肌・髪の色の候補（view3d.js の SKINS / HAIRS）。ブラウザ版は色管理を有効にする前に作るので、sRGB の値がそのまま線形として使われる
-const SKINS: [u32; 5] = [0xf0c8a4, 0xe2a67e, 0xd2956a, 0xb97a52, 0x8d5a3a];
-const HAIRS: [u32; 5] = [0x2b1d15, 0x15110f, 0x3d2a1c, 0x5a3d25, 0x7a5a38];
+/// 肌の色の候補（view3d.js の SKINS）。ブラウザ版は色管理を有効にする前に作るので、sRGB の値がそのまま線形として使われる
+const SKINS: [u32; 5] = [0xf6d2b2, 0xeab38c, 0xdba277, 0xc38859, 0x9a6642];
 
-/// 隊員 idx の肌・髪の選び方（view3d.js の figure() と同じ）
-fn skin_hair(idx: usize) -> (Rgb, Rgb) {
+/// 隊員 idx の肌の色（view3d.js の figure() と同じ）
+fn skin_real(idx: usize) -> Rgb {
     let hs = ((idx as u64).wrapping_mul(2654435761) & 0xffff_ffff) >> 7;
-    let si = (hs % 5) as usize;
-    let hi = (((hs >> 5) * 7 + idx as u64) % 5) as usize;
-    (hex_u32(SKINS[si]), hex_u32(HAIRS[hi]))
+    hex_u32(SKINS[(hs % 5) as usize])
 }
 
-/// イラスト用の肌・髪の色と、隊員ごとの袖の色（view3d.js の SKINS_I / HAIRS_I / SLEEVE_PAL）。sRGB を正しく線形化して使う
+/// イラスト用の肌の色と、隊員ごとの袖の色（view3d.js の SKINS_I / SLEEVE_PAL）。sRGB を正しく線形化して使う
 const SKINS_I: [u32; 5] = [0xffe3d0, 0xfcd6bc, 0xf4c6a8, 0xe8b392, 0xcf9672];
-const HAIRS_I: [u32; 7] = [0x2a2430, 0x4a3226, 0x7a4a30, 0xb4693a, 0xe0b36a, 0x2f3f6e, 0x8a3f5c];
 const SLEEVE_PAL: [u32; 12] = [0xff5a5f, 0xff9f1c, 0xffd23f, 0x7bd62e, 0x2ec4b6, 0x3a8dff, 0x8f5bff, 0xff5dc8, 0x00b8d9, 0xef476f, 0x06d6a0, 0xf77f00];
+
+/// 隊員ごとの乱数（view3d.js の h32 と同じ。salt ごとに別の列）
+fn h32(idx: usize, salt: u32) -> u32 {
+    let mut x = (idx as u32).wrapping_add(salt.wrapping_mul(0x9e3779b9));
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x85eb_ca6b);
+    x ^= x >> 13;
+    x = x.wrapping_mul(0xc2b2_ae35);
+    x ^= x >> 16;
+    x
+}
 
 /// 隊員 i の色（0xRRGGBB）。イラストの袖の色と、リール動画のピンの色で共通。
 /// イラストでは section に color があればその色、なければ隊員ごとのパレット。リアルでは制服（セクション）の色
@@ -2309,13 +2408,10 @@ fn lin_h(c: u32) -> Rgb {
     [crate::human::srgb_to_lin(h[0]), crate::human::srgb_to_lin(h[1]), crate::human::srgb_to_lin(h[2])]
 }
 
-/// イラストの隊員 idx: (肌, 髪, 髪メッシュの番号)。選び方は view3d.js の figure() と同じ
-fn skin_hair_ill(idx: usize, nhair: usize) -> (Rgb, Rgb, usize) {
+/// イラストの隊員 idx の肌の色。選び方は view3d.js の figure() と同じ
+fn skin_ill(idx: usize) -> Rgb {
     let hs = ((idx as u64).wrapping_mul(2654435761) & 0xffff_ffff) >> 7;
-    let si = (hs % 5) as usize;
-    let hi = (((hs >> 5) * 7 + idx as u64) % 7) as usize;
-    let hn = if nhair > 0 { ((idx as u64 * 7 + (hs >> 11)) % nhair as u64) as usize } else { 0 };
-    (lin_h(SKINS_I[si]), lin_h(HAIRS_I[hi]), hn)
+    lin_h(SKINS_I[(hs % 5) as usize])
 }
 
 /// 旗のはためき具合 0..1（view3d.js は毎フレーム a += (目標 - a) * min(1, dt*4) で追従する。過去 1.5 カウントを同じ式でたどる）
@@ -2442,20 +2538,38 @@ impl Scratch {
             let flag = if kind == "guard" { Some((t as f32 * 0.5, flag_act(show, i, t))) } else { None };
             hm.skin_inst(&rig, kind, flag, &mut self.tmp);
             self.verts.extend_from_slice(&self.tmp);
-            let (mut skin, mut hair) = skin_hair(i);
-            let mut jacket = ctx.jackets[p.section];
-            let (mut hair_mesh, mut hair_off) = (None, 0);
-            if ill_body.is_some() {
-                let (sk, hr, hn) = skin_hair_ill(i, hm.hairs.len());
-                (skin, hair, jacket) = (sk, hr, ctx.sleeves[i]);
-                if let Some(name) = hm.hairs.get(hn) {
+            let ill = ill_body.is_some();
+            let skin = if ill { skin_ill(i) } else { skin_real(i) };
+            let jacket = if ill { ctx.sleeves[i] } else { ctx.jackets[p.section] };
+            let (mut hair_mesh, mut hair_off, mut face_off) = (None, 0, usize::MAX);
+            let cv = |c: u32| if ill { lin_h(c) } else { hex_u32(c) };
+            let mut fcols = FaceCols { eye: [0.1; 3], hair: skin, sclera: [1.0; 3], ink: [0.0; 3], lip: skin, line: skin, blush: skin, brow: skin, blush_k: 1.0 };
+            if let Some(fa) = &hm.face {
+                // 髪の色・目の色・髪型は view3d.js と同じ式（h32 の列）で決める
+                fcols = FaceCols {
+                    eye: cv(fa.eyes[h32(i, 31) as usize % fa.eyes.len()]),
+                    hair: cv(fa.hair_cols[fa.hair_slots[h32(i, 6) as usize % fa.hair_slots.len()]]),
+                    sclera: cv(fa.sclera),
+                    ink: cv(fa.ink),
+                    lip: cv(fa.lip),
+                    line: cv(fa.line),
+                    blush: cv(fa.blush),
+                    brow: cv(fa.brow),
+                    blush_k: if ill { 1.0 } else { 1.4 },
+                };
+                let names = if ill { &fa.hairs_ill } else { &fa.hairs_real };
+                if !names.is_empty() {
+                    let name = &names[h32(i, 7) as usize % names.len()];
                     hair_off = self.verts.len();
                     hm.skin_hair(&rig, name, &mut self.tmp);
                     self.verts.extend_from_slice(&self.tmp);
                     hair_mesh = Some(name.as_str());
                 }
+                face_off = self.verts.len();
+                hm.skin_mesh(&fa.mesh, &rig, &mut self.tmp);
+                self.verts.extend_from_slice(&self.tmp);
             }
-            self.preps.push(Prep { skin, hair, kind, body, inst, jacket, x, z, hair_mesh, hair_off, ill: ill_body.is_some() });
+            self.preps.push(Prep { skin, hair: fcols.hair, kind, body, inst, jacket, x, z, hair_mesh, hair_off, ill, face_off, fcols });
         }
         if self.preps.is_empty() {
             return;
@@ -2647,11 +2761,39 @@ impl Scratch {
                     } else {
                         mt.color
                     };
-                    let sf = Surf { albedo, rough: mt.rough, metal: mt.metal, hair: mi == hm.mid.hair };
-                    fr.raster_shaded(cx, lit, (&*sm, &*vm), a, b, c, [&verts[i0].1, &verts[i1].1, &verts[i2].1], &sf);
+                    let sf = Surf { albedo, rough: mt.rough, metal: mt.metal, hair: mi == hm.mid.hair, skin: mi == hm.mid.skin || mi == hm.mid.lip || mi == hm.mid.blush };
+                    fr.raster_shaded(cx, lit, (&*sm, &*vm), a, b, c, [&verts[i0].1, &verts[i1].1, &verts[i2].1], &sf, None);
                 }
             };
             draw_mesh(fr, body_of(pr), pr.body);
+            // 顔（肌の上に重ねる目・眉・口・ほおのテクスチャ）
+            if let (Some(fa), true) = (&hm.face, pr.face_off != usize::MAX) {
+                let m = &fa.mesh;
+                let (tw, th) = (fa.tex.lv[0].0 as f32, fa.tex.lv[0].1 as f32);
+                let mt = &mats[hm.mid.skin];
+                let sf = Surf { albedo: pr.skin, rough: mt.rough, metal: mt.metal, hair: false, skin: true };
+                for tri in m.idx.chunks_exact(3) {
+                    let (i0, i1, i2) = (pr.face_off + tri[0] as usize, pr.face_off + tri[1] as usize, pr.face_off + tri[2] as usize);
+                    let (a, b, c) = (sv[i0], sv[i1], sv[i2]);
+                    if a.2 <= 0.0 || b.2 <= 0.0 || c.2 <= 0.0 {
+                        continue;
+                    }
+                    let area = (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0);
+                    if area >= 0.0 {
+                        continue;
+                    }
+                    let (mn, mx) = (a.0.min(b.0).min(c.0), a.0.max(b.0).max(c.0));
+                    let (my, mz) = (a.1.min(b.1).min(c.1), a.1.max(b.1).max(c.1));
+                    if mx < 0.0 || mn > fw as f32 || mz < 0.0 || my > fh as f32 {
+                        continue;
+                    }
+                    let uv = [m.uv[tri[0] as usize], m.uv[tri[1] as usize], m.uv[tri[2] as usize]];
+                    let uva = ((uv[1][0] - uv[0][0]) * (uv[2][1] - uv[0][1]) - (uv[1][1] - uv[0][1]) * (uv[2][0] - uv[0][0])).abs() * 0.5 * tw * th;
+                    let lod = (0.5 * (uva / (-area * 0.5)).max(1e-6).log2()).max(0.0);
+                    let ft = FaceTri { tex: &fa.tex, uv, lod, cols: &pr.fcols };
+                    fr.raster_shaded(cx, lit, (&*sm, &*vm), a, b, c, [&verts[i0].1, &verts[i1].1, &verts[i2].1], &sf, Some(&ft));
+                }
+            }
             let mut off = pr.inst;
             for m in meshes(pr.kind) {
                 draw_mesh(fr, m, off);

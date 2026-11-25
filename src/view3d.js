@@ -227,28 +227,45 @@
   const CLOTH_IDS = H ? new THREE.Vector2(H.json.materials.findIndex(m => m.name === 'cloth'), H.json.materials.findIndex(m => m.name === 'cloth2')) : null;
   const FLAGBOX = new THREE.Vector4(0, 1, 0, 1); // 布の範囲: x の最大（ポール側）・幅・y の最大（上端）・高さ
   // 肌・髪の色の候補（隊員ごとに割り当てる）
-  const SKINS = [0xf0c8a4, 0xe2a67e, 0xd2956a, 0xb97a52, 0x8d5a3a].map(c => new THREE.Color(c));
-  const HAIRS = [0x2b1d15, 0x15110f, 0x3d2a1c, 0x5a3d25, 0x7a5a38].map(c => new THREE.Color(c));
+  const SKINS = [0xf6d2b2, 0xeab38c, 0xdba277, 0xc38859, 0x9a6642].map(c => new THREE.Color(c));
+  // 顔・髪（assets の face: 目の色・髪の色の表・顔の色）。ブラウザ版の色はリアルでは sRGB の値がそのまま、イラストでは正しく線形化する
+  const FACE = H && H.json.face ? H.json.face : null;
+  const HAIRS = FACE ? FACE.hairCols.map(c => new THREE.Color(c)) : [new THREE.Color(0x2b1d15)];
+  const EYES = FACE ? FACE.eyes.map(c => new THREE.Color(c)) : [new THREE.Color(0x4a2c1c)];
+  const FCOL = FACE ? Object.fromEntries(Object.entries(FACE.colors).map(([k, c]) => [k, new THREE.Color(c)])) : {};
+  // 隊員 idx の髪の色・目の色・髪型の番号（render.rs と同じ式）
+  const h32 = (idx, salt) => { let x = (idx + Math.imul(salt, 0x9e3779b9)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35) >>> 0; x ^= x >>> 16; return x >>> 0; };
+  const hairIdxOf = idx => FACE ? FACE.hairSlots[h32(idx, 6) % FACE.hairSlots.length] : 0;
+  const eyeIdxOf = idx => h32(idx, 31) % EYES.length;
+  // 顔のテクスチャ（目・眉・口・ほおを RGBA8 の 2 枚に焼いたもの）
+  const faceTex = (() => {
+    if (!FACE) return null;
+    const mk = off => { const t = new THREE.DataTexture(H.u8(off, FACE.tex.w * FACE.tex.h * 4), FACE.tex.w, FACE.tex.h, THREE.RGBAFormat, THREE.UnsignedByteType); t.flipY = false; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = 4; t.needsUpdate = true; return t; };
+    return [mk(FACE.tex.a), mk(FACE.tex.b)];
+  })();
   const MID = n => H ? H.json.materials.findIndex(m => m.name === n) : -1;
   // イラスト用の素材色・肌・髪（色管理を有効にしたあとで作る＝sRGB の値どおりに出る）。リアルの素材色は従来どおり
-  const MATC_I = [], SKINS_I = [], HAIRS_I = [];
+  const MATC_I = [], SKINS_I = [], HAIRS_I = [], EYES_I = [], FCOL_I = {};
   const SLEEVE_PAL = ['#ff5a5f', '#ff9f1c', '#ffd23f', '#7bd62e', '#2ec4b6', '#3a8dff', '#8f5bff', '#ff5dc8', '#00b8d9', '#ef476f', '#06d6a0', '#f77f00'];
   function illTables() {
     if (MATC_I.length || !H) return;
     H.json.materials.forEach(m => { const o = m.ill || {}, c = new THREE.Color(o.color !== undefined ? o.color : m.color), t = o.tint !== undefined ? o.tint : m.tint; MATC_I.push(new THREE.Vector4(c.r, c.g, c.b, t ? 1 : 0)); });
     [0xffe3d0, 0xfcd6bc, 0xf4c6a8, 0xe8b392, 0xcf9672].forEach(c => SKINS_I.push(new THREE.Color(c)));
-    [0x2a2430, 0x4a3226, 0x7a4a30, 0xb4693a, 0xe0b36a, 0x2f3f6e, 0x8a3f5c].forEach(c => HAIRS_I.push(new THREE.Color(c)));
+    if (FACE) { FACE.hairCols.forEach(c => HAIRS_I.push(new THREE.Color(c))); FACE.eyes.forEach(c => EYES_I.push(new THREE.Color(c))); for (const [k, c] of Object.entries(FACE.colors)) FCOL_I[k] = new THREE.Color(c); }
   }
-  function humanMat(tint, isFlag, skin, hair, ill) {
+  function humanMat(tint, isFlag, skin, hair, ill, eye, isFace) {
     const m = ill ? new THREE.MeshToonMaterial({color: 0xffffff, gradientMap: grad()}) : new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 1, metalness: 0, envMapIntensity: 0.4});
-    const uJ = new THREE.Color(tint), uAct = {value: 0.15}, uSk = skin || SKINS[1], uHr = hair || HAIRS[0];
+    const uJ = new THREE.Color(tint), uAct = {value: 0.15}, uSk = skin || SKINS[1], uHr = hair || HAIRS[0], uEy = eye || EYES[0], fc = ill ? FCOL_I : FCOL;
+    if (isFace) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
     m.userData.jacket = uJ; m.userData.act = uAct;
     m.onBeforeCompile = sh => {
       sh.uniforms.uMatC = {value: ill ? MATC_I : MATC}; sh.uniforms.uMatR = {value: MATR}; sh.uniforms.uJacket = {value: uJ};
-      sh.uniforms.uSkin = {value: uSk}; sh.uniforms.uHair = {value: uHr}; sh.uniforms.uTime = TIMEU; sh.uniforms.uAct = uAct; sh.uniforms.uFlag = {value: isFlag ? 1 : 0}; sh.uniforms.uClothIds = {value: CLOTH_IDS}; sh.uniforms.uFlagX = {value: FLAGBOX};
+      sh.uniforms.uSkin = {value: uSk}; sh.uniforms.uHair = {value: uHr};
+      if (isFace && faceTex) { sh.uniforms.uFaceA = {value: faceTex[0]}; sh.uniforms.uFaceB = {value: faceTex[1]}; sh.uniforms.uEye = {value: uEy}; for (const k of ['sclera', 'ink', 'lip', 'line', 'blush', 'brow']) sh.uniforms['uFc_' + k] = {value: fc[k]}; } sh.uniforms.uTime = TIMEU; sh.uniforms.uAct = uAct; sh.uniforms.uFlag = {value: isFlag ? 1 : 0}; sh.uniforms.uClothIds = {value: CLOTH_IDS}; sh.uniforms.uFlagX = {value: FLAGBOX};
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
 attribute float aMat;
 varying float vMat;
+${isFace ? 'attribute vec2 aUv; varying vec2 vFaceUv;' : ''}
 uniform float uFlag; uniform float uTime; uniform float uAct; uniform vec2 uClothIds; uniform vec4 uFlagX;`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
 vec3 flagD = vec3(0.0);
@@ -264,13 +281,27 @@ if (uFlag > 0.5 && (abs(aMat - uClothIds.x) < 0.5 || abs(aMat - uClothIds.y) < 0
   float s = objectNormal.z < 0.0 ? -1.0 : 1.0;
   objectNormal = normalize(vec3(dzdu / uFlagX.y, dzdh / uFlagX.w, 1.0) * s);
 }`)
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += flagD;\nvMat = aMat;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform vec4 uMatC[${MATC.length}];\nuniform vec2 uMatR[${MATC.length}];\nuniform vec3 uJacket;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nvarying float vMat;`)
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += flagD;\nvMat = aMat;' + (isFace ? '\nvFaceUv = aUv;' : ''));
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform vec4 uMatC[${MATC.length}];\nuniform vec2 uMatR[${MATC.length}];\nuniform vec3 uJacket;\nuniform vec3 uSkin;\nuniform vec3 uHair;\nvarying float vMat;` + (isFace ? `\nvarying vec2 vFaceUv; uniform sampler2D uFaceA; uniform sampler2D uFaceB; uniform vec3 uEye; uniform vec3 uFc_sclera; uniform vec3 uFc_ink; uniform vec3 uFc_lip; uniform vec3 uFc_line; uniform vec3 uFc_blush; uniform vec3 uFc_brow;` : ''))
         .replace('#include <color_fragment>', `#include <color_fragment>
 int mi = int(vMat + 0.5);
 vec4 mc = uMatC[mi];
 diffuseColor.rgb = mc.w > 0.5 ? uJacket : mc.rgb;
-if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')}) diffuseColor.rgb = uHair; else if (mi == ${MID('lip')} || mi == ${MID('blush')}) diffuseColor.rgb = mix(uSkin, mc.rgb, 0.5); else if (mi == ${MID('iris')}) diffuseColor.rgb = uJacket * 0.55;`)
+if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')}) diffuseColor.rgb = uHair; else if (mi == ${MID('lip')} || mi == ${MID('blush')}) diffuseColor.rgb = mix(uSkin, mc.rgb, 0.5); else if (mi == ${MID('iris')}) diffuseColor.rgb = uJacket * 0.55;` + (isFace ? `
+{
+  vec4 fa = texture2D(uFaceA, vFaceUv), fb = texture2D(uFaceB, vFaceUv);
+  float cov = max(max(fa.r, fa.g), max(max(fa.b, fa.a), max(fb.g, max(fb.b, fb.a * 2.0))));
+  if (cov < 0.02) discard;
+  vec3 fcol = uSkin;
+  fcol = mix(fcol, uFc_blush, clamp(fb.b * ${ill ? '1.0' : '1.4'}, 0.0, 1.0));
+  fcol = mix(fcol, uFc_sclera, fa.b);
+  fcol = mix(fcol, mix(uEye * 0.36, mix(uEye, vec3(1.0), 0.32), fb.r), fa.a);
+  fcol = mix(fcol, mix(uFc_lip, uFc_line, smoothstep(0.55, 0.95, fb.a)), clamp(fb.a * 2.0, 0.0, 1.0));
+  fcol = mix(fcol, mix(uHair * 0.8, uFc_brow, 0.4), fa.g * 0.92);
+  fcol = mix(fcol, uFc_ink, fa.r);
+  fcol = mix(fcol, vec3(1.0), fb.g);
+  diffuseColor.rgb = fcol;
+}` : ''))
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = uMatR[mi].x;')
         .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = uMatR[mi].y;')
         .replace('#include <lights_fragment_end>', ill ? '#include <lights_fragment_end>' : '#include <lights_fragment_end>\nreflectedLight.indirectSpecular *= mix(1.0, 2.3, metalnessFactor);');
@@ -280,11 +311,23 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
   vec3 vn = normalize(normal);
   float rimv = pow(1.0 - clamp(dot(vn, normalize(vViewPosition)), 0.0, 1.0), 2.6);
   outgoingLight += vec3(1.0, 0.97, 0.92) * rimv * 0.26;
-  if (mi == ${MID('hair')}) { float ring = smoothstep(0.50, 0.55, vn.y) * (1.0 - smoothstep(0.64, 0.70, vn.y)); outgoingLight = mix(outgoingLight, vec3(1.0), ring * 0.38); }
+  if (mi == ${MID('hair')}) { float rt = vn.y + 0.35 * vn.x * vn.x; float ring = smoothstep(0.48, 0.52, rt) * (1.0 - smoothstep(0.56, 0.60, rt)); outgoingLight = mix(outgoingLight, mix(uHair, vec3(1.0), 0.8), ring * 0.5); }
 }
 #include <output_fragment>`);
+      // リアル: 髪のやわらかい光沢の帯（異方性ふうに、画面の上向きの面を横に長くひとすじ）
+      else sh.fragmentShader = sh.fragmentShader.replace('#include <output_fragment>', `
+if (mi == ${MID('hair')}) {
+  vec3 vn = normalize(normal);
+  float band = smoothstep(0.34, 0.56, vn.y) * (1.0 - smoothstep(0.58, 0.82, vn.y));
+  outgoingLight += mix(uHair, vec3(1.0), 0.45) * band * (0.04 + 0.34 * dot(outgoingLight, vec3(0.3333)));
+}
+#include <output_fragment>`);
+      // リアル: 肌と顔はやわらかく持ち上げる（帽子のかげで灰色に沈まないよう、地の色を足す）
+      if (!ill) sh.fragmentShader = sh.fragmentShader.replace('#include <output_fragment>', `
+if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace ? ' || true' : ''}) outgoingLight += diffuseColor.rgb * vec3(0.15, 0.125, 0.11);
+#include <output_fragment>`);
     };
-    m.customProgramCacheKey = () => 'jkhuman' + (ill ? 'T' : 'S');
+    m.customProgramCacheKey = () => 'jkhuman' + (ill ? 'T' : 'S') + (isFace ? 'F' : '');
     return m;
   }
   function geoOf(d, skinned) {
@@ -292,6 +335,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
     g.setAttribute('position', new THREE.BufferAttribute(H.f32(d.pos, d.vertices * 3), 3));
     g.setAttribute('normal', new THREE.BufferAttribute(H.f32(d.nor, d.vertices * 3), 3));
     g.setAttribute('aMat', new THREE.BufferAttribute(Float32Array.from(H.u8(d.mat, d.vertices)), 1));
+    if (d.uv !== undefined) g.setAttribute('aUv', new THREE.BufferAttribute(H.f32(d.uv, d.vertices * 2), 2));
     if (skinned) {
       g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint16Array.from(H.u8(d.skinIndex, d.vertices * 4)), 4));
       g.setAttribute('skinWeight', new THREE.BufferAttribute(H.f32(d.skinWeight, d.vertices * 4), 4));
@@ -300,7 +344,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
     g.computeBoundingSphere();
     return g;
   }
-  let bodyGeo = null, boneInv = null;
+  let bodyGeo = null, boneInv = null, faceGeo = null;
   const instGeos = {};
   // クリップ（ポーズ・歩行）
   const clips = new Map();
@@ -321,9 +365,9 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
   }
   const matCache = new Map();
   // 上着の色 × 肌 × 髪 の組み合わせごとに1つ（プログラムは共有されるので軽い）
-  function matFor(color, si, hi, ill) {
-    const k = color + '|' + si + '|' + hi + (ill ? '|I' : '');
-    if (!matCache.has(k)) matCache.set(k, humanMat(color, false, ill ? SKINS_I[si] : SKINS[si], ill ? HAIRS_I[hi] : HAIRS[hi], ill));
+  function matFor(color, si, hi, ill, ei = 0, isFace = false) {
+    const k = (isFace ? 'F' : color) + '|' + si + '|' + hi + '|' + (isFace ? ei : '') + (ill ? '|I' : '');
+    if (!matCache.has(k)) matCache.set(k, humanMat(isFace ? '#808080' : color, false, ill ? SKINS_I[si] : SKINS[si], ill ? HAIRS_I[hi] : HAIRS[hi], ill, ill ? EYES_I[ei] : EYES[ei], isFace));
     return matCache.get(k);
   }
   // 輪郭線（裏向きの膨らませた殻）。厚みはカメラからの距離に比例させ、画面上でほぼ一定の太さにする
@@ -339,10 +383,10 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
     m.customProgramCacheKey = () => 'jkoutline' + k;
     return m;
   }
-  let illGeo = null, illOutGeo = null;
+  let illGeo = null, illOutGeo = null; const hairOutGeo = {};
   // 輪郭線に使わない面（顔の細かい部品。殻にすると黒くつぶれる）を除いた体の形
   function outlineGeoOf(g) {
-    const skip = new Set(['eyew', 'iris', 'eye', 'blush', 'mouth', 'lip'].map(MID)), am = g.getAttribute('aMat'), ix = g.getIndex().array, keep = [];
+    const skip = new Set([].map(MID)), am = g.getAttribute('aMat'), ix = g.getIndex().array, keep = [];
     for (let i = 0; i < ix.length; i += 3) if (!skip.has(am.array[ix[i]])) keep.push(ix[i], ix[i + 1], ix[i + 2]);
     const og = new THREE.BufferGeometry();
     for (const n of ['position', 'normal', 'skinIndex', 'skinWeight']) og.setAttribute(n, g.getAttribute(n));
@@ -362,7 +406,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
     }
     const ill = ILL && !!H.json.illust;
     if (ill) { illTables(); if (!illGeo) illGeo = geoOf(H.json.illust.body, true); }
-    const hs = ((idx * 2654435761) >>> 7) >>> 0, si = hs % 5, hi = ((hs >>> 5) * 7 + idx) % (ill ? 7 : 5);
+    const hs = ((idx * 2654435761) >>> 7) >>> 0, si = hs % 5, hi = hairIdxOf(idx), ei = eyeIdxOf(idx);
     // イラスト: 色スリーブは section に color があればその色、なければ隊員ごとに明るい色を割り当てる
     const tintC = ill ? (sec.color_given ? sec.color : SLEEVE_PAL[idx % SLEEVE_PAL.length]) : sec.color;
     const mt = matFor(tintC, si, hi, ill);
@@ -376,11 +420,24 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
     // 輪郭線: 同じ骨格で動く殻 / 剛体メッシュ（髪・楽器・スティック）には同じ形の殻を付ける
     const outline = (geo, parent, k) => { const m = new THREE.Mesh(geo, outlineMat(k)); m.frustumCulled = false; parent.add(m); return m; };
     if (ill) { if (!illOutGeo) illOutGeo = outlineGeoOf(illGeo); const om = new THREE.SkinnedMesh(illOutGeo, outlineMat()); om.bind(skel, new THREE.Matrix4()); om.frustumCulled = false; g.add(om); }
-    if (ill && H.json.illust.hairs.length) { // 髪
-      const hn = H.json.illust.hairs[(idx * 7 + (hs >>> 11)) % H.json.illust.hairs.length], hin = INST[hn];
+    // 顔（目・眉・口・ほおのテクスチャを貼った、頭の表面のパッチ。同じ骨格で動く）
+    if (FACE && faceTex) {
+      if (!faceGeo) faceGeo = geoOf(FACE.mesh, true);
+      const fm = new THREE.SkinnedMesh(faceGeo, matFor(tintC, si, hi, ill, ei, true));
+      fm.bind(skel, new THREE.Matrix4()); fm.receiveShadow = true; fm.castShadow = false; fm.frustumCulled = false;
+      g.add(fm);
+    }
+    // 髪（頭の骨に付く剛体。リアルは帽子の下から見える髪型、イラストは帽子なしの髪型）
+    const hairList = FACE ? FACE.hairs[ill ? 'illust' : 'real'] : [];
+    if (hairList.length) {
+      const hn = hairList[h32(idx, 7) % hairList.length], hin = INST[hn];
       if (!instGeos[hn]) instGeos[hn] = geoOf(hin, false);
       const hm = new THREE.Mesh(instGeos[hn], mt); hm.castShadow = true; hm.receiveShadow = true; hm.frustumCulled = false;
-      bones[BI.head].add(hm); outline(instGeos[hn], bones[BI.head], 0.55);
+      bones[BI.head].add(hm);
+      if (ill) { // 輪郭線は頭の丸みと結んだ毛束だけ（前髪・横髪の毛束ごとの縁には付けない）
+        if (!hairOutGeo[hn]) { const og = new THREE.BufferGeometry(); for (const n of ['position', 'normal']) og.setAttribute(n, instGeos[hn].getAttribute(n)); og.setIndex(instGeos[hn].getIndex()); og.setDrawRange(0, hin.outlineIdx === undefined ? 1e9 : hin.outlineIdx); hairOutGeo[hn] = og; }
+        outline(hairOutGeo[hn], bones[BI.head], 0.55);
+      }
     }
     o.bones = bones; o.mesh = mesh;
     const ins = INST[kind];
@@ -395,7 +452,7 @@ if (mi == ${MID('skin')}) diffuseColor.rgb = uSkin; else if (mi == ${MID('hair')
         }
       }
       // 旗は1本ごとに材質を分ける（はためきの強さが旗ごとに違うため。プログラムは共有される）
-      if (kind === 'guard') { o.flagMat = humanMat(tintC, true, ill ? SKINS_I[si] : SKINS[si], ill ? HAIRS_I[hi] : HAIRS[hi], ill); }
+      if (kind === 'guard') { o.flagMat = humanMat(tintC, true, ill ? SKINS_I[si] : SKINS[si], ill ? HAIRS_I[hi] : HAIRS[hi], ill, ill ? EYES_I[ei] : EYES[ei]); }
       const im = new THREE.Mesh(instGeos[kind], o.flagMat || mt);
       im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
       im.position.set(...ins.attach.pos); im.quaternion.set(...ins.attach.quat);

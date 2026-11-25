@@ -1,27 +1,17 @@
 'use strict';
 // イラスト（look illust）の人体: 白いTシャツ・黒い細身のパンツ・スニーカー・腕の色スリーブ・アニメ調の顔。
-// 骨格・スキニングは制服（body.js）と同じ。髪は頭の骨に付く別メッシュ（hairs）として5種類作る。
+// 骨格・スキニングは制服（body.js）と同じ。髪は頭の骨に付く別メッシュ（hair.js。リアルと共通）、顔は顔テクスチャ（face.js）。
 const {V, ss, lerp} = require('./math');
 const S = require('./skeleton');
 const M = require('./materials');
 const {TORSO, spineW, interp} = require('./body');
+const F = require('./face');
 const {id: B} = S;
 
 const norm = a => { const s = a.reduce((x, y) => x + y[1], 0) || 1; return a.map(([b, w]) => [b, w / s]); };
 const bi = B;
 
-// 頭の断面（body.js と同じ）
-const HEAD = [[1.462, 0.014, 0.020, 0.062], [1.470, 0.034, 0.048, 0.052], [1.485, 0.054, 0.072, 0.036], [1.505, 0.067, 0.088, 0.018],
-  [1.53, 0.074, 0.095, 0.010], [1.56, 0.077, 0.099, 0.008], [1.595, 0.078, 0.101, 0.006], [1.630, 0.076, 0.099, 0.003], [1.665, 0.066, 0.086, 0.0], [1.69, 0.046, 0.062, -0.002], [1.703, 0.0, 0.0, 0]];
 const HEAD_Y = 1.51; // head ボーンの静止位置の高さ
-// 高さ y での頭の半径（rx, rz, 中心 z）。下は首、上は頭頂
-function headR(y) {
-  for (let i = 0; i + 1 < HEAD.length; i++) if (y >= HEAD[i][0] && y <= HEAD[i + 1][0]) {
-    const k = (y - HEAD[i][0]) / (HEAD[i + 1][0] - HEAD[i][0]);
-    return [1, 2, 3].map(j => lerp(HEAD[i][j], HEAD[i + 1][j], k));
-  }
-  return y < HEAD[0][0] ? [0.014, 0.02, 0.062] : [0, 0, 0];
-}
 
 function buildIllust(mb) {
   // ---------- 胴（白いTシャツ。首まわりは肌）----------
@@ -62,32 +52,14 @@ function buildIllust(mb) {
       wt: (r, p) => { const t = ss(1.44, 1.50, p[1]); return norm([[bi('neck'), 1 - t], [bi('head'), t]]); },
     });
   }
-  // ---------- 頭と顔（アニメ調: 大きな目・小さな鼻と口・ほお）----------
+  // ---------- 頭（顔は顔テクスチャ。リアルと同じ形）----------
   {
     const headW = (r, p) => { const t = ss(1.46, 1.50, p[1]); return norm([[bi('head'), 0.4 + 0.6 * t], [bi('neck'), 0.6 * (1 - t)]]); };
-    mb.loft(HEAD.map(([y, rx, rz, zc]) => ({c: [0, y, 0], rx, rz, oz: zc, n: y < 1.5 ? 2.0 : 2.3})), {N: 24, mat: M.SKIN, capS: true, wt: headW});
+    const from = mb.P.length;
+    mb.loft(F.headRings().map(r => ({...r})), {N: 36, mat: M.SKIN, capS: true, capE: true, wt: headW});
     const hd = {wt: () => [[bi('head'), 1]]};
-    const face = (c, rad, mat, yaw = 0, extra = {}) => {
-      const a = [Math.sin(yaw), 0, Math.cos(yaw)], u = [Math.cos(yaw), 0, -Math.sin(yaw)];
-      mb.ellipsoid(c, [rad[0], rad[2], rad[1]], mat, {axis: a, u, lat: 6, N: 12, ...hd, ...extra}); // 引数は [横, 高さ, 奥行き]（ellipsoid は 軸方向 = 奥行きが2番目）
-    };
-    // 耳
-    for (const s of [-1, 1]) mb.ellipsoid([s * 0.0775, 1.553, -0.006], [0.0085, 0.022, 0.015], M.SKIN, {lat: 6, N: 8, ...hd});
-    // 鼻（小さな影）と口
-    face([0, 1.5455, 0.1055], [0.0045, 0.0035, 0.004], M.LIP);
-    const mp = [-0.0135, -0.0065, 0, 0.0065, 0.0135].map((x, i) => [x, 1.5275 - [0.0012, 0.0003, -0.0004, 0.0003, 0.0012][i] + 0.0, 0.1035 - Math.abs(x) * 0.3]);
-    mb.sweep(mp, 0.0016, M.MOUTH, {N: 6, sub: 3, ...hd});
-    for (const s of [-1, 1]) {
-      const ex = s * 0.0365, yaw = s * 0.22, z0 = 0.0955;
-      face([ex, 1.5765, z0], [0.0185, 0.0245, 0.0075], M.EYEW, yaw);                       // 白目
-      face([ex + s * 0.0006, 1.5745, z0 + 0.0025], [0.0138, 0.0215, 0.0075], M.IRIS, yaw);  // 虹彩
-      face([ex + s * 0.0006, 1.5735, z0 + 0.005], [0.0078, 0.0138, 0.0075], M.EYE, yaw);    // 瞳孔
-      face([ex - s * 0.0045, 1.5845, z0 + 0.0085], [0.0045, 0.0052, 0.004], M.EYEW, yaw);   // ハイライト
-      face([ex + s * 0.0045, 1.5665, z0 + 0.0085], [0.0022, 0.0025, 0.003], M.EYEW, yaw);
-      face([ex + s * 0.001, 1.5985, z0 + 0.0035], [0.0215, 0.0042, 0.0085], M.EYE, yaw);    // まぶた（まつげ）
-      face([ex + s * 0.0035, 1.6175, z0 - 0.0005], [0.0165, 0.0033, 0.006], M.HAIR, yaw * 1.2); // まゆ
-      face([s * 0.0505, 1.5455, 0.0845], [0.0125, 0.0065, 0.004], M.BLUSH, s * 0.6);        // ほお
-    }
+    for (const s of [-1, 1]) mb.ellipsoid([s * 0.0795, 1.560, -0.006], [0.0085, 0.024, 0.016], M.SKIN, {lat: 6, N: 8, ...hd});
+    F.scaleHeadVerts(mb, from, mb.P.length);
   }
   // ---------- 腕（半袖Tシャツ → 肌 → 色スリーブ → 手）----------
   for (const sd of [1, -1]) {
@@ -154,73 +126,4 @@ function buildIllust(mb) {
   }
 }
 
-// ---------- 髪 ----------
-// 頭に沿った面（grid）: 高さ v、角度 th（0 = 正面、π = 後ろ）。lowFn(|th|) = 下端の高さ、gap = 頭からの浮き
-function hairCap(hb, opts) {
-  const {low, gap = 0.006, flare = 0.0, top = 1.713, N = 36, M2 = 14, back = 0.0} = opts;
-  const pt = (th, v) => {
-    const y0 = low(th), y = lerp(y0, top, v);
-    let [rx, rz, zc] = headR(Math.min(y, 1.7029));
-    if (y < 1.505) { const d = 1.505 - y; rx = 0.067 + d * 0.12 * 0 + 0.0; rz = 0.088; zc = 0.018 - d * 0.2 * 0; }
-    const fl = flare * Math.pow(1 - v, 1.5) * (0.4 + 0.6 * Math.abs(Math.sin(th / 2)));
-    const e = 2 / 2.3, cs = Math.cos(th), sn = Math.sin(th);
-    const x = (rx + gap + fl) * Math.sign(sn) * Math.pow(Math.abs(sn), e), z = zc + (rz + gap + fl) * Math.sign(cs) * Math.pow(Math.abs(cs), e) - back * Math.pow(1 - v, 1.4) * Math.max(0, -cs);
-    return [x, y, z];
-  };
-  hb.grid(N, M2, (u, v) => pt((u - 0.5) * 2 * Math.PI, v), M.HAIR, {double: false, flip: opts.flip, wt: () => [[bi('head'), 1]]});
-}
-const tw = (hb, pts, r0, r1, flat = 1.0) => hb.sweep(pts, s => [lerp(r0, r1, Math.pow(s, 0.9)) * flat, lerp(r0, r1, Math.pow(s, 0.9))], M.HAIR, {N: 8, sub: 4, wt: () => [[bi('head'), 1]]});
-// 前髪（額に沿って垂らす）: 根元（生え際より上）→ 毛先
-function bangs(hb, tips) {
-  tips.forEach(([x, yb, lean, w]) => {
-    const yr = 1.668, zf = headR(1.64)[2] + headR(1.64)[1] + 0.012;
-    const pts = [[x * 0.7, yr, zf - 0.03], [x * 0.9, 1.645, zf + 0.004], [x * 1.0 + lean * 0.4, 1.625, zf + 0.007], [x * 1.0 + lean, yb, zf - 0.004]];
-    tw(hb, pts, w, 0.0016);
-  });
-}
-function sideLocks(hb, len, wd = 0.013) {
-  for (const s of [-1, 1]) {
-    const pts = [[s * 0.080, 1.62, 0.055], [s * 0.088, 1.58, 0.045], [s * 0.088, (1.58 + len) / 2, 0.045], [s * 0.084, len, 0.052]];
-    tw(hb, pts, wd, 0.002, 0.8);
-  }
-}
-const HAIR_STYLES = {
-  // 短髪: 耳が出る長さ、前髪は流す
-  short(hb) {
-    hairCap(hb, {low: th => { const a = Math.abs(th); return a < 1.1 ? lerp(1.628, 1.60, a / 1.1) : lerp(1.60, 1.535, Math.min(1, (a - 1.1) / 1.4)); }, gap: 0.0065});
-    bangs(hb, [[-0.050, 1.601, -0.008, 0.012], [-0.025, 1.598, -0.006, 0.012], [0.0, 1.600, 0.002, 0.012], [0.025, 1.597, 0.008, 0.012], [0.05, 1.604, 0.012, 0.011]]);
-    // 頭頂のはね
-    tw(hb, [[0.0, 1.700, 0.01], [0.012, 1.728, 0.0], [0.034, 1.738, -0.02]], 0.014, 0.002, 1.2);
-  },
-  // ボブ: あご先までの丸いシルエット
-  bob(hb) {
-    hairCap(hb, {low: th => { const a = Math.abs(th); return a < 0.9 ? lerp(1.628, 1.60, a / 0.9) : lerp(1.60, 1.492, Math.min(1, (a - 0.9) / 1.0)); }, gap: 0.0065, flare: 0.016});
-    bangs(hb, [[-0.055, 1.604, -0.01, 0.013], [-0.03, 1.599, -0.006, 0.013], [-0.005, 1.598, 0.0, 0.013], [0.02, 1.599, 0.006, 0.013], [0.045, 1.600, 0.01, 0.013], [0.062, 1.606, 0.012, 0.012]]);
-    sideLocks(hb, 1.50, 0.016);
-  },
-  // ポニーテール: 高い位置でまとめる
-  pony(hb) {
-    hairCap(hb, {low: th => { const a = Math.abs(th); return a < 1.0 ? lerp(1.628, 1.60, a / 1.0) : lerp(1.60, 1.545, Math.min(1, (a - 1.0) / 1.5)); }, gap: 0.0065});
-    bangs(hb, [[-0.05, 1.602, -0.01, 0.012], [-0.025, 1.598, -0.006, 0.012], [0.0, 1.598, 0.0, 0.012], [0.025, 1.599, 0.006, 0.012], [0.05, 1.603, 0.01, 0.012]]);
-    sideLocks(hb, 1.545, 0.011);
-    hb.ellipsoid([0, 1.668, -0.088], [0.026, 0.026, 0.026], M.HAIR, {N: 10, lat: 6, wt: () => [[bi('head'), 1]]});
-    tw(hb, [[0, 1.672, -0.092], [0, 1.700, -0.15], [0, 1.668, -0.215], [0.01, 1.58, -0.245], [0.02, 1.46, -0.24], [0.01, 1.37, -0.215]], 0.034, 0.004, 0.8);
-  },
-  // ロング: 背中まで
-  long(hb) {
-    hairCap(hb, {low: th => { const a = Math.abs(th); return a < 0.9 ? lerp(1.628, 1.60, a / 0.9) : lerp(1.60, 1.30, Math.pow(Math.min(1, (a - 0.9) / 1.5), 0.8)); }, gap: 0.0065, flare: 0.026, back: 0.045});
-    bangs(hb, [[-0.055, 1.603, -0.01, 0.013], [-0.03, 1.598, -0.006, 0.013], [-0.005, 1.597, 0.0, 0.013], [0.02, 1.598, 0.006, 0.013], [0.045, 1.600, 0.01, 0.013], [0.062, 1.606, 0.012, 0.012]]);
-    sideLocks(hb, 1.40, 0.017);
-  },
-  // ツインテール: 左右の高い位置で結ぶ
-  twin(hb) {
-    hairCap(hb, {low: th => { const a = Math.abs(th); return a < 1.0 ? lerp(1.628, 1.60, a / 1.0) : lerp(1.60, 1.545, Math.min(1, (a - 1.0) / 1.5)); }, gap: 0.0065});
-    bangs(hb, [[-0.05, 1.604, -0.012, 0.013], [-0.025, 1.599, -0.006, 0.013], [0.0, 1.598, 0.0, 0.013], [0.025, 1.599, 0.006, 0.013], [0.05, 1.604, 0.012, 0.013]]);
-    sideLocks(hb, 1.55, 0.011);
-    for (const s of [-1, 1]) {
-      hb.ellipsoid([s * 0.074, 1.655, -0.03], [0.02, 0.02, 0.02], M.HAIR, {N: 10, lat: 6, wt: () => [[bi('head'), 1]]});
-      tw(hb, [[s * 0.078, 1.655, -0.03], [s * 0.125, 1.63, -0.04], [s * 0.15, 1.53, -0.04], [s * 0.145, 1.41, -0.02], [s * 0.15, 1.33, 0.0]], 0.028, 0.004, 0.9);
-    }
-  },
-};
-module.exports = {buildIllust, HAIR_STYLES, HEAD_Y};
+module.exports = {buildIllust, HEAD_Y};
