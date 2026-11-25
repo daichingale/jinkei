@@ -32,12 +32,31 @@
     return { ok: true, path: baseName() };
   }
 
+  // 自動修正は重いので、可能なら Web Worker で動かして画面を止めない（使えなければその場で計算）
+  let worker = null, workerDead = false, wid = 0;
+  const waiting = new Map();
+  function fixOffThread(src) {
+    const el = document.getElementById('jk-engine');
+    if (!workerDead && el && window.Worker && window.Blob && window.URL) {
+      try {
+        if (!worker) {
+          const code = el.textContent + '\nself.onmessage=function(e){var r;try{r=jinkeiFix(e.data.src)}catch(x){r={ok:false,error:String(x&&x.message||x)}}self.postMessage({id:e.data.id,r:r})};';
+          worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
+          worker.onmessage = e => { const w = waiting.get(e.data.id); if (w) { waiting.delete(e.data.id); w.resolve(e.data.r); } };
+          worker.onerror = () => { workerDead = true; worker = null; waiting.forEach(w => { try { w.resolve(jinkeiFix(w.src)); } catch (x) { w.resolve({ ok: false, error: String(x) }); } }); waiting.clear(); };
+        }
+        return new Promise(resolve => { const id = ++wid; waiting.set(id, { resolve, src }); worker.postMessage({ id, src }); });
+      } catch (e) { workerDead = true; worker = null; }
+    }
+    return Promise.resolve(jinkeiFix(src));
+  }
+
   window.fetch = function (url, opt) {
     const u = typeof url === 'string' ? url : (url && url.url) || '';
     const body = opt && opt.body;
     if (u === '/api/source') return Promise.resolve(json({ path: '', name: st.name, source: saved && typeof saved.source === 'string' ? saved.source : TEMPLATE }));
     if (u === '/api/compile') return Promise.resolve(json(jinkeiCompile(String(body))));
-    if (u === '/api/fix') return Promise.resolve(json(jinkeiFix(String(body))));
+    if (u === '/api/fix') return fixOffThread(String(body)).then(json);
     if (u === '/api/save') return save(String(body)).then(json);
     return realFetch(url, opt);
   };

@@ -12,8 +12,19 @@ const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const js = s => JSON.stringify(s).replace(/</g, '\\u003c');
 const motion = ['motion.js','strike.js','bravura.js','staff.js','reel.js','audio.js','musicxml.js']
   .map(f => read('src/' + f)).join('\n');
-let html = read('src/editor.html').replaceAll('__FIELD2D__', read('src/field2d.js'))
-  .replaceAll('__PRINTER__', read('src/printer.js')).replaceAll('__MOTION__', motion);
+const exFiles = fs.readdirSync(path.join(ROOT, 'examples')).filter(f => /\.jk$/.test(f)).sort();
+const examples = 'window.JK_EXAMPLES=' + js(exFiles.map(f => ({file: f, src: read('examples/' + f)}))) + ';';
+const iconsPath = path.join(ROOT, 'src', 'ui_icons.js');
+const icons = fs.existsSync(iconsPath) ? read('src/ui_icons.js') : '';
+// 置換は関数で行う（文字列だと中の $& などが特殊扱いされるため）
+let html = read('src/editor.html')
+  .replaceAll('__UX_CSS__', () => read('src/ux.css'))
+  .replaceAll('__UI_ICONS__', () => icons)
+  .replaceAll('__EXAMPLES__', () => examples)
+  .replaceAll('__UX_CORE__', () => read('src/ux_core.js'))
+  .replaceAll('__FIELD2D__', () => read('src/field2d.js'))
+  .replaceAll('__PRINTER__', () => read('src/printer.js')).replaceAll('__MOTION__', () => motion)
+  .replaceAll('__UX__', () => read('src/ux.js'));
 const server = read('src/server.rs');
 const def = server.match(/pub const TEMPLATE_SHOW: &str = r##"([\s\S]*?)"##;/);
 if (!def) throw new Error('TEMPLATE_SHOW が見つかりません');
@@ -24,7 +35,7 @@ const marker = "<script>\n'use strict';";
 if (!html.includes(marker)) throw new Error('エディタのスクリプト挿入位置が見つかりません');
 const inject = `<script type="text/plain" id="jk-preview-tpl">${tpl}</script>\n` +
   `<script>window.JK_ESC = ${js(esc)};</script>\n` +
-  `<script>${read('web/engine.js')}</script>\n<script>${read('web/project.js')}</script>\n<script>${shim}</script>\n${marker}`;
-html = html.replace(marker, inject);
+  `<script id="jk-engine">${read('web/engine.js')}</script>\n<script>${read('web/project.js')}</script>\n<script>${shim}</script>\n${marker}`;
+html = html.replace(marker, () => inject);
 fs.writeFileSync(out, html);
 console.log(path.resolve(out), `(${(Buffer.byteLength(html) / 1024 / 1024).toFixed(1)} MiB)`);
