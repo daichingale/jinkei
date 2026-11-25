@@ -201,12 +201,16 @@ details.adv>div{padding:6px 0 2px}
   .params{grid-template-columns:repeat(2,minmax(0,1fr))}
   #selbar{max-height:50%;overflow-y:auto}
 }
+/* __UX_CSS_BEGIN__ */
+__UX_CSS__
 </style></head><body>
 <header>
   <h1>陣形エディタ</h1><span id="fname"></span><span id="status">読み込み中</span>
+  <div class="modesw" id="modesw" role="group" aria-label="操作モード"><button type="button" data-mode="easy" title="むずかしい項目をかくして、やることを案内します">かんたん</button><button type="button" data-mode="pro" title="すべての機能（コード・数値入力など）を表示します">詳細</button></div>
   <span class="projectstate" id="projectstate" hidden><span id="draftstatus" role="status"></span><span id="syncstatus" role="status"></span></span>
   <span class="sp"></span>
   <span id="localbtns" style="display:none"><button id="open" title="手元の .jk ファイルを開く（ページへのドラッグ＆ドロップでも可）">開く</button><button id="newfile" title="ひな形から新しく作る">新規</button><button id="drafthistory">下書き履歴</button><button id="projectsync">端末間同期</button><input type="file" id="openfile" accept=".jk,text/plain" style="display:none"></span>
+  <button id="homebtn" title="はじめに（かんたん作成・サンプル・ファイルを開く）">はじめに</button><button id="helpbtn" title="使い方ガイドと用語集"><span class="q">?</span>ヘルプ</button>
   <button id="undo" title="元に戻す (Ctrl+Z)">↶</button><button id="redo" title="やり直す (Ctrl+Shift+Z)">↷</button>
   <button id="preview" title="2D/3Dプレビューを新しいタブで開く">プレビュー</button>
   <select id="vcam" title="動画のカメラ"><option value="audience">客席から</option><option value="orbit">回り込み</option><option value="top">真上</option><option value="low">目線</option></select>
@@ -215,12 +219,13 @@ details.adv>div{padding:6px 0 2px}
 </header>
 <main>
   <div id="center">
-    <div id="canvaswrap"><div id="errbanner"></div><svg id="svg"></svg>
+    <div id="canvaswrap"><div id="errbanner"></div><svg id="svg"></svg><div id="sides" aria-hidden="true"><span class="l">← 下手</span><span class="r">上手 →</span><span class="b">▼ 客席</span></div>
+      <div id="zoomctl"><button id="zin" title="拡大（2本指でつまんでも拡大できます）" aria-label="拡大">＋</button><button id="zout" title="縮小" aria-label="縮小">−</button><button id="zfit" title="全体を表示" aria-label="全体を表示">⤢</button></div>
       <div id="tools"></div>
       <div id="glabel"></div>
       <div id="selbar">
         <div class="r"><span class="lbl" id="selinfo"></span>
-          <span class="vs"></span><span class="gl">向き・姿勢</span><button id="selface" title="選んだ人の向きを決める">向き ▾</button><button id="selpose" title="選んだ人の姿勢を決める">姿勢 ▾</button><button id="selcarry" title="選んだ人の楽器の構え（演奏・右手・左手・正面・斜め）を決める">構え ▾</button>
+          <span class="vs"></span><span class="gl">向き・姿勢</span><button id="selface" title="選んだ人の向きを決める">向き ▾</button><button id="selpose" title="選んだ人の姿勢を決める">姿勢 ▾</button><button id="selcarry" title="選んだ人の楽器の構え（演奏・右手・左手・正面・斜め）を決める">構え ▾</button><button id="selstep" title="選んだ人の歩き方（グライド・バックなど）を決める">ステップ ▾</button><button id="selaction" title="選んだ人の動作（スピン・トスなど。カラーガード向け）を決める">動作 ▾</button>
           <span class="vs"></span><button id="flipx" title="選んだ人を左右に反転（上手と下手を入れ替え）">↔ 左右反転</button><button id="flipy" title="選んだ人を前後に反転（客席側と奥を入れ替え）">↕ 前後反転</button>
           <button id="selclear" class="ghost" title="選択を解除 (Esc)">✕</button></div>
         <div class="r"><span class="gl">並べる</span>
@@ -229,6 +234,7 @@ details.adv>div{padding:6px 0 2px}
       </div>
       <div id="pop"></div><div id="whopop"></div>
     </div>
+    <div id="nextbar" role="status" aria-live="polite"></div>
     <div id="timeline">
       <div id="tlbar">
         <button id="tlplay" title="ショー全体を再生 (Space)">▶ 全体を再生</button>
@@ -304,6 +310,9 @@ details.adv>div{padding:6px 0 2px}
   <ul></ul><output role="status"></output>
   <form method="dialog"><footer><button>閉じる</button></footer></form>
 </dialog>
+<script>/* icons */__UI_ICONS__</script>
+<script>/* examples */__EXAMPLES__</script>
+<script>/* ux core */__UX_CORE__</script>
 <script>__FIELD2D__</script>
 <script>__PRINTER__</script>
 <script>__MOTION__</script>
@@ -403,12 +412,14 @@ async function save() {
   saving = true;
   try {
     const r = await fetch('/api/save', {method: 'POST', body: source}).then(r => r.json());
-    if (!r.ok) { setStatus('保存できません: ' + r.error, 'err'); return; }
+    if (!r.ok) { setStatus('保存できません: ' + r.error, 'err'); if (window.uxToast && !/キャンセル/.test(r.error || '')) uxToast('保存できませんでした: ' + r.error, 'err'); return; }
     savedSrc = source;
     dirty = currentSource() !== savedSrc;
     setStatusFromState();
+    if (window.uxToast) uxToast(r.path ? `保存しました（${String(r.path).split(/[\\/]/).pop()}）` : '保存しました', 'ok');
   } catch {
     setStatus('ファイルを保存できません', 'err');
+    if (window.uxToast) uxToast('ファイルを保存できませんでした', 'err');
   } finally { saving = false; }
 }
 function setStatus(t, cls) { $('status').textContent = t; $('status').className = cls || ''; }
@@ -1485,23 +1496,35 @@ document.addEventListener('click', e => {
 // ---- 向き・姿勢・ステップ・動作（ビジュアルな部品） ----
 const STEPS = [['', '自動'], ['glide', 'グライド'], ['back', 'バックマーチ'], ['slide', 'スライド'], ['jazz', 'ジャズラン'], ['high', 'ハイステップ']];
 const ACTIONS = [['', 'なし'], ['spin', 'スピン'], ['toss', 'トス'], ['swing', 'スイング'], ['rest', 'レスト']];
+function iconRow(tgt, kind, opts, cur, prefix) {
+  const c = cur == null ? '' : String(cur);
+  return `<div class="irow" role="group">${opts.map(([v, n, t]) => `<button type="button" class="ibtn ${c === v ? 'on' : ''}" data-fx="${kind}" data-tgt="${tgt}" data-v="${v}" title="${esc(t || n)}" aria-label="${esc(n)}" aria-pressed="${c === v}">${v === '' ? noIc(30) : ic(prefix + '-' + v, 30)}<span>${esc(n)}</span></button>`).join('')}</div>`;
+}
+const noIc = size => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="16" cy="16" r="9"/><path d="M10 22L22 10"/></svg>`;
 function compassHtml(tgt, cur) {
   const n = faceNum(cur), cs = cur == null ? '' : String(cur).trim();
-  const cell = (v, ch, title) => { const vn = faceNum(v), on = n !== null && vn !== null && Math.abs(vn - n) < 0.01; return `<button data-fx="face" data-tgt="${tgt}" data-v="${v}" class="${on ? 'on' : ''}" title="${title}">${ch}</button>`; };
-  const ex = (v, label, title) => `<button data-fx="face" data-tgt="${tgt}" data-v="${v}" class="${cs === v ? 'on' : ''}" title="${title}">${label}</button>`;
+  const on = v => { const vn = faceNum(v); return n !== null && vn !== null && Math.abs(vn - n) < 0.01; };
+  const cell = (v, ch, title) => `<button data-fx="face" data-tgt="${tgt}" data-v="${v}" class="${on(v) ? 'on' : ''}" title="${title}" aria-label="${title}">${ch}</button>`;
+  const big = [['front', '客席', '客席（正面）を向く'], ['back', '奥', '奥（舞台のうしろ）を向く'], ['kami', '上手', '上手（客席から見て右）を向く'], ['shimo', '下手', '下手（客席から見て左）を向く']]
+    .map(([v, nm, t]) => `<button type="button" class="ibtn ${on(v) ? 'on' : ''}" data-fx="face" data-tgt="${tgt}" data-v="${v}" title="${t}" aria-label="${nm}向き" aria-pressed="${on(v)}">${ic('face-' + v, 30)}<span>${nm}</span></button>`).join('');
+  const ex = [['center', '中心へ', '隊形の中心を向く'], ['out', '外へ', '隊形の外を向く'], ['travel', '進行方向', '進む方向を向く'], ['', '自動', '移動中は進行方向、止まると客席向き']]
+    .map(([v, nm, t]) => `<button type="button" class="ibtn ${cs === v ? 'on' : ''}" data-fx="face" data-tgt="${tgt}" data-v="${v}" title="${t}" aria-label="${nm}" aria-pressed="${cs === v}">${v ? ic('face-' + v, 30) : noIc(30)}<span>${nm}</span></button>`).join('');
   const adj = n !== null && Math.abs(n % 45) > 0.01 ? `<div class="fxl" style="margin-top:4px">角度 <button data-fx="faceadj" data-tgt="${tgt}" data-v="-5">−5°</button> <b>${fmt(n)}°</b> <button data-fx="faceadj" data-tgt="${tgt}" data-v="5">＋5°</button></div>` : '';
-  return `<div class="fxrow"><div><div class="fxl">向き（客席から見た図）</div><div class="compass">
+  return `<div class="fxl">向き（客席から見た図）${helpLink('side')}</div><div class="irow">${big}</div><div class="irow">${ex}</div>
+    <details class="adv"${adj ? ' open' : ''}><summary>ななめ・角度で決める</summary><div class="compass">
     ${cell('-135', '↖', '奥・下手向き')}${cell('back', '↑', '奥向き')}${cell('135', '↗', '奥・上手向き')}
     ${cell('shimo', '←', '下手向き')}<div class="mid">奥<br>▲</div>${cell('kami', '→', '上手向き')}
-    ${cell('-45', '↙', '客席・下手向き')}${cell('front', '↓', '客席向き')}${cell('45', '↘', '客席・上手向き')}</div>${adj}</div>
-    <div class="fxx"><div class="fxl">&nbsp;</div>${ex('center', '中心へ', '隊形の中心を向く')}${ex('out', '外へ', '隊形の外を向く')}${ex('travel', '進行方向', '進む方向を向く')}${ex('', '自動', '移動中は進行方向、止まると客席向き')}</div></div>`;
+    ${cell('-45', '↙', '客席・下手向き')}${cell('front', '↓', '客席向き')}${cell('45', '↘', '客席・上手向き')}</div>${adj}</details>`;
 }
+const helpLink = id => (typeof window.uxQh === 'function' ? window.uxQh(id) : '');
 function paletteHtml(tgt, cur) {
-  return `<div class="fxl" style="margin-top:6px">姿勢</div><div class="pal">${POSES.map(([id, name]) => `<button data-fx="pose" data-tgt="${tgt}" data-v="${id}" class="${cur === id ? 'on' : ''}" title="${name}">${poseIcon(id)}<span>${name}</span></button>`).join('')}<button data-fx="pose" data-tgt="${tgt}" data-v="" title="姿勢を解除">${poseIcon('')}<span>解除</span></button></div>`;
+  return `<div class="fxl" style="margin-top:6px">姿勢</div>` + iconRow(tgt, 'pose', POSES.map(([id, name]) => [id, name]).concat([['', '解除', '姿勢を解除']]), cur, 'pose');
 }
 function carryHtml(tgt, cur) {
-  return `<div class="fxl" style="margin-top:6px">楽器の構え</div>` + segHtml(tgt, 'carry', CARRIES.concat([['', '解除']]), cur);
+  return `<div class="fxl" style="margin-top:6px">楽器の構え</div>` + iconRow(tgt, 'carry', CARRIES.concat([['', '解除', '構えを解除']]), cur, 'carry');
 }
+function stepHtml(tgt, cur) { return `<div class="fxl" style="margin-top:6px">ステップ（歩き方）</div>` + iconRow(tgt, 'step', STEPS, cur, 'step'); }
+function actionHtml(tgt, cur) { return `<div class="fxl" style="margin-top:6px">動作（カラーガードなど）</div>` + iconRow(tgt, 'action', ACTIONS, cur, 'action'); }
 function segHtml(tgt, kind, opts, cur) {
   return `<div class="seg">${opts.map(([v, n]) => `<button data-fx="${kind}" data-tgt="${tgt}" data-v="${v}" class="${(cur || '') === v ? 'on' : ''}">${n}</button>`).join('')}</div>`;
 }
@@ -1546,6 +1569,10 @@ function openPop(btn, kind) {
     ? `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の向き</div>` + compassHtml('sel', selFaceStr()) + `<div class="note" style="margin-top:6px">1人だけ選ぶと、画面上の ➤ をドラッグして好きな角度にできます</div>`
     : kind === 'carry'
     ? `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の楽器の構え（このセット）</div>` + carryHtml('sel', selCommon('carry') || '')
+    : kind === 'step'
+    ? `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人のステップ（このセットの動き方）</div>` + stepHtml('sel', selCommon('step') || '')
+    : kind === 'action'
+    ? `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の動作（このセット）</div>` + actionHtml('sel', selCommon('action') || '')
     : `<div class="note" style="color:var(--fg);font-weight:600">${sel.size}人の姿勢（このセット）</div>` + paletteHtml('sel', selCommon('pose') || ''));
   p.style.display = 'block'; p.style.top = 'auto';
   p.style.left = Math.max(56, Math.min(wrap.width - p.offsetWidth - 10, br.left - wrap.left)) + 'px';
@@ -1555,8 +1582,10 @@ function hidePops() { $('pop').style.display = 'none'; $('ctx').style.display = 
 function closePops() { hidePops(); $('whopop').style.display = 'none'; }
 $('selface').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'face'; hidePops(); if (!v) { openPop(e.currentTarget, 'face'); $('pop').dataset.k = 'face'; } };
 $('selpose').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'pose'; hidePops(); if (!v) { openPop(e.currentTarget, 'pose'); $('pop').dataset.k = 'pose'; } };
+$('selstep').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'step'; hidePops(); if (!v) { openPop(e.currentTarget, 'step'); $('pop').dataset.k = 'step'; } };
+$('selaction').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'action'; hidePops(); if (!v) { openPop(e.currentTarget, 'action'); $('pop').dataset.k = 'action'; } };
 $('selcarry').onclick = e => { e.stopPropagation(); const v = $('pop').style.display === 'block' && $('pop').dataset.k === 'carry'; hidePops(); if (!v) { openPop(e.currentTarget, 'carry'); $('pop').dataset.k = 'carry'; } };
-document.addEventListener('pointerdown', e => { if (!e.target.closest('#pop,#ctx,#selface,#selpose,#selcarry')) hidePops(); if (!e.target.closest('#whopop') && !e.target.closest('#svg') && $('whopop').style.display === 'block') { $('whopop').style.display = 'none'; pendingDraw = null; } }, true);
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#pop,#ctx,#selface,#selpose,#selcarry,#selstep,#selaction')) hidePops(); if (!e.target.closest('#whopop') && !e.target.closest('#svg') && $('whopop').style.display === 'block') { $('whopop').style.display = 'none'; pendingDraw = null; } }, true);
 
 // ---- 隊形カード（座標は裏方。ふだんは言葉で読める要約） ----
 function summaryHtml(k, si) { try { return summaryHtml0(k, si); } catch (e) { return '<div class="mut">計算中…</div>'; } }
@@ -1614,8 +1643,7 @@ function detOpen(k, si, name) { return openDet.has(`${k}:${si}:${name}`) ? 'open
 function fxBlock(st, si, k) {
   const tgt = `stmt:${si}`;
   return compassHtml(tgt, st.face) + paletteHtml(tgt, st.pose) + carryHtml(tgt, st.carry) +
-    (k && st.shape.kind !== 'attr' || (st.shape.kind === 'attr' && k) ? `<div class="segl">ステップ</div>${segHtml(tgt, 'step', STEPS, st.step)}` : '') +
-    `<div class="segl">動作（カラーガードなど）</div>${segHtml(tgt, 'action', ACTIONS, st.action)}`;
+    (k ? stepHtml(tgt, st.step) : '') + actionHtml(tgt, st.action);
 }
 function cardHtml(st, si, k, errLine) {
   const toks = groupTokens(st.group);
@@ -1656,7 +1684,7 @@ function renderSetPane() {
   const errLine = lastErr && lastErr.line;
   let h = `<div class="row">${fld('セット名', set.name, 'name', 'set', '70px')}${k ? fld('移動カウント', set.counts, 'counts', 'set', '70px') : ''}${fld('ホールド', set.hold, 'hold', 'set', '60px')}${fld('テンポ（ここから）', set.tempo, 'tempo', 'set', '70px')}
     <label class="f" title="ホールド中・出発待ちの間、その場で足踏み" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="mark" ${set.mark ? 'checked' : ''} style="width:auto">マークタイム</label></div>`;
-  if (!set.stmts.length) h += `<div class="note">このセットでは誰も動きません（全員その場）。左の描画ツールで描くか、下のボタンで隊形を追加します。</div>`;
+  if (!set.stmts.length) h += window.uxEmpty ? uxEmpty('no-sets', k ? `セット ${esc(set.name)} は、まだ全員その場です` : 'まだ隊形がありません', '「隊形を追加」で形をえらぶか、左のツールで画面に直接かいてみましょう。', '＋ 隊形を追加', 'emptyadd') : `<div class="note">このセットでは誰も動きません（全員その場）。左の描画ツールで描くか、下のボタンで隊形を追加します。</div>`;
   const inds = [];
   set.stmts.forEach((st, si) => {
     if (stmtIsIndividual(st)) { inds.push(si); return; }
@@ -1669,7 +1697,7 @@ function renderSetPane() {
       `<details class="adv"><summary>数値で編集</summary><table class="t ind"><tr><th>名前</th><th>左右(x)</th><th>前後(y)</th></tr>` +
       inds.map(si => { const st = set.stmts[si]; return `<tr><td>${esc(st.group)}</td><td><input data-path="s${si}.shape.p" data-key="0" value="${esc(st.shape.p[0])}"></td><td><input data-path="s${si}.shape.p" data-key="1" value="${esc(st.shape.p[1])}"></td></tr>`; }).join('') + '</table></details></div>';
   }
-  h += `<button id="addstmt">＋ 隊形を追加</button>
+  h += `<button id="addstmt" class="${set.stmts.length ? '' : 'pri'}">＋ 隊形を追加</button>
     <div class="hint" style="margin-top:10px">
       <b>描く</b>: 左の道具（<kbd>L</kbd> 直線・<kbd>A</kbd> 弧・<kbd>C</kbd> 円・<kbd>P</kbd> 曲線・<kbd>F</kbd> フォロー・<kbd>B</kbd> ブロック）で、人を選んでから画面にドラッグ。<br>
       <b>整える</b>: 隊形を選ぶと <b style="color:#ffd23f">■ ●</b> で形を、<b>↻</b> で回転（5°ごと）、<b>⤡</b> で拡大縮小。<br>
@@ -1835,6 +1863,7 @@ function renderShowPane() {
 // ---- チェック ----
 let fixNotes = [];
 function renderWarns() {
+  if (window.uxRenderWarns) { uxRenderWarns(); return; }
   const D = R.data, nc = D.warnings.filter(w => w.kind === '衝突').length;
   $('pwarn').innerHTML = (nc ? `<div class="row"><button id="autofix" class="pri" title="時間差（wait）・早着き（in）・カーブ（bend）を総当たりで試して、衝突が最も減る直し方を入れます（Ctrl+Z で戻せます）">衝突を自動で直す</button></div>` : '') +
     (fixNotes.length ? `<div class="card" style="border-color:var(--ok)"><div class="note" style="color:var(--ok);font-weight:600">自動で直しました</div>${fixNotes.map(n => `<div class="note">・${esc(n)}</div>`).join('')}</div>` : '') +
@@ -1845,15 +1874,20 @@ function renderWarns() {
   document.querySelector('.tabs [data-p="pwarn"]').textContent = n ? `チェック ⚠${n}` : 'チェック ✓';
 }
 async function autoFix() {
-  $('autofix').disabled = true; $('autofix').textContent = '探しています…';
-  const r = await fetch('/api/fix', {method: 'POST', body: src}).then(r => r.json());
+  const bt = $('autofix'); if (bt) { bt.disabled = true; bt.textContent = '探しています…'; }
+  if (window.uxBusy) uxBusy(true);
+  let r;
+  try { r = await fetch('/api/fix', {method: 'POST', body: currentSource()}).then(r => r.json()); }
+  catch (e) { r = {ok: false, error: '自動修正に失敗しました'}; }
+  if (window.uxBusy) uxBusy(false);
   if (!r.ok) { notice(r.error); renderWarns(); return; }
-  if (!r.notes.length) { fixNotes = ['自動で直せる組み合わせは見つかりませんでした。隊形や counts を見直してください。']; renderWarns(); return; }
-  pushUndo(src);
+  if (!r.notes.length) { fixNotes = ['自動で直せる組み合わせは見つかりませんでした。隊形や counts を見直してください。']; renderWarns(); if (window.uxToast) uxToast('自動では直せませんでした。カウントを増やすか、位置を動かしてみましょう', 'err', 4200); return; }
+  pushUndo(currentSource());
   M = r.model;
   fixNotes = [...r.notes, `衝突 ${r.before}件 → ${r.after}件`];
   edited(true);
   renderPanels();
+  if (window.uxToast) uxToast(r.after ? `ぶつかりを ${r.before}件 → ${r.after}件に減らしました` : `ぶつかりを自動で直しました（${r.before}件 → 0件）`, r.after ? 'info' : 'ok');
 }
 
 
@@ -1871,7 +1905,7 @@ function renderScorePane() {
   const ids = ['all', ...M.sections.map(s => s.id)];
   let h = `<div class="row"><button id="addpart" class="pri">＋ パートを追加</button><button id="xmlnew" title="MusicXML（.musicxml / .xml / .mxl）の1パートを、新しいパートとして読み込みます">MusicXMLから読み込む</button><input type="file" id="xmlfile" accept=".musicxml,.xml,.mxl" style="display:none"></div>
   <datalist id="grouplist">${ids.map(i => `<option value="${esc(i)}">`).join('')}</datalist><datalist id="meterlist">${['4/4', '3/4', '2/4', '2/2', '5/4', '6/8', '7/8', '9/8', '12/8'].map(i => `<option value="${i}">`).join('')}</datalist>`;
-  if (!M.parts.length) h += `<div class="hint" style="margin:10px 0">パートを足すと、そのセクションの人が譜面どおりに叩きます（再生すると音も鳴ります）。</div>`;
+  if (!M.parts.length) h += window.uxEmpty ? uxEmpty('no-parts', 'まだ楽譜がありません', 'パートを足すと、そのセクションの人が譜面どおりに叩きます（再生すると音も鳴ります）。', '', '') : `<div class="hint" style="margin:10px 0">パートを足すと、そのセクションの人が譜面どおりに叩きます（再生すると音も鳴ります）。</div>`;
   M.parts.forEach((p, i) => {
     h += `<div class="pcard" data-pi="${i}"><div class="row">
       <label class="f">名前<input data-pf="name" value="${esc(p.name)}" style="width:110px"></label>
@@ -2139,7 +2173,7 @@ $('video').onclick = async () => {
     if (v.running) { setTimeout(poll, 500); return; }
     $('vprog').style.display = 'none'; $('video').disabled = false;
     if (v.error) notice('書き出しに失敗しました: ' + v.error);
-    else { $('info').textContent = `動画を書き出しました: ${v.path}`; window.open('/video.mp4?' + Date.now(), '_blank'); }
+    else { $('info').textContent = `動画を書き出しました: ${v.path}`; if (window.uxToast) uxToast('3D動画を書き出しました', 'ok'); window.open('/video.mp4?' + Date.now(), '_blank'); }
   };
   poll();
 };
@@ -2242,5 +2276,8 @@ renderTools();
   await compile(r.source, true);
   if (!R) showTab('pcode');
 })();
+</script>
+<script>/* ux */
+__UX__
 </script>
 </body></html>

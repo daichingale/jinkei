@@ -10,6 +10,24 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 
 pub const EDITOR: &str = include_str!("editor.html");
+const UX_CSS: &str = include_str!("ux.css");
+const UX_CORE_JS: &str = include_str!("ux_core.js");
+const UX_JS: &str = include_str!("ux.js");
+const UI_ICONS_JS: &str = include_str!(concat!(env!("OUT_DIR"), "/ui_icons.js"));
+const EXAMPLES_JS: &str = include_str!(concat!(env!("OUT_DIR"), "/examples.js"));
+
+/// エディタ画面のHTML（埋め込みスクリプト・CSS・サンプル・イラスト集を差し込んだもの）
+pub fn editor_page() -> String {
+    EDITOR
+        .replace("__UX_CSS__", UX_CSS)
+        .replace("__UI_ICONS__", UI_ICONS_JS)
+        .replace("__EXAMPLES__", EXAMPLES_JS)
+        .replace("__UX_CORE__", UX_CORE_JS)
+        .replace("__FIELD2D__", FIELD2D_JS)
+        .replace("__PRINTER__", PRINTER_JS)
+        .replace("__MOTION__", crate::output::MOTION_JS)
+        .replace("__UX__", UX_JS)
+}
 pub const PRINTER_JS: &str = include_str!("printer.js");
 
 pub const TEMPLATE_SHOW: &str = r##"# 陣形ファイル（GUIエディタで作成）
@@ -173,7 +191,7 @@ fn handle(mut stream: TcpStream, st: Arc<Mutex<State>>) {
     const J: &str = "application/json; charset=utf-8";
     match (method.as_str(), path) {
         ("GET", "/") => {
-            let page = EDITOR.replace("__FIELD2D__", FIELD2D_JS).replace("__PRINTER__", PRINTER_JS).replace("__MOTION__", crate::output::MOTION_JS);
+            let page = editor_page();
             respond(&mut stream, "200 OK", "text/html; charset=utf-8", page.as_bytes())
         }
         ("GET", "/api/source") => {
