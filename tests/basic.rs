@@ -335,3 +335,25 @@ fn skip_leaves_seats_empty_and_others_in_place() {
     assert!(compile("show t { field floor 24 x 18 section a 1 set 1 { a: at (0,0) skip 2 } }").is_err());
     assert!(compile("show t { field floor 24 x 18 section a 3 set 1 { a: line (-4,0) -> (4,0) } set 2 { a: same skip 1 } }").is_err());
 }
+
+#[test]
+fn subsets_get_automatic_names() {
+    let src = r#"show "s" {
+  field gym
+  section tp "T" 2
+  set 1 hold 4 { tp : line (-2, 0) -> (2, 0) }
+  set 2 counts 8 { tp : line (-2, 4) -> (2, 4) }
+  set sub counts 4 { tp : line (-2, 5) -> (2, 5) }
+  set サブ counts 4 { tp : line (-2, 6) -> (2, 6) }
+  set 3 counts 8 { tp : line (-2, 8) -> (2, 8) }
+  set 台 sub counts 4 { tp : line (-2, 9) -> (2, 9) }
+  set sub counts 4 { tp : line (-2, 10) -> (2, 10) }
+}"#;
+    let show = compile(src).unwrap();
+    let names: Vec<&str> = show.sets.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, vec!["1", "2", "2A", "2B", "3", "台", "3B"]);
+    assert_eq!(show.sets.iter().map(|s| s.sub).collect::<Vec<_>>(), vec![false, false, true, true, false, true, true]);
+    // 最初のセットは sub にできない・名前の省略は sub だけ
+    assert!(compile("show \"s\" { field gym\n section tp \"T\" 1\n set sub { tp : line (-1, 0) -> (1, 0) } }").is_err());
+    assert!(compile("show \"s\" { field gym\n section tp \"T\" 1\n set 1 { tp : line (-1, 0) -> (1, 0) }\n set counts 4 { tp : line (-1, 2) -> (1, 2) } }").is_err());
+}

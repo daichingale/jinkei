@@ -1,0 +1,8 @@
+# 最初のセットはサブセットにできない
+show "エラー" {
+  field gym
+  section tp "トランペット" 2
+  set sub hold 4 {
+    tp : line (-2, 0) -> (2, 0)
+  }
+}

@@ -53,6 +53,8 @@ pub struct Set {
     pub tempo: f64,
     /// ホールド中にマークタイム
     pub mark: bool,
+    /// サブセット（直前の本セットの下位）。name は表示名（3A など）
+    pub sub: bool,
     pub line: usize,
     /// エディタ用: [文][メンバー] → その文の隊形での席番号（1始まり）
     pub slots: Vec<Vec<usize>>,
@@ -348,7 +350,11 @@ pub fn build(a: &ShowAst) -> Result<Show> {
     let mut all_owner = vec![];
     let mut cur_tempo = a.tempo;
     let mut start = 0.0;
+    let set_names = crate::syntax::set_display_names(&a.sets);
     for (k, sa) in a.sets.iter().enumerate() {
+        if sa.sub && k == 0 {
+            return Err(err(sa.pos, "最初のセットはサブセットにできません（前の本セットがありません）"));
+        }
         let prev: Option<Vec<P>> = sets.last().map(|s: &Set| s.pos.clone());
         // 文ごとの結果。同じ人を後の文でもう一度指定したら、後の文が優先（その人だけ上書き）
         struct Rec {
@@ -722,7 +728,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
         if k > 0 && counts == 0.0 {
             if let Some(pv) = &prev {
                 if pv.iter().zip(&pos).any(|(a, b)| geom::dist(*a, *b) > 1e-6) {
-                    return Err(err(sa.pos, format!("セット{} は counts が0なのに移動があります", sa.name)));
+                    return Err(err(sa.pos, format!("セット{} は counts が0なのに移動があります", set_names[k])));
                 }
             }
         }
@@ -813,7 +819,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             })
             .collect();
         sets.push(Set {
-            name: sa.name.clone(),
+            name: set_names[k].clone(),
             counts,
             hold: sa.hold,
             start,
@@ -829,6 +835,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             carry,
             tempo: cur_tempo,
             mark: sa.mark,
+            sub: sa.sub,
             line: sa.pos.line,
             slots,
         });

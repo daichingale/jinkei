@@ -289,11 +289,39 @@ pub struct SetAst {
     pub tempo: Option<f64>,
     /// ホールド中にマークタイム（その場で足踏み）
     pub mark: bool,
+    /// サブセット（直前の本セットの下位。名前が空なら 親の名前 + A, B, C… と自動で付く）
+    pub sub: bool,
     pub stmts: Vec<Stmt>,
     pub pos: Pos,
     pub note: Vec<String>,
     pub tail: Option<String>,
     pub foot: Vec<String>,
+}
+
+/// 表示名: 本セットはその名前。サブセットは名前があればそれ、なければ 親の名前 + A, B, C…（26個を超えたら AA, AB…）
+pub fn set_display_names(sets: &[SetAst]) -> Vec<String> {
+    let letters = |mut n: usize| {
+        let mut v = vec![];
+        loop {
+            v.push((b'A' + (n % 26) as u8) as char);
+            if n < 26 { break; }
+            n = n / 26 - 1;
+        }
+        v.iter().rev().collect::<String>()
+    };
+    let mut out = Vec::with_capacity(sets.len());
+    let (mut parent, mut idx) = (String::new(), 0usize);
+    for s in sets {
+        if s.sub {
+            if s.name.is_empty() { out.push(format!("{}{}", parent, letters(idx))); } else { out.push(s.name.clone()); }
+            idx += 1;
+        } else {
+            parent = s.name.clone();
+            idx = 0;
+            out.push(s.name.clone());
+        }
+    }
+    out
 }
 
 #[derive(Debug, Clone)]
@@ -818,11 +846,13 @@ impl Parser {
 
     fn set(&mut self, note: Vec<String>) -> Result<SetAst> {
         let pos = self.pos();
-        let name = self.name()?;
+        // 名前は省略できる（サブセットのときだけ）: `set sub counts 8 { ... }` → 親の名前 + A, B, C…
+        let name = if self.is_kw("sub") || self.is_kw("サブ") { String::new() } else { self.name()? };
         let mut counts = 0.0;
         let mut hold = 0.0;
         let mut tempo = None;
         let mut mark = false;
+        let mut sub = false;
         loop {
             if self.eat_kw("counts") {
                 counts = self.num()?;
@@ -834,6 +864,8 @@ impl Parser {
                 tempo = Some(t);
             } else if self.eat_kw("mark") {
                 mark = true;
+            } else if self.eat_kw("sub") || self.eat_kw("サブ") {
+                sub = true;
             } else if self.eat_kw("hold") {
                 hold = self.num()?;
             } else {
@@ -842,6 +874,9 @@ impl Parser {
         }
         if counts < 0.0 || hold < 0.0 {
             return Err(Error::at(pos.line, pos.col, "counts / hold は0以上にしてください"));
+        }
+        if name.is_empty() && !sub {
+            return Err(Error::at(pos.line, pos.col, "セットの名前が必要です（名前を省けるのは sub のときだけです）"));
         }
         self.expect_sym("{")?;
         let tail = self.tail();
@@ -861,7 +896,7 @@ impl Parser {
             }
             stmts.push(self.stmt()?);
         }
-        Ok(SetAst { name, counts, hold, tempo, mark, stmts, pos, note, tail, foot })
+        Ok(SetAst { name, counts, hold, tempo, mark, sub, stmts, pos, note, tail, foot })
     }
 
     pub fn show(&mut self) -> Result<ShowAst> {

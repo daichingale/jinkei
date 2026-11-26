@@ -62,7 +62,7 @@ function printModel(m) {
   for (const set of m.sets) {
     L.push('');
     notes(set.note, '  ');
-    L.push(`  set ${nameTok(set.name)}` + (+set.counts ? ` counts ${set.counts}` : '') + (set.tempo != null && set.tempo !== '' ? ` tempo ${set.tempo}` : '') + (+set.hold ? ` hold ${set.hold}` : '') + (set.mark ? ' mark' : '') + ' {' + tail(set.tail));
+    L.push('  set' + (set.sub && set.name === '' ? '' : ' ' + nameTok(set.name)) + (set.sub ? ' sub' : '') + (+set.counts ? ` counts ${set.counts}` : '') + (set.tempo != null && set.tempo !== '' ? ` tempo ${set.tempo}` : '') + (+set.hold ? ` hold ${set.hold}` : '') + (set.mark ? ' mark' : '') + ' {' + tail(set.tail));
     const gw = Math.max(0, ...set.stmts.map(st => st.group.length));
     for (const st of set.stmts) {
       notes(st.note, '    ');

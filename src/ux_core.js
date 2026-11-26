@@ -568,9 +568,55 @@ const GLOSSARY = [
   ['吸着（きゅうちゃく）', 'ドラッグしたとき、マス目にぴたっと合わせる機能。']
 ];
 
+// セットの表示名（サブセットは 親の名前 + A, B, C…。Rust / web/engine.js の set_display_names と同じ規則）
+function displayNames(sets) {
+  const letters = n => { let v = ''; for (;;) { v = String.fromCharCode(65 + (n % 26)) + v; if (n < 26) break; n = Math.floor(n / 26) - 1; } return v; };
+  const out = []; let parent = '', idx = 0;
+  for (const s of sets || []) {
+    if (s.sub) { out.push(s.name === '' ? parent + letters(idx) : s.name); idx++; }
+    else { parent = s.name; idx = 0; out.push(s.name); }
+  }
+  return out;
+}
+// ---- 再生位置の刻み（拍・小節・自由）----
+// 小節の長さ（カウント）と開始位置: パートの拍子（n/d）があればそれ、なければ設定の拍数（既定 4）。
+function barInfo(parts, beats) {
+  const ps = (parts || []).filter(p => p && p.meter);
+  if (ps.length) {
+    const m = ps[0].meter, n = Array.isArray(m) ? +m[0] : +String(m).split('/')[0], d = Array.isArray(m) ? +m[1] : +String(m).split('/')[1];
+    if (n > 0 && d > 0) return {len: n * 4 / d, origin: +ps[0].start || 0, from: 'part', meter: n + '/' + d};
+  }
+  const b = Math.max(1, Math.min(16, Math.round(+beats) || 4));
+  return {len: b, origin: 0, from: 'setting', meter: b + '/4'};
+}
+// 位置 t を刻みに合わせる（unit: 'beat' | 'bar' | 'free'）
+function snapSeek(t, unit, bar, total) {
+  let v = t;
+  if (unit === 'beat') v = Math.round(t);
+  else if (unit === 'bar') v = bar.origin + Math.round((t - bar.origin) / bar.len) * bar.len;
+  return Math.max(0, Math.min(total, v));
+}
+// 1つ前・次の刻みへ（byBar: 小節ごと）。自由のときは 1 カウント。いまの位置が刻みの途中なら、次の刻みの位置まで
+function stepSeek(t, dir, unit, bar, total, byBar) {
+  const u = byBar ? 'bar' : (unit === 'bar' ? 'bar' : 'beat');
+  const len = u === 'bar' ? bar.len : 1, org = u === 'bar' ? bar.origin : 0, eps = 1e-6;
+  const q = (t - org) / len;
+  let k = dir > 0 ? Math.floor(q + eps) + 1 : Math.ceil(q - eps) - 1;
+  return Math.max(0, Math.min(total, org + k * len));
+}
+// ものさしの目盛り: 拍ごと・小節ごと（小節番号は 1 から）。t が 0..total の範囲
+function rulerTicks(total, bar) {
+  const out = [];
+  for (let t = 0; t <= total + 1e-9; t += 1) {
+    const q = (t - bar.origin) / bar.len, isBar = Math.abs(q - Math.round(q)) < 1e-6 && t >= bar.origin - 1e-9;
+    out.push({t, bar: isBar ? Math.round(q) + 1 : 0});
+  }
+  return out;
+}
+
 const api = {
   VENUES, venueGeom, fieldDesc, INST, INST_BY, catOfInst, PRESETS, total, sectionsFromCounts, FORMS, FORM_BY,
-  finalize, formationParts, formationStmts, groupStr, mkStmt, shapePoints, thumbDots, buildModel, secsOfModel, miniSvg, friendly, whoName, GUIDES, GLOSSARY
+  displayNames, barInfo, snapSeek, stepSeek, rulerTicks, finalize, formationParts, formationStmts, groupStr, mkStmt, shapePoints, thumbDots, buildModel, secsOfModel, miniSvg, friendly, whoName, GUIDES, GLOSSARY
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.JKX = api;

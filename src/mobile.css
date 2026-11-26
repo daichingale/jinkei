@@ -3,7 +3,7 @@
    html.mp-land は そのうち横長のとき。 */
 
 /* --- 部品（PC では見えない） --- */
-#mbmode,#mblasso,#mbmore,#mbgrab,#mbsetbar,#mbextras,#mbinfo,#mbmenu,#mbscrim,#mbinstall,#mbpanelbtn{display:none}
+#mbmode,#mblasso,#zpct,#mbmore,#mbgrab,#mbsetbar,#mbextras,#mbinfo,#mbmenu,#mbscrim,#mbinstall,#mbpanelbtn{display:none}
 #mbbar{display:contents}
 #jkboot{position:fixed;inset:0;z-index:9999;background:#14161a;display:flex;align-items:center;justify-content:center;transition:opacity .35s ease}
 #jkboot.out{opacity:0;pointer-events:none}
@@ -456,3 +456,18 @@ html.mp body .scs-box button:not(.kbtn):not(.kplus){min-height:44px}
 .mp #nextbar .nb-m{-webkit-line-clamp:1}
 .mp #nextbar.nbx{display:none}
 .mp #nextbar .nb-x{flex:none;width:40px;height:40px;border-radius:10px;background:none;border:0;color:#9aa6bd;font-size:18px;padding:0;margin-left:-4px}
+
+/* 拡大率の表示 */
+.mp #zoomctl #zpct{display:block;width:42px;height:42px;border-radius:12px;font-size:11px;font-weight:700;padding:0;background:#1c1f25e6;color:#cfd6e6;font-variant-numeric:tabular-nums}
+.mp #zoomctl #zpct.on{color:#ffd23f;border-color:#ffd23f88}
+.mp-land #zoomctl #zpct{width:48px;height:40px}
+html.mp .newrow{grid-template-columns:1fr}
+html.mp .newopt{min-height:56px}
+html.mp #newname{min-height:48px;font-size:16px}
+html.mp .exgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.mp #seekwrap{margin-left:0}
+.mp #seekwrap select{height:44px;min-width:96px;border-radius:12px;padding:0 8px}
+/* サブセット: スマホでは押しやすい高さのまま、点線と小さめの文字で区別する */
+.mp #tltrack .tlb.sub{top:21px;height:42px;font-size:12px;line-height:1.3;padding:3px 8px 0}
+.mp #tltrack .tlgrp{top:61px;height:3px}
+.mp #tltrack .tlb.sub .m,.mp #tltrack .tlb.sub br{display:revert}
