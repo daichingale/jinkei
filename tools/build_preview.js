@@ -21,12 +21,30 @@ const values = {
   '__HUMAN__': fs.readFileSync(path.join(ROOT, 'assets/human.bin')).toString('base64'),
   '__VIEW3D__': read('src/view3d.js'),
 };
-function previewTemplate() {
+// 3D 部品（three.js・人体データ・view3d.js）を別ファイルにして読み込む版（Pages 用）
+const PAGES_TAIL = `<script>
+(function () {
+  var btn = document.getElementById('mode3d'); btn.disabled = true;
+  function sc(src) { return new Promise(function (ok, ng) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ng; document.head.appendChild(s); }); }
+  var human = fetch('assets/human.bin.gz').then(function (r) {
+    if (!r.ok) throw new Error('human'); if (!window.DecompressionStream) throw new Error('DecompressionStream');
+    return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  });
+  Promise.all([sc('assets/three.min.js'), human]).then(function (r) { window.JK_HUMAN_BIN = new Uint8Array(r[1]); btn.disabled = false; return sc('assets/view3d.js'); })
+    .catch(function (e) { btn.textContent = '3D は使えません'; btn.title = String(e && e.message || e); });
+})();
+</script>`;
+function previewTemplate(opts) {
   let html = mat[1];
+  if (opts && opts.pages) {
+    html = html.replace(/<script>__THREE__<\/script>\n<script>window\.JK_HUMAN="__HUMAN__";<\/script>\n<script>__VIEW3D__<\/script>/, () => PAGES_TAIL)
+      .replace('<head><meta charset="utf-8">', '<head><meta charset="utf-8"><base href="__JK_BASE__">');
+    if (html.includes('__THREE__')) throw new Error('Pages 用のテンプレート置換に失敗しました');
+  }
   for (const [key, value] of Object.entries(values)) html = html.split(key).join(value);
   return html;
 }
-module.exports = {previewTemplate};
+module.exports = {previewTemplate, PAGES_TAIL};
 if (require.main === module) {
   const [srcFile, outFile] = process.argv.slice(2);
   if (!srcFile || !outFile) {

@@ -7,14 +7,16 @@
 
   const json = x => new Response(JSON.stringify(x), { headers: { 'Content-Type': 'application/json' } });
   const baseName = () => st.name.replace(/\.jk$/i, '') + '.jk';
+  const touchOnly = () => { try { return matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches; } catch (e) { return false; } };
   async function save(source) {
     try {
-      if (st.handle && st.handle.createWritable) {
+      if (touchOnly()) { /* スマホ・タブレット: 保存ダイアログは使わずダウンロードにする */ }
+      else if (st.handle && st.handle.createWritable) {
         const w = await st.handle.createWritable();
         await w.write(source); await w.close();
         return { ok: true, path: st.name };
       }
-      if (window.showSaveFilePicker) {
+      else if (window.showSaveFilePicker) {
         st.handle = await window.showSaveFilePicker({ suggestedName: baseName(), types: [{ description: '陣形ファイル', accept: { 'text/plain': ['.jk'] } }] });
         const w = await st.handle.createWritable();
         await w.write(source); await w.close();
@@ -67,7 +69,7 @@
     if (tpl === null) tpl = document.getElementById('jk-preview-tpl').textContent.split(window.JK_ESC).join('<');
     const j = JSON.stringify(data).replace(/</g, '\\u003c');
     const t = String(title == null ? '' : title).replace(/</g, '&lt;');
-    return tpl.split('__JK_TITLE__').join(t).replace('__JK_DATA__', () => j);
+    return tpl.split('__JK_BASE__').join(document.baseURI).split('__JK_TITLE__').join(t).replace('__JK_DATA__', () => j);
   }
   window.JK_LOCAL = {
     template: TEMPLATE,
@@ -75,5 +77,13 @@
     setFile(name, handle) { st.name = name || 'show.jk'; st.handle = handle || null; },
     forget() { st.handle = null; },
     previewHtml,
+    // スマホ: 共有シート（ファイルアプリへ保存・メッセージで送る）。使えなければダウンロード
+    async share(source) {
+      const file = new File([String(source)], baseName(), { type: 'text/plain' });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: baseName() }); return { ok: true, shared: true }; }
+      } catch (e) { if (e && e.name === 'AbortError') return { ok: false }; }
+      return save(String(source));
+    },
   };
 })();

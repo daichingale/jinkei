@@ -344,6 +344,21 @@ const jkAudio = (function () {
       if (!st.dest && st.ctx.createMediaStreamDestination) st.dest = st.ctx.createMediaStreamDestination();
       return st.dest ? st.dest.stream : null;
     },
+    // iOS Safari: ユーザーの操作の中で一度鳴らしておかないと、あとから音が出ない
+    unlock() {
+      try {
+        const AC = typeof AudioContext !== 'undefined' ? AudioContext : (typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null);
+        if (!AC) return false;
+        if (!st.ctx) st.ctx = new AC();
+        if (typeof navigator !== 'undefined' && navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } catch (e) { /* 非対応 */ } }
+        if (st.ctx.state === 'suspended') st.ctx.resume();
+        if (!st.unlocked) {
+          const b = st.ctx.createBuffer(1, 1, 22050), s = st.ctx.createBufferSource();
+          s.buffer = b; s.connect(st.ctx.destination); s.start(0); st.unlocked = true;
+        }
+        return true;
+      } catch (e) { return false; }
+    },
     stop() {
       if (st.src) { const s = st.src; st.src = null; try { s.stop(); } catch (e) { /* 既に止まっている */ } }
     },

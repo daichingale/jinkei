@@ -197,12 +197,15 @@
     }
   }
   const walls = [], backdrop = [];
+  // スマホ（指で操作・画面が小さい）: 描画の重さを抑える（解像度・影・描画距離）
+  const PHONE = !!(window.matchMedia && matchMedia('(pointer:coarse)').matches && Math.min(innerWidth, innerHeight) < 700);
+  const PR = () => Math.min(PHONE ? 1.25 : 2, window.devicePixelRatio || 1);
   // ---- 人物（手続き生成の骨格つき人体。assets/human.bin を base64 で埋め込む。形式は tools/README.md）----
   // 全員で形状・マテリアルを共有し、フレームごとの更新は骨の姿勢だけ。
   const H = (() => {
     const b64 = window.JK_HUMAN || '';
-    if (b64.length < 100) return null;
-    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    if (!window.JK_HUMAN_BIN && b64.length < 100) return null;
+    const bin = window.JK_HUMAN_BIN || Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     const dv = new DataView(bin.buffer);
     if (String.fromCharCode(bin[0], bin[1], bin[2], bin[3]) !== 'JKH1') return null;
     const jl = dv.getUint32(4, true), json = JSON.parse(new TextDecoder().decode(bin.subarray(8, 8 + jl))), base = 8 + jl;
@@ -616,12 +619,12 @@ if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace
     scene.background = new THREE.Color(bgc);
     { const Bf = bounds(), R = Math.max(Bf.hw, Bf.hd); scene.fog = new THREE.Fog(ILL ? bgc : F.type === 'football' ? 0x26324c : F.type === 'stage' ? 0x14151c : 0x2a2b31, R * (ILL ? 2.5 : 1.5), R * (ILL ? 7 : 5.5)); }
     scene.environment = ILL ? null : makeEnv();
-    camera = new THREE.PerspectiveCamera(42, 1, 0.1, 600);
+    camera = new THREE.PerspectiveCamera(42, 1, 0.1, PHONE ? 220 : 600);
     scene.add(ILL ? new THREE.HemisphereLight(0xffffff, 0xd2d6dc, 0.56) : new THREE.HemisphereLight(0xfff2e6, 0x6f5d4a, 0.42));
     const B = bounds();
     const sun = new THREE.DirectionalLight(ILL ? 0xfffaf0 : 0xfff0dc, ILL ? 0.62 : 1.55);
     sun.position.set(B.cx - B.hw * 0.4, 40, B.cz + B.hd * 0.8); sun.target.position.set(B.cx, 0, B.cz);
-    sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+    sun.castShadow = true; sun.shadow.mapSize.set(PHONE ? 1024 : 4096, PHONE ? 1024 : 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
     const sc = sun.shadow.camera, ext = Math.max(B.hw, B.hd) * 1.15;
     sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 1; sc.far = 130;
     const fill = new THREE.DirectionalLight(0xe8eeff, ILL ? 0 : 0.45); fill.position.set(B.cx + B.hw * 0.8, 20, B.cz - B.hd * 0.6); fill.target.position.set(B.cx, 0, B.cz);
@@ -635,10 +638,11 @@ if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace
   }
   function init() {
     if (THREE.ColorManagement) { if ('legacyMode' in THREE.ColorManagement) THREE.ColorManagement.legacyMode = false; else THREE.ColorManagement.enabled = true; }
-    renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    renderer = new THREE.WebGLRenderer({antialias: !(PHONE && (window.devicePixelRatio || 1) >= 2), preserveDrawingBuffer: true, powerPreference: 'high-performance'});
+    renderer.setPixelRatio(PR());
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if (PHONE) renderer.shadowMap.autoUpdate = false;   // スマホは影を1フレームおきに描く（三角形の数が半分近くになる）
+    renderer.shadowMap.type = PHONE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     if ('outputColorSpace' in renderer) renderer.outputColorSpace = 'srgb'; else renderer.outputEncoding = THREE.sRGBEncoding;
     wrap.appendChild(renderer.domElement);
     buildScene();
@@ -705,8 +709,10 @@ if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace
     walls.forEach(w => w.visible = side);
   }
 
+  let shadowTick = 0;
   function render3d() {
     if (!renderer || !on) return;
+    if (PHONE && !recorder) renderer.shadowMap.needsUpdate = (shadowTick++ & 1) === 0; else renderer.shadowMap.needsUpdate = true;
     TIMEU.value = t * 0.5;
     for (let i = 0; i < people.length; i++) {
       const st = jkState(D, i, t), [x, z] = W(st.p[0], st.p[1]), o = people[i];
@@ -755,7 +761,7 @@ if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace
     const ui = reelUI(), ww = wrap.clientWidth, wh = wrap.clientHeight;
     const W = Math.floor(Math.min(ww, wh * 9 / 16) / 9) * 9, H = W * 16 / 9, x = Math.round((ww - W) / 2), y = Math.round((wh - H) / 2), sc = W / RW;   // 整数の大きさ・位置に（小数だと合成でにじむ）
     reel.R = {x, y, W, H, sc};
-    renderer.setPixelRatio(rec || recorder ? RW / W : Math.min(2, window.devicePixelRatio));
+    renderer.setPixelRatio(rec || recorder ? RW / W : PR());
     renderer.setSize(W, H);
     const c = renderer.domElement;
     c.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${W}px;height:${H}px;cursor:default`;
@@ -774,7 +780,7 @@ if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace
     if (l === 'reel') { if (renderer) { layoutReel(); } }
     else {
       if (reel.ui) { reel.ui.band.style.display = reel.ui.gridc.style.display = 'none'; reel.ui.sep.forEach(e => e.style.display = 'none'); }
-      if (renderer) { renderer.domElement.style.cssText = ''; renderer.setPixelRatio(Math.min(2, window.devicePixelRatio)); resize(); }
+      if (renderer) { renderer.domElement.style.cssText = ''; renderer.setPixelRatio(PR()); resize(); }
     }
     const cs = document.getElementById('cam3d'); if (cs) cs.disabled = l === 'reel';
     const rc = document.getElementById('reelcontrols');
@@ -895,7 +901,7 @@ if (mi == ${MID('skin')} || mi == ${MID('lip')} || mi == ${MID('blush')}${isFace
     else { recCanvas.width = c.width - (c.width % 2); recCanvas.height = c.height - (c.height % 2); }
     const types = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'];
     const type = types.find(x => window.MediaRecorder && MediaRecorder.isTypeSupported(x));
-    if (!type) { alert('このブラウザは動画の録画に対応していません。コマンドの `jinkei video` を使ってください。'); return; }
+    if (!type || !recCanvas.captureStream) { alert(/iPhone|iPad|iPod/.test(navigator.userAgent) ? 'iPhone / iPad の Safari では動画の書き出しに対応していません。Android の Chrome か、パソコンのブラウザで開いてください（パソコンなら `jinkei video` も使えます）。' : 'このブラウザは動画の録画に対応していません。Chrome などで開くか、コマンドの `jinkei video` を使ってください。'); recCanvas = null; return; }
     chunks = [];
     // 音（パートの演奏）も録る: WebAudio の出力を MediaStream に分けて、映像のストリームに足す
     const stream = recCanvas.captureStream(30), as = hasPartsAudio() && document.getElementById('snd')?.checked ? jkAudio.captureStream() : null;

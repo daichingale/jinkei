@@ -1,6 +1,14 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#1c1f25"><meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="陣形">
+__HEAD_LINKS__
 <title>陣形エディタ</title>
+<script>/* スマホ判定: 画面が狭い（760px以下）か、タッチ端末の横向き（高さ500px以下）なら html.mp を付ける。描画前に決めてちらつきを防ぐ */
+(function(){var d=document.documentElement,q='(max-width:760px),(pointer:coarse) and (max-height:500px)',m=window.matchMedia?matchMedia(q):null;
+function f(){var on=m?m.matches:innerWidth<=760;d.classList.toggle('mp',on);d.classList.toggle('mp-land',on&&innerWidth>innerHeight);}
+f();if(m){if(m.addEventListener)m.addEventListener('change',f);else if(m.addListener)m.addListener(f);}addEventListener('resize',f);addEventListener('orientationchange',f);})();</script>
 <style>
 :root{--bg:#14161a;--panel:#1c1f25;--panel2:#23272f;--line:#2e333c;--fg:#e8e9ec;--mut:#99a0ab;--acc:#ffd23f;--bad:#ff6b6b;--ok:#6fdc8c;--blue:#5b8def}
 *{box-sizing:border-box}
@@ -234,25 +242,14 @@ details.adv>div{padding:6px 0 2px}
 .project-dialog li button{white-space:normal;text-align:left}
 .project-actions{display:flex;gap:6px;flex-wrap:wrap}
 #localbtns{display:flex;flex-wrap:wrap;gap:4px}
-@media (max-width:760px){
-  html,body{height:100dvh}
-  header{gap:5px;padding:6px 8px;flex-wrap:wrap;flex:0 0 auto}
-  header h1{font-size:13px}
-  main{display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain}
-  #center{flex:0 0 62dvh;min-height:390px}
-  #right{flex:0 0 auto;min-height:44dvh;border-left:0;border-top:1px solid var(--line);overflow:visible}
-  .tabs{overflow-x:auto;flex-wrap:nowrap}
-  .tabs button{flex:0 0 auto;min-width:48px;font-size:11px}
-  #tlbar,#cbar{flex-wrap:wrap;gap:4px}
-  #tltrack{min-height:52px}
-  #code{height:40dvh}
-  .pane{min-height:200px}
-  .params{grid-template-columns:repeat(2,minmax(0,1fr))}
-  #selbar{padding-left:4px}
-}
+/* スマホ（幅760px以下）の配置は src/mobile.css に移した */
 /* __UX_CSS_BEGIN__ */
 __UX_CSS__
+</style>
+<style id="mobile-css">/* スマホ（src/mobile.css） */
+__MOBILE_CSS__
 </style></head><body>
+__BOOT__
 <header>
   <h1>陣形エディタ</h1><span id="fname"></span><span id="status">読み込み中</span>
   <div class="modesw" id="modesw" role="group" aria-label="操作モード"><button type="button" data-mode="easy" title="むずかしい項目をかくして、やることを案内します">かんたん</button><button type="button" data-mode="pro" title="すべての機能（コード・数値入力など）を表示します">詳細</button></div>
@@ -352,12 +349,16 @@ __UX_CSS__
   <ul></ul><output role="status"></output>
   <form method="dialog"><footer><button>閉じる</button></footer></form>
 </dialog>
+<script>window.jkBoot&&jkBoot(.12,'部品を読み込んでいます');</script>
 <script>/* icons */__UI_ICONS__</script>
+<script>window.jkBoot&&jkBoot(.3);</script>
 <script>/* examples */__EXAMPLES__</script>
+<script>window.jkBoot&&jkBoot(.4);</script>
 <script>/* ux core */__UX_CORE__</script>
 <script>/* shortcuts core */__SC_CORE__</script>
 <script>__FIELD2D__</script>
 <script>__PRINTER__</script>
+<script>window.jkBoot&&jkBoot(.55,'計算エンジンを準備しています');</script>
 <script>__MOTION__</script>
 <script>
 'use strict';
@@ -528,8 +529,8 @@ function setStatusFromState() {
 // ================= 会場の言葉（ドットシートと同じ言い方） =================
 const F = () => R.data.field;
 const isFB = () => F().type === 'football';
-const DOT = () => isFB() ? 0.95 : 0.34;
-const HND = () => isFB() ? 1.3 : 0.45;
+const DOT = () => (isFB() ? 0.95 : 0.34) * (window.JK_DOT_SCALE || 1);
+const HND = () => (isFB() ? 1.3 : 0.45) * (window.JK_DOT_SCALE || 1);
 const unitLen = v => isFB() ? `${fmt1(v)}歩` : `${fmt1(v)}m`;
 function dX(x) {
   const f = F();
@@ -1339,7 +1340,7 @@ function tlLayout() {
   let u = 0; segs.forEach(s => { s.u0 = u; s.u1 = u + Math.max(s.t1 - s.t0, 2.5); u = s.u1; });
   return {segs, total: t, utot: Math.max(u, 1)};
 }
-const tlPPC = lay => tlFreeze ? tlFreeze.ppc : (Math.max(200, $('tltrack').clientWidth) - 4) / lay.utot;
+const tlPPC = lay => tlFreeze ? tlFreeze.ppc : Math.max(window.JK_TL_MIN || 0, (Math.max(200, $('tltrack').clientWidth) - 4) / lay.utot);
 function uOfT(t, lay) {
   let seg = lay.segs[0];
   for (const s of lay.segs) if (s.t0 <= t + 1e-9) seg = s;
@@ -2559,5 +2560,8 @@ __UX__
 </script>
 <script>/* shortcuts */
 __SC__
+</script>
+<script>/* mobile */
+__MOBILE__
 </script>
 </body></html>
