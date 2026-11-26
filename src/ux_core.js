@@ -236,7 +236,7 @@ const PRIM = {
   'poly': tPoly, 'follow': tFollow, 'scatter': tScatter, 'company-front': (m, V, y) => tLine(m, V, y, true), 'cross': tCross
 };
 
-const mkStmt = (group, shape) => ({group, shape, xf: [], assign: null, wait: null, within: null, bend: null, face: null, step: null, action: null, pose: null, carry: null, note: [], tail: null, line: 0});
+const mkStmt = (group, shape) => ({group, shape, xf: [], assign: null, skip: [], wait: null, within: null, bend: null, face: null, step: null, action: null, pose: null, carry: null, note: [], tail: null, line: 0});
 
 // 記号つきメンバー一覧 → 隊形の対象（"tp + tb1..tb3" の形）
 function groupStr(mem) {

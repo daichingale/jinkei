@@ -1,0 +1,6 @@
+show "x" {
+  section a "A" 1
+  set 1 {
+    a : at (0, 0) skip 2
+  }
+}

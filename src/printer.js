@@ -23,6 +23,7 @@ function stmtSrc(st) {
     else s += ` scale ${x.k}`;
   }
   if (st.assign) s += ` assign ${st.assign}`;
+  if (st.skip && st.skip.length) s += ` skip ${[...st.skip].sort((a, b) => a - b).join(', ')}`;
   if (st.wait != null && st.wait !== '') s += ` wait ${st.wait}`;
   if (st.within != null && st.within !== '') s += ` in ${st.within}`;
   if (st.bend != null && st.bend !== '' && +st.bend !== 0) s += ` bend ${st.bend}`;

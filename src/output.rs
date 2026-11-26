@@ -83,7 +83,7 @@ pub fn json(s: &Show, r: &Report) -> String {
         }
         let _ = write!(
             o,
-            "{{\"name\":{},\"counts\":{},\"hold\":{},\"start\":{},\"min_counts\":{},\"max_step\":{},\"wait\":[{}],\"end\":[{}],\"bend\":[{}],\"face\":[{}],\"route\":[{}],\"step\":[{}],\"action\":[{}],\"pose\":[{}],\"carry\":[{}],\"tempo\":{},\"mark\":{},\"pos\":[{}]}}",
+            "{{\"name\":{},\"counts\":{},\"hold\":{},\"start\":{},\"min_counts\":{},\"max_step\":{},\"wait\":[{}],\"end\":[{}],\"bend\":[{}],\"face\":[{}],\"route\":[{}],\"step\":[{}],\"action\":[{}],\"pose\":[{}],\"carry\":[{}],\"tempo\":{},\"mark\":{},\"slots\":[{}],\"pos\":[{}]}}",
             js(&set.name),
             num(set.counts),
             num(set.hold),
@@ -108,6 +108,7 @@ pub fn json(s: &Show, r: &Report) -> String {
             set.carry.iter().map(|x| x.as_deref().map(js).unwrap_or_else(|| "null".into())).collect::<Vec<_>>().join(","),
             num(set.tempo),
             set.mark,
+            set.slots.iter().map(|r| format!("[{}]", r.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))).collect::<Vec<_>>().join(","),
             set.pos.iter().map(|p| format!("[{},{}]", num(p.0), num(p.1))).collect::<Vec<_>>().join(",")
         );
     }

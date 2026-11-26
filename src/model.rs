@@ -69,7 +69,7 @@ fn stmt(st: &Stmt) -> String {
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "{{\"group\":{},\"shape\":{},\"xf\":[{}],\"assign\":{},\"wait\":{},\"within\":{},\"bend\":{},\"face\":{},\"step\":{},\"action\":{},\"pose\":{},\"carry\":{},\"note\":{},\"tail\":{},\"line\":{}}}",
+        "{{\"group\":{},\"shape\":{},\"xf\":[{}],\"assign\":{},\"skip\":[{}],\"wait\":{},\"within\":{},\"bend\":{},\"face\":{},\"step\":{},\"action\":{},\"pose\":{},\"carry\":{},\"note\":{},\"tail\":{},\"line\":{}}}",
         js(&group),
         shape(&st.shape),
         xf,
@@ -78,6 +78,7 @@ fn stmt(st: &Stmt) -> String {
             Some(Assign::Keep) => "\"keep\"",
             None => "null",
         },
+        st.skip.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","),
         oe(&st.wait),
         oe(&st.within),
         oe(&st.bend),

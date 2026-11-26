@@ -54,6 +54,8 @@ pub struct Set {
     /// ホールド中にマークタイム
     pub mark: bool,
     pub line: usize,
+    /// エディタ用: [文][メンバー] → その文の隊形での席番号（1始まり）
+    pub slots: Vec<Vec<usize>>,
 }
 
 /// パートの1音（t は通算カウント）
@@ -354,6 +356,8 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             spots: Vec<P>,
             auto: bool,
             assigned: Vec<P>,
+            order: Vec<usize>,
+            keep: Vec<usize>,
             w: f64,
             e: f64,
             bend: f64,
@@ -445,15 +449,27 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             };
             set_handles.push(handles);
             set_members.push(group.clone());
+            // 空き: 席数 = 人数 + 空きの数。席の並びは変えず、空けた席だけ取り除く
+            let skips: Vec<usize> = st.skip.clone();
+            if !skips.is_empty() {
+                if matches!(st.shape, Shape::At(_) | Shape::Same | Shape::Follow { .. } | Shape::Attr) {
+                    return Err(err(st.pos, "skip（空き）は line / arc / circle / block / curve / poly の隊形で使えます"));
+                }
+                let total = g + skips.len();
+                if let Some(bad) = skips.iter().find(|&&x| x > total) {
+                    return Err(err(st.pos, format!("skip（空き）の席 {} が席数（{}人 + 空き{} = {}）を超えています", bad, g, skips.len(), total)));
+                }
+            }
+            let gt = g + skips.len();
             let mut spots: Vec<P> = match &st.shape {
-                Shape::Line(p1, p2) => geom::line(ctx.pt(p1)?, ctx.pt(p2)?, g),
-                Shape::Arc { c, r, a1, a2 } => geom::arc(ctx.pt(c)?, ctx.eval(r)?, ctx.eval(a1)?, ctx.eval(a2)?, g),
+                Shape::Line(p1, p2) => geom::line(ctx.pt(p1)?, ctx.pt(p2)?, gt),
+                Shape::Arc { c, r, a1, a2 } => geom::arc(ctx.pt(c)?, ctx.eval(r)?, ctx.eval(a1)?, ctx.eval(a2)?, gt),
                 Shape::Circle { c, r, start } => {
                     let s0 = match start {
                         Some(e) => ctx.eval(e)?,
                         None => 270.0,
                     };
-                    geom::circle(ctx.pt(c)?, ctx.eval(r)?, s0, g)
+                    geom::circle(ctx.pt(c)?, ctx.eval(r)?, s0, gt)
                 }
                 Shape::Block { c, cols, spacing, rowsp } => {
                     let cols = ctx.eval(cols)?;
@@ -469,10 +485,10 @@ pub fn build(a: &ShowAst) -> Result<Show> {
                         Some(e) => ctx.eval(e)?,
                         None => sp,
                     };
-                    geom::block(ctx.pt(c)?, cols.round() as usize, sp, rsp, g)
+                    geom::block(ctx.pt(c)?, cols.round() as usize, sp, rsp, gt)
                 }
-                Shape::Curve(ps) => geom::curve(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, g),
-                Shape::Poly(ps) => geom::resample(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, g),
+                Shape::Curve(ps) => geom::curve(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, gt),
+                Shape::Poly(ps) => geom::resample(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, gt),
                 Shape::At(p) => {
                     if g != 1 {
                         return Err(err(st.pos, format!("at は1人用です（{}人指定されています）", g)));
@@ -509,6 +525,12 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             }
             if spots.iter().any(|p| !p.0.is_finite() || !p.1.is_finite()) {
                 return Err(err(st.pos, "座標が計算できません（0で割っていませんか）"));
+            }
+            // 向きの基準（center / out）は、空きを含めた隊形全体の中心
+            let cen_full = geom::centroid(&spots);
+            let keep: Vec<usize> = (0..spots.len()).filter(|i| !skips.contains(&(i + 1))).collect();
+            if !skips.is_empty() {
+                spots = keep.iter().map(|&i| spots[i]).collect();
             }
             let mut routes: Option<Vec<Vec<P>>> = None;
             if let Shape::Follow { spacing, .. } = &st.shape {
@@ -570,7 +592,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
                 _ => (0..g).collect(),
             };
             let assigned = if is_attr { vec![] } else { (0..g).map(|gi| spots[order[gi]]).collect() };
-            let cen = geom::centroid(&spots);
+            let cen = if skips.is_empty() { geom::centroid(&spots) } else { cen_full };
             let face = match &st.face {
                 None if st.step.as_deref() == Some("slide") => FaceSpec::Angle(-90.0),
                 None => FaceSpec::Auto,
@@ -586,11 +608,14 @@ pub fn build(a: &ShowAst) -> Result<Show> {
                 Some(crate::syntax::FaceAst::Toward(p)) => FaceSpec::Toward(ctx.pt(p)?),
                 Some(crate::syntax::FaceAst::Deg(e)) => FaceSpec::Angle(-90.0 + ctx.eval(e)?),
             };
+            let spots_len = spots.len();
             recs.push(Rec {
                 group,
                 spots,
                 auto,
                 assigned,
+                order,
+                keep: if skips.is_empty() { (0..spots_len).collect() } else { keep },
                 w: tw,
                 e: te,
                 bend: tb,
@@ -674,6 +699,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
                         changed = true;
                     }
                     recs[si].assigned = assigned;
+                    recs[si].order = order;
                     for (i, p) in compose(&recs).into_iter().enumerate() {
                         if let Some(p) = p {
                             pos[i] = p;
@@ -764,6 +790,28 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             }
         }
         cur_tempo = sa.tempo.unwrap_or(cur_tempo);
+        // エディタ用: 文ごとに、各メンバーがその文の隊形の何番目の席（1始まり。空きを含む）にいるか
+        let slots: Vec<Vec<usize>> = recs
+            .iter()
+            .enumerate()
+            .map(|(si, r)| {
+                if r.attr {
+                    return vec![];
+                }
+                (0..r.group.len())
+                    .map(|gi| {
+                        let i = r.group[gi];
+                        let mut j = r.order[gi];
+                        if owner[i] == Some((si, gi)) {
+                            if let Some(q) = r.spots.iter().position(|p| geom::dist(*p, pos[i]) < 1e-9) {
+                                j = q;
+                            }
+                        }
+                        r.keep[j] + 1
+                    })
+                    .collect()
+            })
+            .collect();
         sets.push(Set {
             name: sa.name.clone(),
             counts,
@@ -782,6 +830,7 @@ pub fn build(a: &ShowAst) -> Result<Show> {
             tempo: cur_tempo,
             mark: sa.mark,
             line: sa.pos.line,
+            slots,
         });
         all_handles.push(set_handles);
         all_members.push(set_members);
