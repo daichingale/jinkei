@@ -99,7 +99,7 @@ function rewriteGroup(group, plan, perf) {
 function applyRemoval(model, plan, perf) {
   const m = clone(model), droppedParts = [], droppedSections = [];
   const rw = g => { const r = rewriteGroup(g, plan, perf); if (r == null) return null; return r === groupTokens(g).join(' + ') ? g : r; };
-  for (const set of m.sets) set.stmts = set.stmts.filter(st => { const g = rw(st.group); if (g == null) return false; st.group = g; return true; });
+  for (const set of m.sets) set.stmts = set.stmts.filter((st, oi) => { const g = rw(st.group); if (g == null) return false; st.group = g; st._oi = oi; return true; });
   m.parts = (m.parts || []).filter(p => { const g = rw(p.group); if (g == null) { droppedParts.push(p.name); return false; } p.group = g; return true; });
   for (const sid of Object.keys(plan)) {
     const i = m.sections.findIndex(s => s.id === sid), pl = plan[sid];
@@ -156,6 +156,95 @@ async function stabilize(cur, want, R0, D, opts, Rc) {
   return {ok: true, Rc, pinned, exact: worst <= 1e-4, maxDiff: worst};
 }
 
+// 空き（skip）: 抜けた人の席を空けて、隊形そのものは変えない（個別の位置を増やさずに、ほかの人をその場に残す）
+// 対象は line / arc / circle / block / curve / poly の文。same・follow・at は席の概念がないので、あとで個別に固定する
+const SKIP_SHAPES = new Set(['line', 'arc', 'circle', 'block', 'curve', 'poly']);
+function applySkips(cur, base, R0, removeIds) {
+  const D = R0.data, rm = new Set(removeIds);
+  let n = 0;
+  cur.sets.forEach((set, k) => {
+    for (const st of set.stmts) {
+      const oi = st._oi;
+      if (oi == null) continue;
+      const os = base.sets[k].stmts[oi];
+      if (!os) continue;
+      // same + rotate は、グループの重心まわりに回る。人が抜けると重心が動くので、元の重心を about に書いて回転の中心を固定する
+      if (os.shape.kind === 'same' && k > 0 && os.xf.some(x => x.kind === 'rotate' && !x.about)) {
+        const mm = R0.members && R0.members[k] && R0.members[k][oi];
+        if (mm && mm.some(pi => rm.has(D.performers[pi].id))) {
+          const ps = mm.map(pi => D.sets[k - 1].pos[pi]), c = [ps.reduce((a, p) => a + p[0], 0) / ps.length, ps.reduce((a, p) => a + p[1], 0) / ps.length];
+          st.xf.forEach(x => { if (x.kind === 'rotate' && !x.about) x.about = [num6(c[0]), num6(c[1])]; });
+        }
+        continue;
+      }
+      if (!SKIP_SHAPES.has(os.shape.kind)) continue;
+      const mem = R0.members && R0.members[k] && R0.members[k][oi], slots = D.sets[k].slots && D.sets[k].slots[oi];
+      if (!mem || !slots || mem.length !== slots.length) continue;
+      const add = [];
+      mem.forEach((pi, gi) => { if (rm.has(D.performers[pi].id) && slots[gi] > 0) add.push(slots[gi]); });
+      if (!add.length) continue;
+      st.skip = [...new Set([...(os.skip || []), ...add])].sort((a, b) => a - b);
+      n += add.length;
+    }
+  });
+  return n;
+}
+const stripTmp = m => { for (const set of m.sets) for (const st of set.stmts) { delete st._oi; delete st._ord; } };
+// 空きを詰める: skip を外して隊形を作り直す（その分、人の位置は動く）。filter(k, si, st) が真の文だけ
+function closeSkips(model, filter) {
+  const m = clone(model);
+  let n = 0;
+  m.sets.forEach((set, k) => set.stmts.forEach((st, si) => { if (st.skip && st.skip.length && (!filter || filter(k, si, st))) { n += st.skip.length; st.skip = []; } }));
+  return {model: m, closed: n};
+}
+
+// 自動の割り当ては、人が減ると同点に近い人どうしが入れ替わることがある。入れ替わった文は、
+// 「元の席の順」に人を並べて assign keep にして、席と人の組み合わせをそのまま保つ（個別の位置は増やさない）
+function groupByOrder(ids, pinfo) {
+  const out = []; let run = null;
+  const flush = () => { if (!run) return; out.push(run.a === run.b ? run.sid + run.a : `${run.sid}${run.a}..${run.sid}${run.b}`); run = null; };
+  for (const id of ids) {
+    const p = pinfo.get(id);
+    if (!p) { flush(); out.push(id); continue; }
+    if (run && run.sid === p.sid && p.num === run.b + 1) run.b = p.num;
+    else { flush(); run = {sid: p.sid, a: p.num, b: p.num}; }
+  }
+  flush();
+  return out.join(' + ');
+}
+async function orderBySlots(cur, want, R0, D, opts, Rc, idMap) {
+  const K = D.sets.length, oldOf = new Map();
+  D.performers.forEach((p, i) => { if (idMap[p.id]) oldOf.set(idMap[p.id], i); });
+  let ordered = 0;
+  for (let it = 0; it < 3; it++) {
+    const idx = new Map(Rc.data.performers.map((p, i) => [p.id, i])), todo = new Set(), pinfo = perfInfo(Rc.data).perf;
+    for (const [nid, w] of want) {
+      const j = idx.get(nid);
+      for (let k = 0; k < K; k++) {
+        if (dist(Rc.data.sets[k].pos[j], w.pos[k]) <= 1e-4) continue;
+        const si = Rc.owner && Rc.owner[k] ? Rc.owner[k][j] : -1, st = si >= 0 ? cur.sets[k].stmts[si] : null;
+        if (st && st._oi != null && !st._ord && SKIP_SHAPES.has(st.shape.kind)) todo.add(k + ':' + si);
+        break;
+      }
+    }
+    if (!todo.size) break;
+    for (const key of todo) {
+      const [k, si] = key.split(':').map(Number), st = cur.sets[k].stmts[si], oi = st._oi;
+      const mem0 = R0.members[k][oi], slots0 = D.sets[k].slots[oi], mem1 = Rc.members[k][si];
+      const rows = mem1.map(pj => {
+        const old = oldOf.get(Rc.data.performers[pj].id), gi = mem0.indexOf(old);
+        return {id: Rc.data.performers[pj].id, slot: gi >= 0 ? slots0[gi] : 1e9};
+      });
+      if (rows.some(r => r.slot >= 1e9)) { st._ord = 1; continue; }
+      rows.sort((a, b) => a.slot - b.slot);
+      st.group = groupByOrder(rows.map(r => r.id), pinfo); st.assign = 'keep'; st._ord = 1; ordered++;
+    }
+    Rc = await opts.compile(opts.print(cur));
+    if (!Rc.ok) return {ok: false, error: '組み立てられませんでした: ' + (Rc.error && Rc.error.msg || '')};
+  }
+  return {ok: true, Rc, ordered};
+}
+
 // 人を抜く。opts: {mode: 'keep'（その場から抜く。ほかの人は動かない）| 'reflow'（詰める）, compile(src)→Promise<結果>, print(model)→文字列}
 async function deleteMembers(M, removeIds, opts) {
   const mode = opts.mode === 'reflow' ? 'reflow' : 'keep';
@@ -174,15 +263,21 @@ async function deleteMembers(M, removeIds, opts) {
   const res = {ok: true, mode, removed: ids.length, pinned: 0, droppedParts: rm.droppedParts, droppedSections: rm.droppedSections, exact: true, maxDiff: 0};
   // 抜けたあとの番号
   res.idMap = {}; D.performers.forEach(p => { res.idMap[p.id] = newIdOf(perf, plan, p.id); });
+  res.skipped = mode === 'keep' ? applySkips(cur, base, R0, ids) : 0;
   let Rc = await opts.compile(opts.print(cur));
   if (!Rc.ok) return {ok: false, error: '削除後のショーを組み立てられませんでした: ' + (Rc.error && Rc.error.msg || '')};
   if (mode === 'keep') {
     const want = new Map();
     D.performers.forEach((p, i) => { const nid = res.idMap[p.id]; if (nid) want.set(nid, {old: i, pos: D.sets.map(s => s.pos[i])}); });
+    const od = await orderBySlots(cur, want, R0, D, opts, Rc, res.idMap);
+    if (!od.ok) return od;
+    Rc = od.Rc; res.ordered = od.ordered;
+    stripTmp(cur);
     const st = await stabilize(cur, want, R0, D, opts, Rc);
     if (!st.ok) return st;
     Rc = st.Rc; res.pinned = st.pinned; res.exact = st.exact; res.maxDiff = st.maxDiff;
   }
+  stripTmp(cur);
   res.model = cur; res.compiled = Rc;
   return res;
 }
@@ -329,6 +424,439 @@ function pasteTargets(clip, selIds, existing) {
   return {pairs: sel.slice(0, n).map((id, i) => ({id, p: clip[i].p})), mode: 'order', skipped: Math.max(0, clip.length - sel.length), extra: Math.max(0, sel.length - clip.length)};
 }
 
+// ================= セットの分割・カット・コピー・移動 =================
+// 動きの式は Rust の geom::arc_point / poly_at と同じ（src/motion.js と同じ）
+const jkArcPt = (a, b, bend, u) => {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
+  if (Math.abs(bend) < 1e-6 || l < 1e-9) return [a[0] + dx * u, a[1] + dy * u];
+  const th = Math.min(Math.abs(bend), 179) * Math.PI / 180, s = -Math.sign(bend);
+  const rot = (v, g) => [v[0] * Math.cos(g) - v[1] * Math.sin(g), v[0] * Math.sin(g) + v[1] * Math.cos(g)];
+  const t0 = rot([dx / l, dy / l], -s * th / 2), n0 = rot(t0, s * Math.PI / 2);
+  const r = l / (2 * Math.sin(th / 2)), ph = th * u;
+  return [a[0] + r * (Math.sin(ph) * t0[0] + (1 - Math.cos(ph)) * n0[0]), a[1] + r * (Math.sin(ph) * t0[1] + (1 - Math.cos(ph)) * n0[1])];
+};
+const jkPolyPt = (r, u) => {
+  let total = 0; for (let j = 1; j < r.length; j++) total += Math.hypot(r[j][0] - r[j - 1][0], r[j][1] - r[j - 1][1]);
+  if (r.length < 2 || total < 1e-12) return r[r.length - 1];
+  let left = total * Math.min(1, Math.max(0, u));
+  for (let j = 1; j < r.length; j++) {
+    const d = Math.hypot(r[j][0] - r[j - 1][0], r[j][1] - r[j - 1][1]);
+    if (left <= d) { const t = d > 0 ? left / d : 0; return [r[j - 1][0] + (r[j][0] - r[j - 1][0]) * t, r[j - 1][1] + (r[j][1] - r[j - 1][1]) * t]; }
+    left -= d;
+  }
+  return r[r.length - 1];
+};
+// セット k の中の c カウント目での、i 番目の人の位置
+function memberAtLocal(D, k, i, c) {
+  const s = D.sets[k];
+  if (k === 0 || !s.counts) return s.pos[i].slice();
+  const a = D.sets[k - 1].pos[i], b = s.pos[i], w = s.wait[i], e = s.end[i], bend = s.bend ? s.bend[i] : 0;
+  const u = e - w <= 0 ? 1 : Math.min(1, Math.max(0, (c - w) / (e - w)));
+  const rt = s.route ? s.route[i] : null;
+  return rt ? jkPolyPt(rt, u) : jkArcPt(a, b, bend, u);
+}
+// 通算カウント t での位置（Node のテストでも使う）
+function positionAt(D, i, t) {
+  let k = 0; for (let j = 0; j < D.sets.length; j++) if (D.sets[j].start <= t + 1e-9) k = j;
+  return memberAtLocal(D, k, i, t - D.sets[k].start);
+}
+
+// ---- 点の並びが、直線・円・円弧・ブロックのどれかになっているか ----
+const FIT_TOL = 2e-4;
+function fitLine(pts) {
+  const n = pts.length; if (n < 2) return null;
+  let A = 0, B = 1, best = -1;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const d = dist(pts[i], pts[j]); if (d > best) { best = d; A = i; B = j; } }
+  if (best < 1e-6) return null;
+  const a = pts[A], d = [(pts[B][0] - a[0]) / best, (pts[B][1] - a[1]) / best];
+  const t = pts.map(p => (p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]);
+  for (let i = 0; i < n; i++) if (Math.abs((pts[i][0] - a[0]) * d[1] - (pts[i][1] - a[1]) * d[0]) > FIT_TOL) return null;
+  const ord = pts.map((_, i) => i).sort((x, y) => t[x] - t[y]), t0 = t[ord[0]], L = t[ord[n - 1]] - t0;
+  for (let j = 0; j < n; j++) if (Math.abs(t[ord[j]] - t0 - L * j / (n - 1)) > FIT_TOL) return null;
+  const p0 = pts[ord[0]], p1 = pts[ord[n - 1]];
+  return {order: ord, shape: {kind: 'line', a: [num6(p0[0]), num6(p0[1])], b: [num6(p1[0]), num6(p1[1])]}};
+}
+function fitCircleLike(pts, full) {
+  const n = pts.length; if (n < 3) return null;
+  let c;
+  if (full) c = [pts.reduce((s, p) => s + p[0], 0) / n, pts.reduce((s, p) => s + p[1], 0) / n];
+  else { // 3 点を通る円の中心
+    let A = 0, B = 1, best = -1;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const d = dist(pts[i], pts[j]); if (d > best) { best = d; A = i; B = j; } }
+    let M = -1, md = 1e18; const mid = [(pts[A][0] + pts[B][0]) / 2, (pts[A][1] + pts[B][1]) / 2];
+    for (let i = 0; i < n; i++) if (i !== A && i !== B) { const d = dist(pts[i], mid); if (M < 0 || d < md) { M = i; md = d; } }
+    if (M < 0) return null;
+    const [ax, ay] = pts[A], [bx, by] = pts[B], [cx, cy] = pts[M];
+    const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    if (Math.abs(D) < 1e-9) return null;
+    c = [((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / D, ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / D];
+  }
+  const rs = pts.map(p => dist(p, c)), r = rs.reduce((s, v) => s + v, 0) / n;
+  if (!(r > 1e-6) || r > 5000 || rs.some(v => Math.abs(v - r) > FIT_TOL)) return null;
+  const ang = pts.map(p => Math.atan2(p[1] - c[1], p[0] - c[0]) * 180 / Math.PI);
+  const ord = pts.map((_, i) => i).sort((x, y) => ang[x] - ang[y]);
+  const sorted = ord.map(i => ang[i]), tolD = (FIT_TOL / r) * 180 / Math.PI * 3 + 1e-6;
+  const gaps = sorted.map((v, i) => i + 1 < n ? sorted[i + 1] - v : sorted[0] + 360 - v);
+  if (full) {
+    for (const g of gaps) if (Math.abs(g - 360 / n) > tolD) return null;
+    return {order: ord, shape: {kind: 'circle', c: [num6(c[0]), num6(c[1])], r: num6(r), start: num6(sorted[0])}};
+  }
+  // 円弧: いちばん大きいすき間のあとから始まる
+  let gi = 0; for (let i = 1; i < n; i++) if (gaps[i] > gaps[gi]) gi = i;
+  const start = (gi + 1) % n, seq = [], un = [];
+  for (let j = 0; j < n; j++) { const q = (start + j) % n; seq.push(ord[q]); let v = sorted[q]; if (j && v < un[j - 1]) v += 360; un.push(v); }
+  const d = (un[n - 1] - un[0]) / (n - 1);
+  if (d < 1e-3 || un[n - 1] - un[0] > 359) return null;
+  for (let j = 0; j < n; j++) if (Math.abs(un[j] - un[0] - d * j) > tolD) return null;
+  return {order: seq, shape: {kind: 'arc', c: [num6(c[0]), num6(c[1])], r: num6(r), a1: num6(un[0]), a2: num6(un[n - 1])}};
+}
+function fitBlock(pts) {
+  const n = pts.length; if (n < 4) return null;
+  const idx = pts.map((_, i) => i).sort((a, b) => pts[a][1] - pts[b][1] || pts[a][0] - pts[b][0]);
+  const rows = [];
+  for (const i of idx) { const r = rows[rows.length - 1]; if (r && Math.abs(pts[i][1] - r.y) <= FIT_TOL) r.m.push(i); else rows.push({y: pts[i][1], m: [i]}); }
+  if (rows.length < 2) return null;
+  rows.forEach(r => r.m.sort((a, b) => pts[a][0] - pts[b][0]));
+  const cols = rows[0].m.length; if (cols < 2) return null;
+  for (let k = 0; k < rows.length - 1; k++) if (rows[k].m.length !== cols) return null;
+  if (rows[rows.length - 1].m.length > cols) return null;
+  const sp = (pts[rows[0].m[cols - 1]][0] - pts[rows[0].m[0]][0]) / (cols - 1);
+  if (!(sp > 1e-6)) return null;
+  const rsp = (rows[rows.length - 1].y - rows[0].y) / (rows.length - 1);
+  if (!(rsp > 1e-6)) return null;
+  const cx = (pts[rows[0].m[0]][0] + pts[rows[0].m[cols - 1]][0]) / 2, cy = (rows[0].y + rows[rows.length - 1].y) / 2;
+  rows.forEach((r, k) => {
+    if (Math.abs(r.y - (cy + (k - (rows.length - 1) / 2) * rsp)) > FIT_TOL) throw 0;
+    r.m.forEach((i, j) => { if (Math.abs(pts[i][0] - (cx + (j - (r.m.length - 1) / 2) * sp)) > FIT_TOL) throw 0; });
+  });
+  return {order: rows.flatMap(r => r.m), shape: {kind: 'block', c: [num6(cx), num6(cy)], cols: String(cols), spacing: num6(sp), rows: num6(rsp)}};
+}
+function fitShape(pts) {
+  if (pts.length < 2) return null;
+  const tryFit = f => { try { return f(); } catch (e) { return null; } };
+  return tryFit(() => fitLine(pts)) || tryFit(() => fitCircleLike(pts, true)) || tryFit(() => fitCircleLike(pts, false)) || tryFit(() => fitBlock(pts));
+}
+const ATTR_KEEP = ['step', 'action', 'carry'];
+// 決まった位置（items: [{id, p}]）に人を置く文。形が見つかれば1文、なければ人ごとの at 文
+function formationStmts(items, pinfo, o) {
+  o = o || {};
+  const mk = (group, shape) => {
+    const st = mkStmt(group, shape);
+    if (o.wait) st.wait = o.wait;
+    if (o.bend) st.bend = o.bend;
+    for (const f of (o.attrs || [])) if (o.from && o.from[f] != null && o.from[f] !== '') st[f] = o.from[f];
+    if (o.from && o.from.face != null && o.from.face !== '' && !/^(center|out|toward|中心|外)/.test(String(o.from.face).trim())) st.face = o.from.face;
+    return st;
+  };
+  const fit = o.noFit ? null : fitShape(items.map(x => x.p));
+  if (fit) { const st = mk(groupByOrder(fit.order.map(i => items[i].id), pinfo), fit.shape); st.assign = 'keep'; return {stmts: [st], shaped: true}; }
+  return {stmts: items.map(x => mk(x.id, {kind: 'at', p: [num6(x.p[0]), num6(x.p[1])]})), shaped: false};
+}
+
+const SPLITTABLE = new Set(['line', 'arc', 'circle', 'block', 'curve', 'poly', 'at']);
+const freeSetName = (names, base) => { const have = new Set(names); for (const suf of ['b', 'c', 'd', 'e', 'f', 'g', 'h']) if (!have.has(base + suf)) return base + suf; let i = 2; while (have.has(`${base}_${i}`)) i++; return `${base}_${i}`; };
+const cleanStmt = st => Object.assign(st, {note: [], tail: null, line: 0});
+// 組み立てた A・B が、元の動きと同じ終わりの位置になっているか。ずれた文は「席の順に人を並べて assign keep」にして直す
+async function fixOrders(m, kA, kB, want, R0, k, opts) {
+  const D = R0.data, K = D.sets.length;
+  let Rc = await opts.compile(opts.print(m));
+  if (!Rc.ok) return {ok: false, error: '組み立てられませんでした: ' + (Rc.error && Rc.error.msg || '')};
+  const oldIdx = new Map(D.performers.map((p, i) => [p.id, i]));
+  let worst = 0;
+  for (let it = 0; it < 4; it++) {
+    const idx = new Map(Rc.data.performers.map((p, i) => [p.id, i])), todo = new Set();
+    worst = 0;
+    for (const [kk, list] of [[kA, want.A], [kB, want.B]]) {
+      if (!list) continue;
+      for (const [id, p] of list) {
+        const j = idx.get(id), d = dist(Rc.data.sets[kk].pos[j], p); worst = Math.max(worst, d);
+        if (d <= 1e-4) continue;
+        const si = Rc.owner && Rc.owner[kk] ? Rc.owner[kk][j] : -1, st = si >= 0 ? m.sets[kk].stmts[si] : null;
+        if (st && st._os != null && !st._ord && SKIP_SHAPES.has(st.shape.kind)) todo.add(kk + ':' + si);
+      }
+    }
+    if (!todo.size) break;
+    const pinfo = perfInfo(Rc.data).perf;
+    for (const key of todo) {
+      const [kk, si] = key.split(':').map(Number), st = m.sets[kk].stmts[si];
+      const mem0 = R0.members[k][st._os], slots0 = D.sets[k].slots[st._os], mem1 = Rc.members[kk][si];
+      const rows = mem1.map(pj => { const gi = mem0.indexOf(oldIdx.get(Rc.data.performers[pj].id)); return {id: Rc.data.performers[pj].id, slot: gi >= 0 ? slots0[gi] : 1e9}; });
+      st._ord = 1;
+      if (rows.some(r => r.slot >= 1e9)) continue;
+      rows.sort((a, b) => a.slot - b.slot);
+      st.group = groupByOrder(rows.map(r => r.id), pinfo); st.assign = 'keep';
+    }
+    Rc = await opts.compile(opts.print(m));
+    if (!Rc.ok) return {ok: false, error: '組み立てられませんでした: ' + (Rc.error && Rc.error.msg || '')};
+  }
+  for (const s of m.sets) for (const st of s.stmts) { delete st._os; delete st._ord; }
+  return {ok: true, Rc, maxDiff: worst};
+}
+// セットを c カウントの所で割る／切る。mode: 'split'（2つに分ける）| 'cut'（c で終わりにして、あとの動きを捨てる）| 'cutafter'（c より後ろをすべて削除）
+// 動きは変えない（途中の位置は、元の動きの式で求める）。途中の隊形は、直線・円・円弧・ブロックならその形で書く
+async function splitSet(model, k, c, opts) {
+  const mode = opts.mode || 'split';
+  const R0 = await opts.compile(opts.print(model));
+  if (!R0 || !R0.ok) return {ok: false, error: '今のショーを読み込めないため、操作できません'};
+  const D = R0.data, base = R0.model || model, S = D.sets[k];
+  if (!S) return {ok: false, error: 'セットがありません'};
+  const C = S.counts, H = S.hold, m = clone(base), orig = m.sets[k];
+  const cut = mode !== 'split';
+  const finish = async (m2, extra) => {
+    const Rf = await opts.compile(opts.print(m2));
+    if (!Rf.ok) return {ok: false, error: '組み立てられませんでした: ' + (Rf.error && Rf.error.msg || '')};
+    return Object.assign({ok: true, model: m2, compiled: Rf, mode, set: k}, extra || {});
+  };
+  // ホールドの中で切る／割る
+  if (k === 0 || c >= C - 1e-9) {
+    const ch = k === 0 ? c : c - C;
+    if (!(ch > 1e-9) || ch >= H - 1e-9 && mode === 'split') return {ok: false, error: k === 0 ? '最初のセットは、ホールドの途中でだけ切れます' : 'この位置では、分けられません（動きの途中か、ホールドの途中で選んでください）'};
+    if (cut) {
+      orig.hold = qsFmt(Math.min(H, ch));
+      if (mode === 'cutafter') m.sets.length = k + 1;
+      return finish(m, {trimmed: true});
+    }
+    const B = {name: freeSetName(m.sets.map(s => s.name), orig.name), counts: '0', hold: qsFmt(H - ch), note: [], tail: null, foot: [], mark: !!orig.mark, tempo: null, stmts: [Object.assign(mkStmt('all', {kind: 'same'}))]};
+    orig.hold = qsFmt(ch);
+    m.sets.splice(k + 1, 0, B);
+    return finish(m, {kB: k + 1, holdSplit: true});
+  }
+  if (!(c > 1e-9)) return {ok: false, error: 'セットの先頭では分けられません'};
+  const pinfo = perfInfo(D).perf, n = D.performers.length;
+  const own = R0.owner[k], stmts = orig.stmts;
+  const A = [], B = [];
+  const wantA = [], wantB = [];
+  let approx = 0, moved = 0;
+  const ownersOf = si => { const r = []; for (let i = 0; i < n; i++) if (own[i] === si) r.push(i); return r; };
+  const num = v => num6(v);
+  stmts.forEach((st, si) => {
+    const tag = x => { x._os = si; return x; };
+    if (st.shape.kind === 'attr') {
+      const a = cleanStmt(clone(st)); for (const f of ['pose']) a[f] = null;
+      if (a.face != null || a.step || a.action || a.carry) A.push(a);
+      B.push(cleanStmt(clone(st)));
+      return;
+    }
+    const ow = ownersOf(si);
+    if (!ow.length) return;
+    const i0 = ow[0], w = S.wait[i0], e = S.end[i0];
+    const mv = ow.some(i => dist(D.sets[k - 1].pos[i], S.pos[i]) > 1e-6);
+    ow.forEach(i => { wantB.push([D.performers[i].id, S.pos[i]]); });
+    const sameStmt = (g, from) => { const x = mkStmt(g, {kind: 'same'}); for (const f of ['face', 'step', 'action', 'pose', 'carry']) x[f] = from[f]; return x; };
+    if (!mv) { // 動かない文: A は元のまま（タイミングは外す）、B は「その場」
+      const a = tag(cleanStmt(clone(st))); a.wait = null; a.within = null; a.bend = null; A.push(a);
+      B.push(sameStmt(st.group, st));
+      ow.forEach(i => wantA.push([D.performers[i].id, S.pos[i]]));
+      return;
+    }
+    moved += ow.length;
+    if (e <= c + 1e-9) { // c より前に終わる動き: A に全部。B はその場
+      A.push(tag(cleanStmt(clone(st))));
+      B.push(sameStmt(st.group, st));
+      ow.forEach(i => wantA.push([D.performers[i].id, S.pos[i]]));
+      return;
+    }
+    const clonable = SPLITTABLE.has(st.shape.kind) && st.shape.kind !== 'follow';
+    const hasRoute = st.shape.kind === 'follow' || ow.some(i => S.route && S.route[i]);
+    const bendV = S.bend ? S.bend[i0] : 0;
+    if (w >= c - 1e-9) { // まだ動き出していない: A ではその場（前の文が動かしていても止める）。B は元の文（待ちだけ詰める）
+      A.push(mkStmt(groupByOrder(ow.map(i => D.performers[i].id), pinfo), {kind: 'same'}));
+      ow.forEach(i => wantA.push([D.performers[i].id, D.sets[k - 1].pos[i]]));
+      const b = tag(cleanStmt(clone(st)));
+      b.wait = w - c > 1e-9 ? num(w - c) : null;
+      if (b.within != null && b.within !== '') b.within = num(e - w);
+      if (!clonable) { const f = formationStmts(ow.map(i => ({id: D.performers[i].id, p: S.pos[i]})), pinfo, {wait: b.wait, from: st, attrs: ATTR_KEEP.concat(['pose'])}); f.stmts.forEach(x => { x.within = b.within; B.push(x); }); approx += st.shape.kind === 'follow' ? ow.length : 0; }
+      else B.push(b);
+      return;
+    }
+    // 動きの途中
+    const u = Math.min(1, Math.max(0, (c - w) / (e - w)));
+    const mids = ow.map(i => ({id: D.performers[i].id, p: memberAtLocal(D, k, i, c)}));
+    mids.forEach(x => wantA.push([x.id, x.p]));
+    const fa = formationStmts(mids, pinfo, {wait: w > 1e-9 ? num(w) : null, bend: hasRoute || Math.abs(bendV) < 1e-6 ? null : num(bendV * u), from: st, attrs: ATTR_KEEP});
+    fa.stmts.forEach(x => A.push(x));
+    if (hasRoute) approx += ow.length;
+    // 後半
+    const bendB = Math.abs(bendV) < 1e-6 || hasRoute ? null : num(bendV * (1 - u));
+    if (clonable && !hasRoute) {
+      const b = tag(cleanStmt(clone(st)));
+      b.wait = null; b.within = e < C - 1e-9 ? num(e - c) : null; b.bend = bendB;
+      B.push(b);
+    } else {
+      const f = formationStmts(ow.map(i => ({id: D.performers[i].id, p: S.pos[i]})), pinfo, {from: st, attrs: ATTR_KEEP.concat(['pose'])});
+      f.stmts.forEach(x => { x.within = e < C - 1e-9 ? num(e - c) : null; x.bend = null; B.push(x); });
+    }
+  });
+  // 組み立て
+  const setA = Object.assign(clone(orig), {counts: qsFmt(c), stmts: A, hold: cut ? (mode === 'cutafter' ? '0' : qsFmt(H)) : '0'});
+  const m2 = clone(base);
+  m2.sets[k] = setA;
+  let kB = -1;
+  if (mode === 'split') {
+    const Bset = {name: freeSetName(m2.sets.map(s => s.name), orig.name), counts: qsFmt(C - c), hold: qsFmt(H), note: [], tail: null, foot: [], mark: !!orig.mark, tempo: null, stmts: B};
+    m2.sets.splice(k + 1, 0, Bset); kB = k + 1;
+  } else if (mode === 'cutafter') m2.sets.length = k + 1;
+  const want = {A: wantA.map(([id, p]) => [id, p]), B: mode === 'split' ? wantB : null};
+  const fx = await fixOrders(m2, k, kB, want, R0, k, opts);
+  if (!fx.ok) return fx;
+  for (const s of m2.sets) for (const st of s.stmts) { delete st._os; delete st._ord; }
+  return {ok: true, model: m2, compiled: fx.Rc, mode, set: k, kB, c, approx, exact: fx.maxDiff <= 1e-4, maxDiff: fx.maxDiff, moved};
+}
+
+// ---- セットのコピー・貼り付け・移動・削除 ----
+// コピーした内容（別のショーにも貼れる形）。copy.sections は、貼り付け先で使えるかの確認に使う
+function setsPayload(model, idxs) {
+  const list = [...new Set(idxs)].filter(i => model.sets[i]).sort((a, b) => a - b);
+  return {format: 'jinkei-sets', v: 1, show: model.name || '', sections: (model.sections || []).map(s => ({id: s.id, n: s.n})),
+    sets: list.map(i => { const s = clone(model.sets[i]); if (i === 0) s.counts = '8'; s.stmts.forEach(cleanStmt); s.note = []; s.tail = null; s.foot = []; return s; })};
+}
+function validPayload(p) { return !!(p && p.format === 'jinkei-sets' && Array.isArray(p.sets) && p.sets.length && p.sets.every(s => s && Array.isArray(s.stmts) && typeof s.name === 'string')); }
+// 貼り付け先のメンバーで読めない対象を取り除く
+function groupFor(group, secs) {
+  const toks = groupTokens(group), out = [];
+  for (const t of toks) {
+    if (t === 'all') { out.push(t); continue; }
+    const ends = t.split('..');
+    if (ends.length > 2) continue;
+    const ok = ends.every(x => { const mm = /^(.*?)(\d+)$/.exec(x); if (!mm) return secs.has(x) && ends.length === 1; const n = secs.get(mm[1]); return n != null && (!Number.isFinite(n) || +mm[2] <= n && +mm[2] >= 1); });
+    if (ok) out.push(t);
+  }
+  return out.length ? out.join(' + ') : null;
+}
+const negX = s => { const t = String(s).trim(); if (/^-?\d+(\.\d+)?$/.test(t)) return num6(-parseFloat(t)); return t.startsWith('-(') ? t.slice(2, -1) : `-(${t})`; };
+const flipAng = s => { const t = String(s).trim(); if (/^-?\d+(\.\d+)?$/.test(t)) return num6(180 - parseFloat(t)); return `180 - (${t})`; };
+const negA = s => { const t = String(s).trim(); if (/^-?\d+(\.\d+)?$/.test(t)) return num6(-parseFloat(t)); return t.startsWith('-(') ? t.slice(2, -1) : `-(${t})`; };
+const ptX = p => [negX(p[0]), p[1]];
+// 左右反転（原点が中央の会場。x を逆にする）
+function mirrorStmt(st) {
+  const s = st.shape;
+  switch (s.kind) {
+    case 'line': s.a = ptX(s.a); s.b = ptX(s.b); break;
+    case 'arc': s.c = ptX(s.c); s.a1 = flipAng(s.a1); s.a2 = flipAng(s.a2); break;
+    case 'circle': s.c = ptX(s.c); if (s.start != null && s.start !== '') s.start = flipAng(s.start); else s.start = '270'.replace('270', num6(180 - 270)); break;
+    case 'block': s.c = ptX(s.c); break;
+    case 'curve': case 'poly': case 'follow': s.pts = s.pts.map(ptX); break;
+    case 'at': s.p = ptX(s.p); break;
+    default: break;
+  }
+  for (const x of st.xf) {
+    if (x.kind === 'rotate') { x.a = negA(x.a); if (x.about) x.about = ptX(x.about); }
+    else if (x.kind === 'shift') x.d = ptX(x.d);
+  }
+  if (st.bend != null && st.bend !== '' && +st.bend !== 0) st.bend = negA(st.bend);
+  if (st.face != null && st.face !== '') {
+    const f = String(st.face).trim();
+    if (f === 'kami') st.face = 'shimo'; else if (f === 'shimo') st.face = 'kami';
+    else if (/^-?\d+(\.\d+)?$/.test(f)) st.face = num6(-parseFloat(f));
+    else { const mm = /^toward\s*\((.*),(.*)\)$/.exec(f); if (mm) st.face = `toward (${negX(mm[1])}, ${mm[2].trim()})`; }
+  }
+  return st;
+}
+function mirrorSet(set) { set.stmts.forEach(mirrorStmt); return set; }
+// 貼り付けるセットに、貼り付け先で使える名前をつける
+function pasteNames(existing, names) {
+  const have = new Set(existing), out = [];
+  for (const nm of names) { let t = nm, i = 2; while (have.has(t)) t = `${nm}_${i++}`; have.add(t); out.push(t); }
+  return out;
+}
+// 貼り付け: after のセットの後ろに入れる。o.mirror = 左右反転。使えない対象の文は外す（skipped に数）
+function pasteSets(model, after, payload, o) {
+  o = o || {};
+  if (!validPayload(payload)) return {ok: false, error: '貼り付けられるセットがありません'};
+  const m = clone(model), secs = new Map(m.sections.map(s => [s.id, nOf(s.n)]));
+  const sets = clone(payload.sets);
+  let skipped = 0, emptied = 0;
+  const names = pasteNames(m.sets.map(s => s.name), sets.map(s => s.name));
+  sets.forEach((s, i) => {
+    s.name = names[i];
+    s.stmts = s.stmts.filter(st => { if (st.shape.kind === 'attr' || st.shape.kind === 'same' || true) { const g = groupFor(st.group, secs); if (g == null) { skipped++; return false; } st.group = g; } return true; });
+    if (!s.stmts.length) emptied++;
+    s.stmts.forEach(cleanStmt);
+    s.note = []; s.tail = null; s.foot = [];
+    if (o.mirror) mirrorSet(s);
+    if (!(parseFloat(s.counts) > 0)) s.counts = '8';
+  });
+  const at = Math.max(1, Math.min(m.sets.length, after + 1));
+  m.sets.splice(at, 0, ...sets);
+  return {ok: true, model: m, at, count: sets.length, names, skipped, emptied};
+}
+function deleteSets(model, idxs) {
+  const m = clone(model), rm = new Set(idxs.filter(i => i > 0 && i < m.sets.length));
+  if (rm.size >= m.sets.length) return {ok: false, error: '全部は削除できません'};
+  m.sets = m.sets.filter((_, i) => !rm.has(i));
+  return {ok: true, model: m, removed: rm.size};
+}
+// セットを動かす。idxs を並べたまま、to（動かさないセットだけで数えた位置。その手前）に入れる。最初のセットは動かせない
+function moveSets(model, idxs, to) {
+  const m = clone(model), mv = [...new Set(idxs)].filter(i => i > 0 && i < m.sets.length).sort((a, b) => a - b);
+  if (!mv.length) return {ok: false, error: '最初のセットは動かせません'};
+  const set = new Set(mv), moving = mv.map(i => m.sets[i]), rest = m.sets.filter((_, i) => !set.has(i));
+  const at = Math.max(1, Math.min(rest.length, to));
+  rest.splice(at, 0, ...moving);
+  m.sets = rest;
+  return {ok: true, model: m, at, count: mv.length};
+}
+// セット全体を、左右反転する
+function mirrorSets(model, idxs) {
+  const m = clone(model);
+  for (const i of idxs) if (m.sets[i]) mirrorSet(m.sets[i]);
+  return m;
+}
+
+// ---- 人の位置の貼り付け（形にして貼る・複数のセットへ・反転） ----
+// clip: [{id, p}]。o: {mode: 'same'|'order'|'auto', flipX, flipY, place: [x, y]（形として置く中心）, field}
+function pastePlan(clip, selIds, existing, o) {
+  o = o || {};
+  const t = o.mode === 'same' ? (() => { const have = new Set(existing); const same = clip.filter(c => have.has(c.id)); return {pairs: same.map(c => ({id: c.id, p: c.p})), mode: 'same', skipped: clip.length - same.length}; })()
+    : o.mode === 'order' ? (() => { const have = new Set(existing), sel = selIds.filter(id => have.has(id)), n = Math.min(sel.length, clip.length); return {pairs: sel.slice(0, n).map((id, i) => ({id, p: clip[i].p})), mode: 'order', skipped: Math.max(0, clip.length - sel.length), extra: Math.max(0, sel.length - clip.length)}; })()
+    : pasteTargets(clip, selIds, existing);
+  const b = fieldBounds(o.field), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+  let pairs = t.pairs.map(x => ({id: x.id, p: [o.flipX ? 2 * cx - x.p[0] : x.p[0], o.flipY ? 2 * cy - x.p[1] : x.p[1]]}));
+  if (o.place && pairs.length) {
+    const mx = pairs.reduce((s, x) => s + x.p[0], 0) / pairs.length, my = pairs.reduce((s, x) => s + x.p[1], 0) / pairs.length;
+    pairs = pairs.map(x => ({id: x.id, p: [x.p[0] - mx + o.place[0], x.p[1] - my + o.place[1]]}));
+  }
+  pairs = pairs.map(x => ({id: x.id, p: [Math.round(x.p[0] * 1e4) / 1e4, Math.round(x.p[1] * 1e4) / 1e4]}));
+  return Object.assign({}, t, {pairs});
+}
+// 貼り付けをモデルに反映する。すでに同じ位置の人は触らない。形になっていれば1文（assign keep）、そうでなければ個別の位置
+// R = 今のコンパイル結果（位置と、誰がどの文で決まっているかを見る）
+function applyPaste(model, ks, pairs, R) {
+  const m = clone(model), D = R.data, idx = new Map(D.performers.map((p, i) => [p.id, i])), pinfo = perfInfo(D).perf;
+  let stmtsAdded = 0, pins = 0, touched = 0, shapes = 0;
+  for (const k of ks) {
+    const todo = pairs.filter(x => idx.has(x.id) && dist(D.sets[k].pos[idx.get(x.id)], x.p) > 1e-4);
+    if (!todo.length) continue;
+    touched += todo.length;
+    const set = m.sets[k], ids = new Set(todo.map(x => x.id));
+    // 同じ人の古い個別の位置は外す（新しい指定が優先されるので、残すと散らかるだけ）
+    set.stmts = set.stmts.filter(st => !(isIndividual(st) && ids.has(st.group.trim())));
+    const owners = new Set(todo.map(x => R.owner && R.owner[k] ? R.owner[k][idx.get(x.id)] : -1));
+    const src = owners.size === 1 && [...owners][0] >= 0 ? (R.model || model).sets[k].stmts[[...owners][0]] : null;
+    const f = todo.length >= 3 ? formationStmts(todo, pinfo, {from: src && src.shape.kind !== 'attr' ? src : null, attrs: ATTR_KEEP.concat(['pose'])}) : {stmts: [], shaped: false};
+    if (f.shaped) {
+      const st = f.stmts[0];
+      if (src && src.shape.kind !== 'attr') for (const fld of ['wait', 'within', 'bend']) if (src[fld] != null && src[fld] !== '') st[fld] = src[fld];
+      pushPositional(set, st); stmtsAdded++; shapes++;
+    } else for (const x of todo) { setPin(m, k, x.id, x.p); pins++; }
+  }
+  return {model: m, touched, shapes, pins, stmtsAdded};
+}
+
+// 複数のセットへ順番に貼る。前のセットに貼った結果（あとのセットが「その場」なら一緒に動く）を見て、要らない指定は足さない
+async function applyPasteSeq(model, ks, pairs, opts) {
+  let m = model, R = await opts.compile(opts.print(m)), touched = 0, shapes = 0, pins = 0;
+  if (!R || !R.ok) return {ok: false, error: '今のショーを読み込めないため、貼り付けられません'};
+  for (const k of [...ks].sort((a, b) => a - b)) {
+    const r = applyPaste(m, [k], pairs, R);
+    if (!r.touched) continue;
+    touched += r.touched; shapes += r.shapes; pins += r.pins; m = r.model;
+    R = await opts.compile(opts.print(m));
+    if (!R.ok) return {ok: false, error: '貼り付け後のショーを組み立てられませんでした: ' + (R.error && R.error.msg || '')};
+  }
+  return {ok: true, model: m, compiled: R, touched, shapes, pins};
+}
+
 // ================= キー =================
 const ORDER = ['Mod', 'Alt', 'Shift'];
 // KeyboardEvent（または同じ形のもの）→ "Mod+Shift+N" 形式。記号キーは Shift を含めない（? や + など）
@@ -439,8 +967,183 @@ function fuzzyScore(query, a) {
   return total / words.length;
 }
 
-const API = {clone, mkStmt, isIndividual, groupTokens, pushPositional, faceStr, setPin, perfInfo, removalPlan, newIdOf, rewriteGroup, applyRemoval, sectionHasData,
-  deleteMembers, fieldBounds, rewriteGroupForAdd, findSpot, addMembers, pastePositions, pasteTargets,
+
+// ================= セットの長さ（カウント）をすばやく作る =================
+// 「8 8 16 4 12」「8x4 16 6」「(8 4)x2」のような書き方を、カウントの並びに直す。
+const QS_STEP = 0.5, QS_MAX_ONE = 999, QS_MAX_TOTAL = 6000, QS_MAX_REP = 256;
+const qsRound = (v, step) => { step = step || QS_STEP; return Math.round(v / step) * step; };
+const qsFmt = v => { const x = Math.round(v * 1000) / 1000; return Number.isInteger(x) ? String(x) : String(x); };
+function parseCountSeq(text) {
+  const errors = [], out = [];
+  let s = String(text == null ? '' : text).normalize('NFKC').replace(/[×✕✖＊]/g, 'x').replace(/\*/g, 'x');
+  s = s.replace(/\s*x\s*/gi, 'x');
+  let i = 0;
+  const err = (msg, at) => { errors.push({msg, at: at == null ? i : at}); };
+  const isSep = c => /[\s,、，;；|:：]/.test(c);
+  function seq(depth, close) {
+    const items = [];
+    while (i < s.length) {
+      const c = s[i];
+      if (isSep(c)) { i++; continue; }
+      if (c === ')') { if (close) return items; err('「)」に対応する「(」がありません'); i++; continue; }
+      let atom = null;
+      const start = i;
+      if (c === '(') {
+        if (depth > 4) { err('かっこが深すぎます'); return items; }
+        i++;
+        const inner = seq(depth + 1, true);
+        if (s[i] === ')') i++; else err('「(」を閉じる「)」がありません', start);
+        atom = inner;
+      } else {
+        const m = /^\d+(?:\.\d+)?/.exec(s.slice(i));
+        if (!m) { const bad = /^[^\s,、，;；|:：()\d]+/.exec(s.slice(i)); const w = bad ? bad[0] : s[i]; err(`「${w}」は使えません（数字・スペース・x・かっこで書きます）`); i += w.length; continue; }
+        i += m[0].length;
+        const v = parseFloat(m[0]);
+        if (!(v >= QS_STEP)) { err(`${m[0]} は小さすぎます（0.5カウント以上）`, start); continue; }
+        if (Math.abs(v / QS_STEP - Math.round(v / QS_STEP)) > 1e-9) { err(`${m[0]} は 0.5 カウント単位にしてください`, start); continue; }
+        if (v > QS_MAX_ONE) { err(`${m[0]} は大きすぎます（${QS_MAX_ONE}まで）`, start); continue; }
+        atom = [v];
+      }
+      let rep = 1;
+      if (s[i] === 'x' || s[i] === 'X') {
+        i++;
+        const r = /^\d+/.exec(s.slice(i));
+        if (!r) { err('「x」のあとに繰り返す回数を書いてください（例: 8x4）'); continue; }
+        i += r[0].length; rep = parseInt(r[0], 10);
+        if (rep < 1 || rep > QS_MAX_REP) { err(`繰り返しは 1〜${QS_MAX_REP} 回にしてください`, start); continue; }
+      }
+      for (let k = 0; k < rep; k++) for (const v of atom) { items.push(v); if (items.length > QS_MAX_TOTAL) { err('セットが多すぎます'); return items; } }
+    }
+    return items;
+  }
+  const counts = seq(0, false);
+  for (const v of counts) out.push(v);
+  const total = out.reduce((a, b) => a + b, 0);
+  if (out.length > 400) errors.push({msg: '一度に作れるセットは400個までです', at: 0});
+  else if (total > QS_MAX_TOTAL) errors.push({msg: `合計が長すぎます（${QS_MAX_TOTAL}カウントまで）`, at: 0});
+  return {ok: !errors.length && out.length > 0, counts: out, errors, total};
+}
+// 拍子 "3/4" → 1小節のカウント数（カウントは4分音符）。6/8 → 3、7/8 → 3.5
+function parseMeter(m) {
+  const r = /^\s*(\d{1,2})\s*\/\s*(1|2|4|8|16)\s*$/.exec(String(m == null ? '4/4' : m).normalize('NFKC'));
+  if (!r) return null;
+  const num = +r[1], den = +r[2];
+  if (num < 1) return null;
+  return {num, den, perBar: num * 4 / den};
+}
+// 小節数のならび（"4 4 2x2"）→ カウントの並び
+function parseBarSeq(text, meter) {
+  const mt = parseMeter(meter);
+  if (!mt) return {ok: false, counts: [], errors: [{msg: '拍子は 4/4・3/4・6/8 のように書いてください', at: 0}], total: 0, bars: []};
+  const r = parseCountSeq(text);
+  const errors = r.errors.slice(), bars = r.counts;
+  for (const b of bars) if (Math.abs(b - Math.round(b)) > 1e-9) { errors.push({msg: `小節数 ${b} は整数にしてください`, at: 0}); break; }
+  const counts = bars.map(b => b * mt.perBar);
+  const bad = counts.find(c => Math.abs(c / QS_STEP - Math.round(c / QS_STEP)) > 1e-9);
+  if (bad != null) errors.push({msg: `${meter} の小節数では 0.5 カウント単位になりません`, at: 0});
+  const total = counts.reduce((a, b) => a + b, 0);
+  return {ok: !errors.length && counts.length > 0, counts, errors, total, bars, perBar: mt.perBar};
+}
+// 「N小節ずつ、全部で M 小節」→ 小節数のならび（割り切れない端は最後の短いセット）
+function everyBars(n, totalBars) {
+  n = Math.max(1, Math.round(n)); totalBars = Math.max(0, Math.round(totalBars));
+  const out = [];
+  for (let b = 0; b < totalBars; b += n) out.push(Math.min(n, totalBars - b));
+  return out;
+}
+// セット名を作る。existing: すでにある名前。style: 'num'（1,2,3…）・'alpha'（A,B,C…）・'list'（list を使う）
+function alphaName(i) { let s = ''; i = Math.max(0, i); do { s = String.fromCharCode(65 + i % 26) + s; i = Math.floor(i / 26) - 1; } while (i >= 0); return s; }
+function alphaIndex(name) { if (!/^[A-Z]+$/.test(name)) return -1; let n = 0; for (const ch of name) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; }
+function makeNames(existing, n, style, list) {
+  const used = new Set(existing.map(String)), out = [];
+  const take = nm => { let x = String(nm), k = 2; while (used.has(x)) x = nm + '_' + (k++); used.add(x); out.push(x); };
+  if (style === 'list' && list) { for (let i = 0; i < n; i++) take(list[i] != null ? list[i] : String(i + 1)); return out; }
+  if (style === 'alpha') {
+    let from = Math.max(-1, ...existing.map(alphaIndex)) + 1;
+    for (let i = 0; i < n; i++) { while (used.has(alphaName(from))) from++; take(alphaName(from++)); }
+    return out;
+  }
+  const nums = existing.map(x => parseInt(x, 10)).filter(x => !isNaN(x));
+  let from = nums.length ? Math.max(...nums) + 1 : existing.length + 1;
+  for (let i = 0; i < n; i++) { while (used.has(String(from))) from++; take(String(from++)); }
+  return out;
+}
+// 新しいセット（モデルの形）を作る。afterIdx のセットの後ろに入れる想定。
+//   copy: 'prev' = 直前のセットの隊形をそのまま写す（動かない）／ 'hold' = 空のセット（全員その場）
+function planSets(model, afterIdx, counts, o) {
+  o = o || {};
+  const base = model.sets[Math.max(0, Math.min(model.sets.length - 1, afterIdx))];
+  const names = makeNames(model.sets.map(s => s.name), counts.length, o.names || 'num', o.nameList);
+  const sets = counts.map((c, i) => ({
+    name: names[i], counts: qsFmt(c), hold: o.hold ? String(o.hold) : '0', note: [], tail: null, foot: [], mark: false,
+    stmts: o.copy === 'hold' ? [] : clone(base.stmts).map(st => Object.assign(st, {note: [], tail: null, line: 0}))
+  }));
+  return {sets, names};
+}
+// モデルにセットを入れる（元は変えず、新しいモデルを返す）。at = 入れる位置（その手前に入る）
+function insertSets(model, at, sets) {
+  const m = clone(model);
+  m.sets.splice(Math.max(0, Math.min(m.sets.length, at)), 0, ...sets);
+  return m;
+}
+// セットの長さ（counts・hold）を変える。値は 0.5 単位に丸める。最初のセットの counts は無視されるので触らない
+function resizeSet(model, k, counts, hold) {
+  const m = clone(model), s = m.sets[k];
+  if (!s) return m;
+  if (counts != null && k > 0) s.counts = qsFmt(Math.max(QS_STEP, qsRound(counts)));
+  if (hold != null) s.hold = qsFmt(Math.max(0, qsRound(hold)));
+  return m;
+}
+// 各セットの [開始, 終わり（counts のあと）, ホールドの終わり]。counts / hold が式のときは数えられないので NaN
+function setTimes(model) {
+  let t = 0;
+  return model.sets.map((s, k) => {
+    const c = k ? parseFloat(s.counts) || 0 : 0, h = parseFloat(s.hold) || 0, o = {t0: t, arrive: t + c, t1: t + c + h};
+    t = o.t1; return o;
+  });
+}
+// 曲の小節線（パートの小節の頭）の時刻。part: パートの番号。省略 or -1 ですべて。複数パートで同じ時刻は1つに
+function barTimes(D, part) {
+  const ps = (D && D.parts || []).filter((p, i) => part == null || part < 0 || i === part);
+  const set = new Set();
+  for (const p of ps) { for (const b of p.bars) set.add(Math.round(b * 1000) / 1000); set.add(Math.round(p.end * 1000) / 1000); }
+  return [...set].sort((a, b) => a - b);
+}
+// 小節線の時刻から、N小節ごとの区切りの時刻と、その小節番号（1始まり）を作る。from: ここ以降だけ（カウント）
+function barBoundaries(bars, every, from) {
+  every = Math.max(1, Math.round(every || 1));
+  const heads = bars.slice(0, -1).map((t, i) => ({t, bar: i + 1})); // 最後の1つは曲の終わり
+  const out = [];
+  for (let i = 0; i < heads.length; i += every) if (heads[i].t > (from || 0) + 1e-9) out.push(heads[i]);
+  return {points: out, end: bars.length ? bars[bars.length - 1] : 0};
+}
+// 区切りの時刻 [t1, t2, …] と終わり（end）から、origin（最初のセットの始まり）からのカウントの並びを作る
+function boundsToCounts(origin, points, end, o) {
+  o = o || {};
+  const step = o.step || QS_STEP, min = o.min == null ? 1 : o.min;
+  const ts = points.slice().sort((a, b) => a - b).map(t => qsRound(t, step)).concat(end == null ? [] : [qsRound(end, step)]);
+  const counts = [], from = [];
+  let prev = qsRound(origin, step);
+  for (const t of ts) {
+    const d = t - prev;
+    if (d + 1e-9 >= min) { counts.push(d); from.push(prev); prev = t; }
+    else if (counts.length && d >= 0) { counts[counts.length - 1] += d; prev = t; }  // 短すぎる区切りは前のセットに足す
+  }
+  return {counts, from, total: counts.reduce((a, b) => a + b, 0)};
+}
+// タップで区切る: 押した時刻（開始からのカウント）と終わりの時刻から、セットのカウントの並びを作る
+function tapsToCounts(taps, end, o) { return boundsToCounts(0, taps, end, o); }
+// 作るセットの一覧（プレビュー用の文字列）
+function seqSummary(counts) {
+  if (!counts.length) return '';
+  const runs = [];
+  for (const c of counts) { const l = runs[runs.length - 1]; if (l && l[0] === c) l[1]++; else runs.push([c, 1]); }
+  return runs.map(([c, n]) => n > 1 ? `${qsFmt(c)}×${n}` : qsFmt(c)).join('  ');
+}
+
+const API = {parseCountSeq, parseMeter, parseBarSeq, everyBars, makeNames, alphaName, planSets, insertSets, resizeSet, setTimes, barTimes, barBoundaries, boundsToCounts, tapsToCounts, seqSummary, qsRound, qsFmt, clone, mkStmt, isIndividual, groupTokens, pushPositional, faceStr, setPin, perfInfo, removalPlan, newIdOf, rewriteGroup, applyRemoval, sectionHasData,
+  splitSet, memberAtLocal, positionAt, fitShape, formationStmts, setsPayload, validPayload, pasteSets, deleteSets, moveSets, mirrorSets, mirrorSet, mirrorStmt, pastePlan, applyPaste, applyPasteSeq, groupFor,
+  deleteMembers, applySkips, closeSkips, fieldBounds, rewriteGroupForAdd, findSpot, addMembers, pastePositions, pasteTargets,
   evCombo, isModifierKey, parseCombo, normCombo, comboCaps, comboLabel, conflictsOf, mergeKeymap, diffKeymap, normQ, fuzzyScore, toRomaji};
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 else root.JKSC = API;

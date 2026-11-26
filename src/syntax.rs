@@ -261,6 +261,8 @@ pub struct Stmt {
     pub shape: Shape,
     pub xf: Vec<Xf>,
     pub assign: Option<Assign>,
+    /// 空き: 隊形を（人数 + 空き数）の席で作り、ここに挙げた席（1始まり）を空ける
+    pub skip: Vec<usize>,
     pub wait: Option<Expr>,
     pub within: Option<Expr>,
     pub bend: Option<Expr>,
@@ -715,6 +717,7 @@ impl Parser {
         let shape = if ["pose", "carry", "構え", "face", "step", "action"].iter().any(|k| self.is_kw(k)) { Shape::Attr } else { self.shape()? };
         let mut xf = vec![];
         let mut assign = None;
+        let mut skip: Vec<usize> = vec![];
         let mut wait = None;
         let mut within = None;
         let mut bend = None;
@@ -750,6 +753,24 @@ impl Parser {
                 action = Some(self.named(&[
                     ("spin", "spin"), ("スピン", "spin"), ("toss", "toss"), ("トス", "toss"), ("swing", "swing"), ("スイング", "swing"), ("rest", "rest"), ("レスト", "rest"),
                 ], "action の後には spin / toss / swing / rest")?);
+                continue;
+            }
+            if self.eat_kw("skip") || self.eat_kw("空き") {
+                loop {
+                    match self.cur().tok.clone() {
+                        Tok::Num(v) if v >= 1.0 && v.fract() == 0.0 && v < 100000.0 => {
+                            self.bump();
+                            if !skip.contains(&(v as usize)) {
+                                skip.push(v as usize);
+                            }
+                        }
+                        _ => return Err(self.err("skip（空き）の後には席の番号（1以上の整数。複数なら 2, 5 のように）")),
+                    }
+                    if !self.eat_sym(",") && !matches!(self.cur().tok, Tok::Num(_)) {
+                        break;
+                    }
+                }
+                skip.sort();
                 continue;
             }
             if self.eat_kw("bend") {
@@ -789,10 +810,10 @@ impl Parser {
             }
         }
         let tail = self.tail();
-        if matches!(shape, Shape::Attr) && (!xf.is_empty() || assign.is_some() || wait.is_some() || within.is_some() || bend.is_some()) {
+        if matches!(shape, Shape::Attr) && (!xf.is_empty() || assign.is_some() || !skip.is_empty() || wait.is_some() || within.is_some() || bend.is_some()) {
             return Err(Error::at(pos.line, pos.col, "位置を変えない指定（隊形なし）では pose / carry / face / step / action だけが使えます"));
         }
-        Ok(Stmt { group, shape, xf, assign, wait, within, bend, face, step, action, pose, carry, pos, note, tail })
+        Ok(Stmt { group, shape, xf, assign, skip, wait, within, bend, face, step, action, pose, carry, pos, note, tail })
     }
 
     fn set(&mut self, note: Vec<String>) -> Result<SetAst> {

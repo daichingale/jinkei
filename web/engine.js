@@ -753,7 +753,7 @@ class Parser {
     // 「:」の直後が pose / carry / face / step / action なら、位置を変えない指定
     const shape = ['pose', 'carry', '構え', 'face', 'step', 'action'].some((k) => this.isKw(k)) ? { k: 'attr' } : this.shape();
     const xf = [];
-    let assign = null, wait = null, within = null, bend = null, face = null, step = null, action = null, pose = null, carry = null;
+    let assign = null, skip = [], wait = null, within = null, bend = null, face = null, step = null, action = null, pose = null, carry = null;
     for (;;) {
       if (this.eatKw('carry') || this.eatKw('構え')) {
         carry = this.named(CARRY_NAMES, 'carry（構え）の後には play / right / left / front / diag（演奏・右手・左手・正面・斜め）');
@@ -769,6 +769,18 @@ class Parser {
       }
       if (this.eatKw('action')) {
         action = this.named(ACTION_NAMES, 'action の後には spin / toss / swing / rest');
+        continue;
+      }
+      if (this.eatKw('skip') || this.eatKw('空き')) {
+        for (;;) {
+          const t = this.cur();
+          if (t.t === 'num' && t.v >= 1 && Number.isInteger(t.v) && t.v < 100000) {
+            this.bump();
+            if (!skip.includes(t.v)) skip.push(t.v);
+          } else throw this.err('skip（空き）の後には席の番号（1以上の整数。複数なら 2, 5 のように）');
+          if (!this.eatSym(',') && !(this.cur().t === 'num')) break;
+        }
+        skip.sort((x, y) => x - y);
         continue;
       }
       if (this.eatKw('bend')) { bend = this.expr(); continue; }
@@ -790,10 +802,10 @@ class Parser {
       } else break;
     }
     const tail = this.tail();
-    if (shape.k === 'attr' && (xf.length || assign !== null || wait !== null || within !== null || bend !== null)) {
+    if (shape.k === 'attr' && (xf.length || assign !== null || skip.length || wait !== null || within !== null || bend !== null)) {
       throw at_(pos.line, pos.col, '位置を変えない指定（隊形なし）では pose / carry / face / step / action だけが使えます');
     }
-    return { group, shape, xf, assign, wait, within, bend, face, step, action, pose, carry, pos, note, tail };
+    return { group, shape, xf, assign, skip, wait, within, bend, face, step, action, pose, carry, pos, note, tail };
   }
 
   set(note) {
@@ -1714,14 +1726,23 @@ function build(a) {
       setHandles.push(handles);
       setMembers.push(group.slice());
 
+      // 空き: 席数 = 人数 + 空きの数。席の並びは変えず、空けた席だけ取り除く
+      const skips = st.skip;
+      if (skips.length) {
+        if (['at', 'same', 'follow', 'attr'].includes(sh.k)) throw at_(st.pos.line, st.pos.col, 'skip（空き）は line / arc / circle / block / curve / poly の隊形で使えます');
+        const total = g + skips.length;
+        const bad = skips.find((x) => x > total);
+        if (bad !== undefined) throw at_(st.pos.line, st.pos.col, `skip（空き）の席 ${bad} が席数（${g}人 + 空き${skips.length} = ${total}）を超えています`);
+      }
+      const gt = g + skips.length;
       let spots;
       switch (sh.k) {
-        case 'line': { const p1 = pt(sh.a); const p2 = pt(sh.b); spots = gLine(p1, p2, g); break; }
-        case 'arc': { const c = pt(sh.c); const r = ev(sh.r); const a1 = ev(sh.a1); const a2 = ev(sh.a2); spots = gArc(c, r, a1, a2, g); break; }
+        case 'line': { const p1 = pt(sh.a); const p2 = pt(sh.b); spots = gLine(p1, p2, gt); break; }
+        case 'arc': { const c = pt(sh.c); const r = ev(sh.r); const a1 = ev(sh.a1); const a2 = ev(sh.a2); spots = gArc(c, r, a1, a2, gt); break; }
         case 'circle': {
           const s0 = sh.start !== null ? ev(sh.start) : 270.0;
           const c = pt(sh.c); const r = ev(sh.r);
-          spots = gCircle(c, r, s0, g);
+          spots = gCircle(c, r, s0, gt);
           break;
         }
         case 'block': {
@@ -1730,11 +1751,11 @@ function build(a) {
           const def = fb ? 2.0 : 1.5;
           const sp = sh.spacing !== null ? ev(sh.spacing) : def;
           const rsp = sh.rowsp !== null ? ev(sh.rowsp) : sp;
-          spots = gBlock(pt(sh.c), rround(cols), sp, rsp, g);
+          spots = gBlock(pt(sh.c), rround(cols), sp, rsp, gt);
           break;
         }
-        case 'curve': spots = gCurve(sh.pts.map(pt), g); break;
-        case 'poly': spots = gResample(sh.pts.map(pt), g); break;
+        case 'curve': spots = gCurve(sh.pts.map(pt), gt); break;
+        case 'poly': spots = gResample(sh.pts.map(pt), gt); break;
         case 'at':
           if (g !== 1) throw at_(st.pos.line, st.pos.col, `at は1人用です（${g}人指定されています）`);
           spots = [pt(sh.p)];
@@ -1762,6 +1783,10 @@ function build(a) {
       if (spots.some((p) => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
         throw at_(st.pos.line, st.pos.col, '座標が計算できません（0で割っていませんか）');
       }
+      const cenFull = skips.length ? centroid(spots) : null;
+      const keep = [];
+      for (let i = 0; i < spots.length; i++) if (!skips.includes(i + 1)) keep.push(i);
+      if (skips.length) spots = keep.map((i) => spots[i]);
       let routes = null;
       if (sh.k === 'follow') {
         if (prev === null) throw at_(st.pos.line, st.pos.col, '最初のセットでは follow は使えません');
@@ -1819,7 +1844,7 @@ function build(a) {
       }
       const assigned = [];
       if (!isAttr) for (let gi = 0; gi < g; gi++) assigned.push(spots[order[gi]]);
-      const cen = isAttr ? [0, 0] : centroid(spots);
+      const cen = isAttr ? [0, 0] : (skips.length ? cenFull : centroid(spots));
       let face;
       if (st.face === null) {
         face = st.step === 'slide' ? { t: 'angle', v: -90.0 } : { t: 'auto' };
@@ -1838,7 +1863,7 @@ function build(a) {
       } else {
         face = { t: 'angle', v: -90.0 + ev(st.face.e) };
       }
-      recs.push({ group, spots, auto, assigned, w: tw, e: te, bend: tb, face, routes, step: st.step, action: st.action, pose: st.pose, carry: st.carry, attr: isAttr, faceGiven: st.face !== null });
+      recs.push({ group, spots, auto, assigned, order, keep: skips.length ? keep : spots.map((_, i) => i), w: tw, e: te, bend: tb, face, routes, step: st.step, action: st.action, pose: st.pose, carry: st.carry, attr: isAttr, faceGiven: st.face !== null });
     }
     const owner = new Array(n).fill(null);
     recs.forEach((r, si) => { if (!r.attr) r.group.forEach((i, gi) => { owner[i] = [si, gi]; }); });
@@ -1898,6 +1923,7 @@ function build(a) {
           for (let gi = 0; gi < r.group.length; gi++) assigned.push(r.spots[ord[gi]]);
           for (let gi = 0; gi < assigned.length; gi++) if (dist(assigned[gi], r.assigned[gi]) > 1e-9) { changed = true; break; }
           recs[si].assigned = assigned;
+          recs[si].order = ord;
           const comp = compose();
           for (let i = 0; i < n; i++) if (comp[i] !== null) pos[i] = comp[i];
         }
@@ -1963,10 +1989,22 @@ function build(a) {
     for (let i = 0; i < n; i++) {
       if (!touched[i] && lastSet) { faceArr[i] = lastSet.face[i]; pose[i] = lastSet.pose[i]; carry[i] = lastSet.carry[i]; }
     }
+    // エディタ用: 文ごとに、各メンバーがその文の隊形の何番目の席（1始まり。空きを含む）にいるか
+    const slots = recs.map((r, si) => {
+      if (r.attr) return [];
+      return r.group.map((i, gi) => {
+        let j = r.order[gi];
+        if (owner[i] !== null && owner[i][0] === si && owner[i][1] === gi) {
+          const q = r.spots.findIndex((p) => dist(p, pos[i]) < 1e-9);
+          if (q >= 0) j = q;
+        }
+        return r.keep[j] + 1;
+      });
+    });
     curTempo = sa.tempo !== null ? sa.tempo : curTempo;
     sets.push({
       name: sa.name, counts, hold: sa.hold, start, pos, wait, end, bend, face: faceArr, route, step, action, pose, carry,
-      tempo: curTempo, mark: sa.mark, line: sa.pos.line,
+      tempo: curTempo, mark: sa.mark, line: sa.pos.line, slots,
     });
     allHandles.push(setHandles);
     allMembers.push(setMembers);
@@ -2138,7 +2176,7 @@ function dataJson(s, r) {
       face: set.face.map((x) => (x === null ? null : N(x))),
       route: set.route.map((rt) => (rt === null ? null : rt.map((p) => [N(p[0]), N(p[1])]))),
       step: set.step.slice(), action: set.action.slice(), pose: set.pose.slice(), carry: set.carry.slice(),
-      tempo: N(set.tempo), mark: set.mark,
+      tempo: N(set.tempo), mark: set.mark, slots: set.slots.map((r) => r.slice()),
       pos: set.pos.map((p) => [N(p[0]), N(p[1])]),
     };
   });
@@ -2182,7 +2220,7 @@ function stmtModel(st) {
       if (x.k === 'shift') return { kind: 'shift', d: ptS(x.d) };
       return { kind: 'scale', k: exprStr(x.s) };
     }),
-    assign: st.assign,
+    assign: st.assign, skip: st.skip.slice(),
     wait: oe(st.wait), within: oe(st.within), bend: oe(st.bend),
     face: st.face ? faceStr(st.face) : null,
     step: st.step, action: st.action, pose: st.pose, carry: st.carry,

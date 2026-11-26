@@ -1,0 +1,9 @@
+show "x" {
+  section a "A" 3
+  set 1 {
+    a : line (-4, 0) -> (4, 0)
+  }
+  set 2 {
+    a : face front skip 1
+  }
+}

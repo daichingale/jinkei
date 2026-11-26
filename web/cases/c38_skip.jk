@@ -1,0 +1,29 @@
+# skip（空き）: 席数 = 人数 + 空き。空けた席以外の人は元の位置のまま
+show "skip" {
+  field gym
+  section a "A" 5
+  section b "B" 4
+  section c "C" 3
+  section d "D" 3
+  section e "E" 3
+  set 1 hold 4 {
+    a : line (-8, 0) -> (8, 0) skip 3
+    b : block (0, -6) cols 3 spacing 2 rows 2 skip 2, 5
+    c : curve (-9, 5) -> (0, 9) -> (9, 5) 空き 2
+    d : poly (-9, -9) -> (-3, -9) -> (-3, -4) skip 1
+    e : circle (6, 6) radius 3 skip 4
+  }
+  set 2 counts 8 {
+    a : arc (0, 0) radius 6 from 0 to 180 skip 2
+    b : block (0, -6) cols 2 spacing 2 skip 1, 3 assign keep
+    c : line (-9, 5) -> (9, 5) skip 1 rotate 10
+    d : circle (-6, -6) radius 3 start 90 skip 2 face center
+    e : same
+  }
+  set 3 counts 8 {
+    a : line (-8, 0) -> (8, 0) skip 1 assign auto shift (0, 2) wait 1 in 4
+    b + c : same
+    d : line (-9, -9) -> (-3, -9)
+    e : arc (6, 6) radius 3 from 0 to 270 skip 1,2
+  }
+}

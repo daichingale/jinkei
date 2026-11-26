@@ -310,3 +310,28 @@ fn auto_fix_removes_collisions() {
     assert_eq!(r.after.0, 0, "{:?}", r.notes);
     assert!(!r.notes.is_empty());
 }
+
+#[test]
+fn skip_leaves_seats_empty_and_others_in_place() {
+    let full = compile("show t { field floor 24 x 18 section a 5 set 1 { a: line (-8,0) -> (8,0) } set 2 counts 8 { a: arc (0,0) radius 6 from 0 to 180 } }").unwrap();
+    // a3 が抜けた: 席を5つ作って3番目を空ける（日本語の「空き」でも同じ）
+    for kw in ["skip 3", "空き 3"] {
+        let src = format!("show t {{ field floor 24 x 18 section a 4 set 1 {{ a: line (-8,0) -> (8,0) {} }} set 2 counts 8 {{ a: arc (0,0) radius 6 from 0 to 180 skip 3 }} }}", kw);
+        let s = compile(&src).unwrap();
+        for (k, set) in s.sets.iter().enumerate() {
+            let want: Vec<P> = [0usize, 1, 3, 4].iter().map(|&i| full.sets[k].pos[i]).collect();
+            // 自動割り当てなので、位置の集合として同じ
+            for w in &want {
+                assert!(set.pos.iter().any(|p| geom::dist(*p, *w) < 1e-9), "{} セット{}: {:?} がない", kw, k, w);
+            }
+            assert_eq!(set.pos.len(), 4);
+        }
+        // 席番号（1始まり、空きを含む）
+        assert!(s.sets[0].slots[0].iter().all(|&x| x != 3));
+    }
+    // 席数を超える・0・1人用・same では使えない
+    assert!(compile("show t { field floor 24 x 18 section a 3 set 1 { a: line (-4,0) -> (4,0) skip 5 } }").unwrap_err().msg.contains("席"));
+    assert!(compile("show t { field floor 24 x 18 section a 3 set 1 { a: line (-4,0) -> (4,0) skip 0 } }").is_err());
+    assert!(compile("show t { field floor 24 x 18 section a 1 set 1 { a: at (0,0) skip 2 } }").is_err());
+    assert!(compile("show t { field floor 24 x 18 section a 3 set 1 { a: line (-4,0) -> (4,0) } set 2 { a: same skip 1 } }").is_err());
+}

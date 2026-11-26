@@ -107,6 +107,7 @@ function uxWelcome() {
       <button type="button" class="wcard main" data-go="wizard" autofocus><span class="badge">はじめての方</span>${illu('mascot-baton', 64)}<span><h3>かんたん作成</h3><p>会場・人数・隊形をえらぶだけで、動くショーが自動でできあがります。</p></span></button>
       <button type="button" class="wcard" data-go="samples">${illu('venue-gym', 64)}<span><h3>サンプルから始める</h3><p>できあがったショーを開いて、見ながら自分の形に直せます。</p></span></button>
       <button type="button" class="wcard" data-go="open">${illu('help-save', 64)}<span><h3>ファイルを開く</h3><p>保存した .jk ファイルを読み込みます。画面にドラッグしてもOK。</p></span></button>
+      ${typeof window.jkOpenParade === 'function' ? `<button type="button" class="wcard" data-go="parade">${illu('shape-company-front', 64)}<span><h3>パレードを作る</h3><p>行進の隊列移動（パレード）を、コースと隊列から自動で組み立てます。</p></span></button>` : ''}
       <button type="button" class="wcard" data-go="resume" ${canResume ? '' : 'disabled'}>${illu('help-play', 64)}<span><h3>続きから</h3><p>${resumeDesc}</p></span></button>
     </div>
   </div>
@@ -120,6 +121,7 @@ function uxWelcome() {
     else if (g === 'samples') uxSamples();
     else if (g === 'tour') { welClose(); setTimeout(() => uxTour(true), 120); }
     else if (g === 'open') { welClose(); uxOpenFile(); }
+    else if (g === 'parade') { welClose(); if (typeof window.jkOpenParade === 'function') setTimeout(() => window.jkOpenParade(), 120); }
   });
   d.addEventListener('close', () => { UX.welcomed = true; uxSave(); });
   openDlg(d);
@@ -849,7 +851,7 @@ function init() {
   wrap('renderScorePane', () => addPaneHead('pscore'));
   wrap('updateInstrAuto', refreshInstBtns);
   // 選択バーと再生バーに ? ボタン
-  const sb = $('selbar').querySelector('.r'); if (sb && !sb.querySelector('.qh')) sb.insertAdjacentHTML('afterbegin', uxQh('move'));
+  const sb = $('selbar'); if (sb && !sb.querySelector('.qh')) sb.insertAdjacentHTML('beforeend', uxQh('move'));
   const tb = $('tlbar'); if (tb && !tb.querySelector('.qh')) tb.insertAdjacentHTML('beforeend', uxQh('sets'));
   // 横幅のせまい画面でも、ヘルプへ行けるように
   initTouch();

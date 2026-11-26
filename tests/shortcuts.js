@@ -101,5 +101,35 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   for (const ph of ['__SC_CORE__', '__SC__']) assert(html.includes(ph), ph);
   const css = fs.readFileSync(path.join(root, 'src/ux.css'), 'utf8');
   for (const sel of ['#scpal', '#scsheet', '#scfloat', '.sct']) assert(css.includes(sel), sel);
-  console.log(`shortcuts: OK (${checked} 例で削除・追加・貼り付けを確認)`);
+  // 6) 空き（skip）: 1〜3人を抜いても、個別の位置（at 文）はほぼ増えず、残った人はどのセットでも同じ位置
+  const nAt = m => m.sets.reduce((n, st) => n + st.stmts.filter(x => x.shape.kind === 'at').length, 0);
+  let skipChecked = 0, newAt = 0;
+  for (const f of ['battery.jk', 'gym.jk', 'stage.jk', 'opener.jk', 'floor.jk']) {
+    const R = jinkeiCompile(fs.readFileSync(path.join(root, 'examples', f), 'utf8'));
+    const ids = R.data.performers.map(p => p.id);
+    for (const pick of [[3], [1, 5], [2, 4, 6]]) {
+      const rm = [...new Set(pick.map(i => ids[Math.min(i, ids.length - 1)]))];
+      const r = await SC.deleteMembers(R.model, rm, opts('keep'));
+      assert(r.ok, `${f}: ${r.error}`);
+      const c = jinkeiCompile(printModel(r.model));
+      assert(c.ok, `${f}: 空きを使った削除後に読み込めない`);
+      ids.forEach((oid, oi) => {
+        const nid = r.idMap[oid]; if (!nid) return;
+        const ni = c.data.performers.findIndex(p => p.id === nid);
+        for (let k = 0; k < R.data.sets.length; k++) assert(dist(R.data.sets[k].pos[oi], c.data.sets[k].pos[ni]) < 1e-3, `${f} ${rm}: ${oid} がセット${k + 1}で動いた`);
+      });
+      assert.equal(r.pinned, 0, `${f} ${rm}: 個別の位置が増えた`);
+      newAt += Math.max(0, nAt(r.model) - nAt(R.model));
+      assert(r.skipped > 0, `${f}: skip が使われていない`);
+      assert.equal(printModel(jinkeiCompile(printModel(r.model)).model), printModel(r.model), `${f}: 往復で変わる`);
+      // 空きを詰める: skip が消え、人数ぶんの席で作り直される
+      const cl = SC.closeSkips(r.model, null);
+      assert(cl.closed > 0);
+      const c2 = jinkeiCompile(printModel(cl.model));
+      assert(c2.ok && c2.model.sets.every(st => st.stmts.every(x => !(x.skip && x.skip.length))), `${f}: 空きを詰められない`);
+      skipChecked++;
+    }
+  }
+  assert.equal(newAt, 0, '空きで済む例では、個別の位置が増えない');
+  console.log(`shortcuts: OK (${checked} 例で削除・追加・貼り付け、${skipChecked} 通りの空きを確認)`);
 })().catch(e => { console.error(e); process.exit(1); });
