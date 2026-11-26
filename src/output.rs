@@ -311,7 +311,7 @@ pub fn preview_template() -> String {
 }
 
 const TEMPLATE: &str = r##"<!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>__TITLE__ — 陣形</title>
 <style>
 :root{--bg:#14161a;--panel:#1d2026;--line:#2c3038;--fg:#e8e9ec;--mut:#9aa0aa;--acc:#ffd23f;--bad:#ff6b6b}
@@ -361,6 +361,30 @@ tr.cur td{background:#2a2e36}
   #now{min-width:0;font-size:11px}
   #reelcontrols{font-size:11px}
   aside{border-left:none;border-top:1px solid var(--line);overflow:visible}
+}
+@media (max-width:700px),(pointer:coarse) and (max-height:500px){
+  body{font-size:15px}
+  header{padding:8px 12px;flex-wrap:wrap;gap:2px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+  header h1{font-size:16px}
+  main{display:block;height:auto}
+  #stage{height:calc(100dvh - 44px);min-height:420px;position:relative}
+  .bar{padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px;position:relative}
+  .bar button,.bar select{min-height:44px;padding:6px 12px;font-size:16px}
+  #play{order:-5;flex:1 1 34%;font-size:17px;font-weight:700;background:#2b3a55;border-color:#4a6390}
+  #prev,#next{min-width:48px;order:-4}
+  #mode3d{min-width:48px;order:-3;flex:none}
+  #speed{order:-2}
+  #slider{order:-1;flex:1 1 100%;min-width:0;height:36px;margin:0}
+  #now{order:0;min-width:0;font-size:12px;flex:1 1 100%}
+  .bar select.only3d,#rec{order:1;flex:1 1 44%;font-size:14px;min-height:42px}
+  .bar label{font-size:13px;min-height:40px}
+  .bar input[type=checkbox]{width:22px;height:22px}
+  #reelcontrols{font-size:12px}
+  aside{border-left:none;border-top:1px solid var(--line);overflow:visible}
+  aside section{padding:12px}
+  td,th{padding:8px 6px}
+  .sets tr{height:44px}
+  #who,#partsel,#printall{min-height:44px;font-size:16px}
 }
 @media print{
   body{background:#fff;color:#000}
@@ -489,7 +513,7 @@ function loop(ts) {
   if (t >= total) { playing = false; $('play').textContent = '▶ 再生'; window.dispatchEvent(new Event('jinkei-end')); return; }
   requestAnimationFrame(loop);
 }
-$('play').onclick = () => { if (t >= total) t = 0; playing = !playing; $('play').textContent = playing ? '⏸ 停止' : '▶ 再生'; if (playing) requestAnimationFrame(loop); audioSync(); };
+$('play').onclick = () => { try { jkAudio.unlock(); } catch (e) {} if (t >= total) t = 0; playing = !playing; $('play').textContent = playing ? '⏸ 停止' : '▶ 再生'; if (playing) requestAnimationFrame(loop); audioSync(); };
 $('slider').oninput = e => { t = +e.target.value; draw(); audioSync(); };
 const arrive = k => D.sets[k].start + D.sets[k].counts;
 $('next').onclick = () => { for (let k = 0; k < D.sets.length; k++) if (arrive(k) > t + 1e-6) { t = arrive(k); break; } draw(); audioSync(); };

@@ -35,9 +35,21 @@ function uxToast(msg, kind, ms) {
   const t = document.createElement('div');
   t.className = 'toast ' + (kind || 'ok');
   t.innerHTML = `${kind === 'err' ? ic('mascot-oops', 28) : ic(kind === 'info' ? 'mascot-think' : 'mascot-cheer', 28)}<span>${esc(msg)}</span>`;
+  const phone = document.documentElement.classList.contains('mp');
+  if (phone) { while (box.firstChild) box.firstChild.remove(); }   // スマホは常に1つだけ（上に出す）
   box.appendChild(t);
   while (box.children.length > 3) box.firstChild.remove();
-  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms || 3000);
+  const life = ms || (phone && /元に戻|取り消/.test(msg) ? 5000 : 3000);
+  let gone = false;
+  const bye = () => { if (gone) return; gone = true; t.classList.add('out'); setTimeout(() => t.remove(), 300); };
+  setTimeout(bye, life);
+  if (phone) {   // 横にはらうと消える
+    let x0 = null, dx = 0;
+    t.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; try { t.setPointerCapture(e.pointerId); } catch (z) { /* 無視 */ } });
+    t.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; t.style.transform = `translateX(${dx}px)`; t.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 220)); });
+    const end = () => { if (x0 === null) return; x0 = null; if (Math.abs(dx) > 50) { t.style.transform = `translateX(${dx > 0 ? 120 : -120}vw)`; bye(); } else { t.style.transform = ''; t.style.opacity = ''; if (Math.abs(dx) < 6) bye(); } };
+    t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
+  }
 }
 window.uxToast = uxToast;
 window.uxBusy = on => document.body.style.cursor = on ? 'progress' : '';
@@ -370,6 +382,20 @@ const TOUR = [
   {t: '#preview', mascot: 'mascot-baton', title: '3Dで見る', text: '「プレビュー」を押すと、3Dの映像が新しいタブで開きます。リアル風とイラスト風の見た目も切りかえられます。', pos: 'bottom'},
   {t: ['#video', '#save'], mascot: 'mascot-cheer', title: '保存と書き出し', text: '「保存」で .jk ファイルに残せます（Ctrl+S）。「3D動画を書き出す」で動画にもできます。わからなくなったら、いつでも右上の「ヘルプ」へ！', pos: 'bottom'}
 ];
+const isPhone = () => document.documentElement.classList.contains('mp');
+// スマホ用のツアー（画面のつくりが違うので、文面と場所を差し替える）
+const TOUR_MP = [
+  {t: '#canvaswrap', mascot: 'mascot-wave', title: 'ここが会場です', text: '上から見た会場の図です。画面の下がお客さん側（客席）。色のついた丸が、ひとりひとりの人です。', pos: 'inside', before: () => { if (window.jkSheet) jkSheet.set('peek'); }},
+  {t: () => { const g = $('Ldots'); const r = g && g.getBoundingClientRect(); return r && r.width > 4 ? g : $('canvaswrap'); }, mascot: 'mascot-point', title: '人を動かしてみよう', text: '丸をタップで選び、ドラッグで動かせます。何もない所を指でなぞると画面が動き、2本指でつまむと拡大します。長押しでメニューが開きます。', pos: 'bottom'},
+  {t: '#mblasso', mascot: 'mascot-think', title: 'まとめて選ぶ', text: 'この「範囲選択」を押してから、囲みたい範囲を指でなぞると、まとめて選べます。選ぶと下に操作バー（向き・並べ方・削除…）が出ます。', pos: 'top'},
+  {t: '#tools', mascot: 'mascot-baton', title: '形をかくツール', text: '直線・弧・円などを選んで画面をなぞると、選んだ人がその形に並びます。', pos: 'bottom'},
+  {t: '#right', mascot: 'mascot-point', title: '下のパネル', text: '「隊形」「セクション」などのタブを押すと、パネルが広がります。つまみを上下に引くと、大きさを変えられます。', pos: 'top', before: () => { if (window.jkSheet) jkSheet.set('peek', true); }},
+  {t: '#addset', mascot: 'mascot-think', title: '次のセットを作る', text: 'セットは、隊形の「写真」1枚です。「＋ セット」を押して次の隊形を足すと、人が動いて次の形になります。', pos: 'top', before: () => { if (window.jkSheet) jkSheet.set('peek', true); const a = $('addset'); if (a && a.scrollIntoView) a.scrollIntoView({inline: 'center', block: 'nearest'}); }},
+  {t: '#tltrack', mascot: 'mascot-point', title: 'カウントを調整', text: '下の帯がセットの並びです。右はしのつまみをドラッグすると、動く時間（カウント）を変えられます。ブロックを長押しすると、分割・コピー・削除のメニューが出ます。', pos: 'top'},
+  {t: '#tlplay', mascot: 'mascot-cheer', title: '再生してみよう', text: '▶ を押すと、ショー全体が再生されます。動きがおかしいところは、ここで見つけられます。', pos: 'top', before: () => { const t = $('tlbar'); if (t) t.scrollLeft = 0; }},
+  {t: '#mbmore', mascot: 'mascot-baton', title: '右上の ⋮ メニュー', text: '保存・開く・コマンド検索・3Dプレビュー・動画の書き出しは、ここにまとまっています。わからなくなったら「ヘルプ」へ！', pos: 'bottom'}
+];
+const TOUR_PC = TOUR.slice();
 let tour = null;
 function tourRect(t) {
   const list = (Array.isArray(t) ? t : [t]).map(x => typeof x === 'function' ? x() : x).map(x => typeof x === 'string' ? document.querySelector(x) : x).filter(Boolean);
@@ -382,6 +408,7 @@ function uxTour(fromHelp) {
   closeAllUx();
   if (!M || !R) return;
   if (tour) tourEnd(false);
+  TOUR.splice(0, TOUR.length, ...(isPhone() ? TOUR_MP : TOUR_PC));
   let ov = $('tourov');
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'tourov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'ガイドツアー');
@@ -472,7 +499,10 @@ let helpDlg = null;
 function uxHelp(topic) {
   closeAllUx();
   const d = helpDlg = mkDialog('uxhelp', 'help');
-  const items = X.GUIDES;
+  const PHONE_GUIDE = {id: 'phone', icon: 'help-select', title: 'スマホでの操作', lead: 'スマホでは、指でふれて操作します。パソコンとのちがいをまとめました。',
+    steps: ['丸をタップで選び、ドラッグで動かします。何もない所をタップすると選択をやめます。', '何もない所を1本指でなぞると画面が動きます。2本指でつまむと拡大・縮小、ダブルタップで全体表示にもどります。', 'まとめて選ぶときは、フィールドの左下の「範囲選択」を押してから、囲みたい範囲をなぞります。', '丸や隊形を長押しすると、メニュー（向き・並べ方・削除など）が開きます。', '下のタブ（隊形・セクション・ショー…）を押すとパネルが広がります。つまみを上へ引くと全画面、下へ引くとたたまれます。', '下の帯のセットは横にスクロールできます。右はしのつまみで長さを変え、長押しで分割・コピー・削除ができます。', '保存・開く・コマンド検索・3Dプレビュー・動画の書き出しは、右上の ⋮ メニューにあります。'],
+    tips: ['「ホーム画面に追加」すると、アプリのように起動でき、電波がなくても開けます（⋮ メニュー →「ホーム画面に追加」）。', '編集内容はこの端末の下書きとして自動で残ります。大事なショーは ⋮ → 保存 で .jk ファイルにも残してください。']};
+  const items = (isPhone() ? [PHONE_GUIDE] : []).concat(X.GUIDES);
   d.innerHTML = `<div class="ux-head">${illu('mascot-face', 40, 'width:52px;height:52px')}<div><h2>ヘルプ</h2><p>やりたいことをえらんでください</p></div>${closeBtn}</div>
   <div class="help-wrap"><nav class="help-nav" aria-label="ヘルプの目次">${items.map(g => `<button type="button" data-g="${g.id}">${illu(g.icon, 28, 'width:40px;height:40px;border-radius:12px')}<span>${g.title}</span></button>`).join('')}<div class="sep">そのほか</div><button type="button" data-g="glossary">${illu('help-hold', 28, 'width:40px;height:40px;border-radius:12px')}<span>用語集</span></button><button type="button" data-g="tour">${illu('mascot-point', 28, 'width:40px;height:40px;border-radius:12px')}<span>ガイドツアー</span></button></nav>
   <div class="help-main" id="helpmain" tabindex="-1"></div></div>`;
@@ -791,7 +821,9 @@ function initTouch() {
         if (ptrs.size !== 1 || gest) return;
         abortDrags();
         if (currentSource() !== startSrc) { undo(); }
-        tgt.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: sx, clientY: sy, button: 2, view: window}));
+        // 押した瞬間に点が描き直されて、最初に触れた要素は画面から外れていることがある。その場合は今その位置にあるものへ送る
+        const t2 = tgt.isConnected ? tgt : (document.elementsFromPoint(sx, sy).find(n => svg.contains(n)) || svg);
+        t2.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: sx, clientY: sy, button: 2, view: window}));
         if (navigator.vibrate) try { navigator.vibrate(12); } catch (x) { /* 無視 */ }
       }, 520)};
     } else if (ptrs.size === 2) {
@@ -859,5 +891,7 @@ function init() {
   let lastFLD = null;
   wrap('ensureField', () => { if (FLD !== lastFLD) { lastFLD = FLD; baseVB = svg.getAttribute('viewBox').split(/\s+/).map(Number); view = {k: 1}; } });
 }
+// スマホ用の部品（src/mobile.js）から使う入口
+window.JKUX = {setMode, wrap, applyView, panBy, zoomAt, getView: () => view, welcome: uxWelcome, wizard: uxWizard, help: uxHelp, closeAll: closeAllUx, toast: uxToast, mode: () => UX.mode};
 init();
 })();
