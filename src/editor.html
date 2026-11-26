@@ -210,7 +210,7 @@ __UX_CSS__
   <span class="projectstate" id="projectstate" hidden><span id="draftstatus" role="status"></span><span id="syncstatus" role="status"></span></span>
   <span class="sp"></span>
   <span id="localbtns" style="display:none"><button id="open" title="手元の .jk ファイルを開く（ページへのドラッグ＆ドロップでも可）">開く</button><button id="newfile" title="ひな形から新しく作る">新規</button><button id="drafthistory">下書き履歴</button><button id="projectsync">端末間同期</button><input type="file" id="openfile" accept=".jk,text/plain" style="display:none"></span>
-  <button id="homebtn" title="はじめに（かんたん作成・サンプル・ファイルを開く）">はじめに</button><button id="helpbtn" title="使い方ガイドと用語集"><span class="q">?</span>ヘルプ</button>
+  <button id="homebtn" title="はじめに（かんたん作成・サンプル・ファイルを開く）">はじめに</button><button id="helpbtn" title="使い方ガイドと用語集"><span class="q">?</span>ヘルプ</button><button id="scpalbtn" class="scbtn" title="コマンド検索 (Ctrl+K)" aria-label="コマンド検索"></button><button id="scbtn" class="scbtn" title="ショートカット一覧 (?)" aria-label="ショートカット一覧"></button>
   <button id="undo" title="元に戻す (Ctrl+Z)">↶</button><button id="redo" title="やり直す (Ctrl+Shift+Z)">↷</button>
   <button id="preview" title="2D/3Dプレビューを新しいタブで開く">プレビュー</button>
   <select id="vcam" title="動画のカメラ"><option value="audience">客席から</option><option value="orbit">回り込み</option><option value="top">真上</option><option value="low">目線</option></select>
@@ -227,6 +227,7 @@ __UX_CSS__
         <div class="r"><span class="lbl" id="selinfo"></span>
           <span class="vs"></span><span class="gl">向き・姿勢</span><button id="selface" title="選んだ人の向きを決める">向き ▾</button><button id="selpose" title="選んだ人の姿勢を決める">姿勢 ▾</button><button id="selcarry" title="選んだ人の楽器の構え（演奏・右手・左手・正面・斜め）を決める">構え ▾</button><button id="selstep" title="選んだ人の歩き方（グライド・バックなど）を決める">ステップ ▾</button><button id="selaction" title="選んだ人の動作（スピン・トスなど。カラーガード向け）を決める">動作 ▾</button>
           <span class="vs"></span><button id="flipx" title="選んだ人を左右に反転（上手と下手を入れ替え）">↔ 左右反転</button><button id="flipy" title="選んだ人を前後に反転（客席側と奥を入れ替え）">↕ 前後反転</button>
+          <span class="vs scvs"></span><button id="seladd" title="選んだ人と同じパートに1人追加">＋ 人を追加</button><button id="seldup" title="選んだ人を複製">複製</button><button id="seldel" class="dangerbtn" title="選んだ人を削除">削除</button>
           <button id="selclear" class="ghost" title="選択を解除 (Esc)">✕</button></div>
         <div class="r"><span class="gl">並べる</span>
           <button data-arr="line" title="選んだ人を直線に等間隔で並べる">直線</button><button data-arr="curve" title="なめらかな曲線に並べる">曲線</button><button data-arr="arc" title="弧に並べる">弧</button><button data-arr="circle" title="円に並べる">円</button><button data-arr="block" title="ブロック（四角い隊列）に並べる">ブロック</button><button id="mkfollow" title="選んだ人を、先頭の通った道を順にたどる列にする">フォロー</button>
@@ -313,6 +314,7 @@ __UX_CSS__
 <script>/* icons */__UI_ICONS__</script>
 <script>/* examples */__EXAMPLES__</script>
 <script>/* ux core */__UX_CORE__</script>
+<script>/* shortcuts core */__SC_CORE__</script>
 <script>__FIELD2D__</script>
 <script>__PRINTER__</script>
 <script>__MOTION__</script>
@@ -1078,7 +1080,7 @@ const TOOLS = [
   ['block', 'ブロック', 'B', '<rect x="4" y="5" width="14" height="12"/><path d="M8.5 5V17M13 5V17M4 11H18"/>']
 ];
 function renderTools() {
-  $('tools').innerHTML = TOOLS.map(([id, name, key, ic]) => `<button data-tool="${id}" class="${tool === id ? 'on' : ''}" title="${name}ツール (${key})${id === 'curve' || id === 'follow' ? '：クリックで点を置き、ダブルクリックか Enter で完了' : id === 'select' ? '' : '：ドラッグで描く'}"><svg viewBox="0 0 22 22">${ic}</svg><span class="kb">${key}</span></button>`).join('');
+  $('tools').innerHTML = TOOLS.map(([id, name, key, ic]) => `<button data-tool="${id}" class="${tool === id ? 'on' : ''}" title="${name}ツール (${window.scKeyLabel ? scKeyLabel('tool-' + id) || key : key})${id === 'curve' || id === 'follow' ? '：クリックで点を置き、ダブルクリックか Enter で完了' : id === 'select' ? '' : '：ドラッグで描く'}"><svg viewBox="0 0 22 22">${ic}</svg><span class="kb">${window.scKeyLabel ? scKeyCap('tool-' + id) || key : key}</span></button>`).join('');
   $('tools').querySelectorAll('button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 }
 function setTool(t) {
@@ -2105,7 +2107,10 @@ function renderCtx() {
     h += `<button class="mi" data-cx="arr" ${canArr ? '' : 'disabled'}>${isSel ? '並べる' : '形を変える'}　▸</button><button class="mi" data-cx="face">向き　▸</button><button class="mi" data-cx="pose">姿勢　▸</button><button class="mi" data-cx="carry">構え　▸</button>`;
     h += `<div class="ms"></div><button class="mi" data-cx="unpin" ${ctxHasIndividual() ? '' : 'disabled'}>個別の位置を解除</button>`;
     if (!isSel) h += `<button class="mi" data-cx="del">この${st && st.shape.kind === 'attr' ? '指定' : '隊形'}を削除</button>`;
-    else h += `<button class="mi" data-cx="clear">選択を解除</button>`;
+    else {
+      h += `<button class="mi" data-cx="clear">選択を解除</button>`;
+      if (window.scCtxItems) h += window.scCtxItems();
+    }
   } else if (ctxView === 'arr') {
     h += back + '<div class="arr">' + [['line', '直線'], ['arc', '弧'], ['circle', '円'], ['curve', '曲線'], ['block', 'ブロック'], ['follow', 'フォロー']].map(([k, n]) => `<button data-cxarr="${k}" ${k === 'follow' && curSet === 0 ? 'disabled' : ''}>${n}</button>`).join('') + '</div>';
   } else if (ctxView === 'face') {
@@ -2116,6 +2121,7 @@ function renderCtx() {
     h += back + '<div class="pw">' + paletteHtml(tgt, isSel ? (selCommon('pose') || '') : st.pose) + '</div>';
   }
   m.innerHTML = h;
+  m.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { hidePops(); if (window.scRun) scRun(b.dataset.sc); });
   m.querySelectorAll('[data-cx]').forEach(b => b.onclick = () => {
     const c = b.dataset.cx;
     if (c === 'back') ctxView = 'main';
@@ -2177,31 +2183,10 @@ $('video').onclick = async () => {
   };
   poll();
 };
+// キー操作は src/shortcuts.js（キーの表・パレット・ショートカット一覧）が受け持つ。ここはモーダルの確認だけ
 document.addEventListener('keydown', e => {
   if (modalKey && $('modalbg').style.display === 'flex') { modalKey(e); return; }
-  if (document.querySelector('dialog[open]')) return;
-  const mod = e.ctrlKey || e.metaKey;
-  if (mod && e.key === 's') { e.preventDefault(); save(); }
-  else if (mod && e.key.toLowerCase() === 'z' && !/TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
-  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-  if (typing || !R) return;
-  if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); sel = new Set(R.data.performers.map((_, i) => i)); updateSel(); drawCanvas(); }
-  else if (e.key === 'Escape') {
-    if ($('ctx').style.display === 'block' || $('pop').style.display === 'block') { closePops(); return; }
-    if (draw || pendingDraw) { cancelDraw(); return; }
-    if (tool !== 'select') { setTool('select'); return; }
-    exitScrub(); sel.clear(); curStmt = -1; updateSel(); markCards(); drawCanvas();
-  }
-  else if (e.key === 'Enter' && draw && draw.poly) { e.preventDefault(); finishPoly({clientX: innerWidth / 2, clientY: innerHeight / 2}); }
-  else if (!mod && !e.altKey && e.key === ' ' && document.activeElement.tagName !== 'BUTTON') { e.preventDefault(); $('tlplay').click(); }
-  else if (!mod && !e.altKey && /^[vlacpfb]$/i.test(e.key)) { const t = {v: 'select', l: 'line', a: 'arc', c: 'circle', p: 'curve', f: 'follow', b: 'block'}[e.key.toLowerCase()]; setTool(t); }
-  else if (sel.size && e.key.startsWith('Arrow')) {
-    e.preventDefault();
-    const st = (+$('snap').value || 0.1) * (e.shiftKey ? 4 : 1);
-    const d = {ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st]}[e.key];
-    moveSelected(d[0], d[1], new Map([...sel].map(j => [j, basePos(curSet, j)])));
-    edited(true);
-  }
+  if (window.scKey) window.scKey(e);
 });
 window.addEventListener('beforeunload', e => { if (dirty && !window.JK_PROJECT?.saved) { e.preventDefault(); e.returnValue = ''; } });
 // 描画中でない時に、スクラブ中の画面をクリックしたら編集に戻る
@@ -2279,5 +2264,8 @@ renderTools();
 </script>
 <script>/* ux */
 __UX__
+</script>
+<script>/* shortcuts */
+__SC__
 </script>
 </body></html>

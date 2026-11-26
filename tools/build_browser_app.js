@@ -24,7 +24,9 @@ let html = read('src/editor.html')
   .replaceAll('__UX_CORE__', () => read('src/ux_core.js'))
   .replaceAll('__FIELD2D__', () => read('src/field2d.js'))
   .replaceAll('__PRINTER__', () => read('src/printer.js')).replaceAll('__MOTION__', () => motion)
-  .replaceAll('__UX__', () => read('src/ux.js'));
+  .replaceAll('__SC_CORE__', () => read('src/shortcuts_core.js'))
+  .replaceAll('__UX__', () => read('src/ux.js'))
+  .replaceAll('__SC__', () => read('src/shortcuts.js'));
 const server = read('src/server.rs');
 const def = server.match(/pub const TEMPLATE_SHOW: &str = r##"([\s\S]*?)"##;/);
 if (!def) throw new Error('TEMPLATE_SHOW が見つかりません');

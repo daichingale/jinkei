@@ -364,6 +364,7 @@ const TOUR = [
   {t: '#addset', mascot: 'mascot-think', title: '次のセットを作る', text: 'セットは、隊形の「写真」1枚です。「＋ セット」を押して次の隊形を足すと、人が動いて次の形になります。', pos: 'top'},
   {t: '#tltrack', mascot: 'mascot-point', title: 'カウントを調整', text: '下の帯がセットの並びです。右はしをドラッグすると、動く時間（カウント）を変えられます。ななめの線の部分は「ホールド」（止まって見せる時間）です。', pos: 'top'},
   {t: '#tlplay', mascot: 'mascot-cheer', title: '再生してみよう', text: '▶ を押すと、ショー全体が再生されます。スペースキーでも始まります。動きがおかしいところは、ここで見つけられます。', pos: 'top'},
+  {t: ['#scpalbtn', '#scbtn'], mascot: 'mascot-point', title: 'キーボードで、もっとらくに', text: '「?」キーでショートカット一覧、Ctrl+K（Macは ⌘K）でコマンド検索が開きます。人を選んで Delete で抜く、N で増やす、なども使えます。好きなキーに変えることもできます。', pos: 'bottom'},
   {t: '#preview', mascot: 'mascot-baton', title: '3Dで見る', text: '「プレビュー」を押すと、3Dの映像が新しいタブで開きます。リアル風とイラスト風の見た目も切りかえられます。', pos: 'bottom'},
   {t: ['#video', '#save'], mascot: 'mascot-cheer', title: '保存と書き出し', text: '「保存」で .jk ファイルに残せます（Ctrl+S）。「3D動画を書き出す」で動画にもできます。わからなくなったら、いつでも右上の「ヘルプ」へ！', pos: 'bottom'}
 ];
@@ -656,6 +657,7 @@ function uxNext() {
   bar.className = h.cls;
   bar.innerHTML = `<span class="nb-ic">${ic(h.icon, 36)}</span><div class="nb-t"><b>次にやること</b><span class="nb-m">${esc(h.msg)} <span style="color:var(--mut)">${esc(h.sub || '')}</span></span></div><div class="nb-b"></div>`;
   const nb = bar.querySelector('.nb-b');
+  if (window.scNextHint) { try { window.scNextHint(bar); } catch (e) { /* 案内は添え物 */ } }
   h.btns.forEach(([label, fn, cls]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (cls) b.className = cls; b.onclick = fn; nb.appendChild(b); });
 }
 
