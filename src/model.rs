@@ -124,12 +124,13 @@ pub fn model_json(a: &ShowAst) -> String {
         .iter()
         .map(|s| {
             format!(
-                "{{\"name\":{},\"counts\":{},\"hold\":{},\"tempo\":{},\"mark\":{},\"note\":{},\"tail\":{},\"foot\":{},\"line\":{},\"stmts\":[{}]}}",
+                "{{\"name\":{},\"counts\":{},\"hold\":{},\"tempo\":{},\"mark\":{},\"sub\":{},\"note\":{},\"tail\":{},\"foot\":{},\"line\":{},\"stmts\":[{}]}}",
                 js(&s.name),
                 fmt_num(s.counts),
                 fmt_num(s.hold),
                 s.tempo.map(|t| js(&fmt_num(t))).unwrap_or_else(|| "null".into()),
                 s.mark,
+                s.sub,
                 strs(&s.note),
                 opt(&s.tail),
                 strs(&s.foot),

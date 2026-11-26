@@ -616,7 +616,7 @@ async function splitSet(model, k, c, opts) {
       if (mode === 'cutafter') m.sets.length = k + 1;
       return finish(m, {trimmed: true});
     }
-    const B = {name: freeSetName(m.sets.map(s => s.name), orig.name), counts: '0', hold: qsFmt(H - ch), note: [], tail: null, foot: [], mark: !!orig.mark, tempo: null, stmts: [Object.assign(mkStmt('all', {kind: 'same'}))]};
+    const B = {name: opts.sub ? '' : freeSetName(m.sets.map(s => s.name), orig.name), sub: opts.sub ? true : !!orig.sub, counts: '0', hold: qsFmt(H - ch), note: [], tail: null, foot: [], mark: !!orig.mark, tempo: null, stmts: [Object.assign(mkStmt('all', {kind: 'same'}))]};
     orig.hold = qsFmt(ch);
     m.sets.splice(k + 1, 0, B);
     return finish(m, {kB: k + 1, holdSplit: true});
@@ -689,11 +689,13 @@ async function splitSet(model, k, c, opts) {
   });
   // 組み立て
   const setA = Object.assign(clone(orig), {counts: qsFmt(c), stmts: A, hold: cut ? (mode === 'cutafter' ? '0' : qsFmt(H)) : '0'});
+  // サブセットとして分ける: 前半（途中の隊形）が「親の名前 + A」になり、後半が元のセットのまま残る
+  if (mode === 'split' && opts.sub) { setA.name = ''; setA.sub = true; }
   const m2 = clone(base);
   m2.sets[k] = setA;
   let kB = -1;
   if (mode === 'split') {
-    const Bset = {name: freeSetName(m2.sets.map(s => s.name), orig.name), counts: qsFmt(C - c), hold: qsFmt(H), note: [], tail: null, foot: [], mark: !!orig.mark, tempo: null, stmts: B};
+    const Bset = {name: opts.sub ? orig.name : freeSetName(m2.sets.map(s => s.name), orig.name), sub: opts.sub ? !!orig.sub : !!orig.sub, counts: qsFmt(C - c), hold: qsFmt(H), note: [], tail: null, foot: [], mark: !!orig.mark, tempo: null, stmts: B};
     m2.sets.splice(k + 1, 0, Bset); kB = k + 1;
   } else if (mode === 'cutafter') m2.sets.length = k + 1;
   const want = {A: wantA.map(([id, p]) => [id, p]), B: mode === 'split' ? wantB : null};

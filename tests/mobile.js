@@ -36,7 +36,7 @@ const bad = [];
     let d = 1, j = o + 1; while (j < text.length && d) { if (text[j] === '{') d++; else if (text[j] === '}') d--; j++; }
     const body = text.slice(o + 1, j - 1);
     if (/^@media|^@supports/.test(head)) scan(body);
-    else if (!/^@/.test(head)) for (const sel of head.split(',').map(x => x.trim()).filter(Boolean)) if (!/^(html\.mp|\.mp|#mb|#jkboot)/.test(sel)) bad.push(sel);
+    else if (!/^@/.test(head)) for (const sel of head.split(',').map(x => x.trim()).filter(Boolean)) if (!/^(html\.mp|\.mp|#mb|#zpct|#jkboot)/.test(sel)) bad.push(sel);
     i = j;
   }
 })(css);

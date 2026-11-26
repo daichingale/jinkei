@@ -1,0 +1,12 @@
+# サブセットを開始位置に使う・警告のセット名は 2A のように出る
+show "p" {
+  field gym
+  tempo 100
+  section sn "スネア" 4 instrument snare
+  section tp "トランペット" 3
+  set 1 hold 4 { sn : line (-3, 0) -> (3, 0)  tp : line (-3, 12) -> (3, 12) }
+  set 2 counts 12 { sn : line (-3, 2) -> (3, 2) }
+  set sub counts 1 { sn : line (-3, 20) -> (3, 20) }
+  set 3 counts 8 { sn : line (-3, 3) -> (3, 3) }
+  part "S" for sn { start set 2A 4: R R R R | }
+}

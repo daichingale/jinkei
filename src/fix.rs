@@ -137,7 +137,7 @@ pub fn auto_fix(ast: &ShowAst) -> Option<FixResult> {
             let group = st.group.iter().map(|g| g.to_string()).collect::<Vec<_>>().join(" + ");
             notes.push(format!(
                 "セット{}（{}行目）: 「{}」に `{}` を追加 — {}（このセットの衝突 {}件 → {}件{}）",
-                a.sets[k].name,
+                crate::syntax::set_display_names(&a.sets)[k],
                 st.pos.line,
                 group,
                 e.text(),

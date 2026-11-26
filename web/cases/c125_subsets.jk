@@ -1,0 +1,31 @@
+# サブセット: 本セットの間に 3A・3B のような下位のセットを挟む（名前は自動で 親の名前 + A, B, C…）
+show "サブセット" {
+  field gym
+  tempo 120
+  section tp "トランペット" 4 color "#ffd23f"
+  section sn "スネア" 3 instrument snare color "#ff9f43"
+
+  set 1 hold 4 {
+    tp : line (-6, -8) -> (6, -8)
+    sn : line (-3, -4) -> (3, -4)
+  }
+  set 2 counts 8 {
+    tp : line (-6, 2) -> (6, 2)
+    sn : line (-3, 6) -> (3, 6)
+  }
+  set sub counts 4 {
+    tp : line (-6, 4) -> (6, 4)
+  }
+  set サブ counts 4 hold 2 {
+    tp : arc (0, 0) radius 6 from 200 to 340
+  }
+  set 3 counts 8 mark {
+    tp : line (-6, 8) -> (6, 8)
+  }
+  set ただし sub counts 4 {
+    tp : line (-6, 9) -> (6, 9)
+  }
+  set sub counts 4 tempo 100 {
+    tp : line (-6, 10) -> (6, 10)
+  }
+}

@@ -193,6 +193,117 @@ async function uxSamples() {
   if (touched && !window.JK_LOCAL) { try { await fetch('/api/compile', {method: 'POST', body: currentSource()}); } catch (e) { /* 無視 */ } }
 }
 
+
+// ======================================================================
+// 新規: 何から始めるかを選ぶ（白紙・かんたん作成・テンプレート・パレード）
+// ======================================================================
+let newDlg = null;
+const NEW_TPL = [
+  {id: 'tpl-small', name: '少人数の基本', desc: '8人・体育館・横一列→ブロック→円', o: {venue: 'gym', preset: 'small8', forms: ['line', 'block', 'circle']}},
+  {id: 'tpl-band', name: '吹奏楽部の基本', desc: '30人・体育館・ブロック→アーク→円', o: {venue: 'gym', preset: 'band30', forms: ['block', 'arc', 'circle']}},
+  {id: 'tpl-drum', name: 'ドラムライン', desc: '14人・フロア・ライン→ブロック', o: {venue: 'floor', preset: 'drum', forms: ['line', 'block', 'line']}},
+  {id: 'tpl-stage', name: 'ステージの基本', desc: '少人数・ステージ・ライン→アーク', o: {venue: 'stage', preset: 'small8', forms: ['line', 'arc', 'block']}},
+];
+async function newGuard() {
+  if (typeof dirty === 'undefined' || !dirty) return true;
+  if (newDlg && newDlg.open) { try { newDlg.close(); } catch (e) { /* 閉じていた */ } }   // 確認ダイアログが前に出るように、いったん閉じる
+  const v = await modal('', '保存していない変更があります。新しく作る前に、保存しますか？（保存しなくても「下書き履歴」には残ります）', [{label: 'キャンセル', value: false}, {label: '保存せず新規', value: true}, {label: '保存してから新規', value: 'save', cls: 'pri'}]);
+  if (v === 'save') { await save(); if (typeof dirty !== 'undefined' && dirty) { uxNewShow(); return false; } return true; }
+  if (!v) { uxNewShow(); return false; }
+  return true;
+}
+async function newCreate(text, name) {
+  if (!(await newGuard())) return false;
+  if (newDlg && newDlg.open) { try { newDlg.close(); } catch (e) { /* 閉じていた */ } }
+  await uxLoadSource(text, name);
+  showTab('pset');
+  uxToast(`新しいショー「${name.replace(/\.jk$/, '')}」を作りました`, 'ok');
+  return true;
+}
+function newBlankText(o) {
+  const m = X.buildModel({name: o.name, venue: o.venue, counts: o.counts, forms: ['line'], bpm: 120, moveCount: 16});
+  m.sets = [m.sets[0]];   // セットは1つ（全員が横一列に並んだ状態）。あとは自分で並べる
+  m.header = ['白紙から始めたショー'];
+  return printModel(m);
+}
+function uxNewShow() {
+  closeAllUx();
+  const d = newDlg = mkDialog('uxnew', 'newshow');
+  const dirtyNow = typeof dirty !== 'undefined' && dirty;
+  const home = () => {
+    d.innerHTML = `<div class="ux-head"><span>${illu('mascot-point', 56, 'width:64px;height:64px')}</span><div><h2>新しいショーをつくる</h2><p>どれで始めますか？${dirtyNow ? '　（いまの編集内容は、このあとで保存するか選べます）' : ''}</p></div>${closeBtn}</div>
+    <div class="ux-body"><div class="wcards" id="newcards">
+      <button type="button" class="wcard" data-new="blank">${illu('venue-gym', 64)}<span><h3>白紙から</h3><p>会場と人数だけえらんで、あとは自分で並べます（最初は横一列）。</p></span></button>
+      <button type="button" class="wcard main" data-new="wizard"><span class="badge">はじめての方</span>${illu('mascot-baton', 64)}<span><h3>かんたん作成</h3><p>会場・人数・隊形をえらぶだけで、動くショーができます。</p></span></button>
+      <button type="button" class="wcard" data-new="tpl">${illu('shape-company-front', 64)}<span><h3>テンプレートから</h3><p>サンプルや基本の編成を、絵を見ながらえらべます。</p></span></button>
+      ${typeof window.jkOpenParade === 'function' ? `<button type="button" class="wcard" data-new="parade">${illu('shape-company-front', 64)}<span><h3>パレードを作る</h3><p>行進の隊列移動を、コースとパターンから自動で作ります。</p></span></button>` : ''}
+    </div></div><div class="ux-foot"><span class="sp"></span><button type="button" data-close>キャンセル</button></div>`;
+  };
+  const back = '<button type="button" data-newback>← もどる</button>';
+  const blank = () => {
+    const B = {venue: 'gym', preset: 'band30', name: '新しいショー'};
+    const draw = () => {
+      d.querySelector('.ux-body').innerHTML = `<div class="mascot-say">${illu('mascot-think', 56, 'width:64px;height:64px')}<div class="bubble">会場と人数をえらびます。全員が横一列に並んだセット1から始まります。</div></div>
+      <h3 class="newh">会場</h3><div class="newrow">${X.VENUES.map(v => `<button type="button" class="newopt ${v.id === B.venue ? 'on' : ''}" data-venue="${v.id}"><b>${v.name}</b><span>${esc(v.desc)}</span></button>`).join('')}</div>
+      <h3 class="newh">編成</h3><div class="newrow">${X.PRESETS.map(pr => `<button type="button" class="newopt ${pr.id === B.preset ? 'on' : ''}" data-preset="${pr.id}"><b>${pr.name}</b><span>${pr.sub}</span></button>`).join('')}</div>
+      <h3 class="newh">ショーの名前</h3><input id="newname" type="text" value="${esc(B.name)}" maxlength="40" style="width:100%">`;
+    };
+    d.innerHTML = `<div class="ux-head"><span>${illu('venue-gym', 48, 'width:56px;height:56px')}</span><div><h2>白紙から</h2><p>会場と人数をえらびます</p></div>${closeBtn}</div><div class="ux-body"></div><div class="ux-foot">${back}<span class="sp"></span><button type="button" class="pri" id="newgo">この内容で作る</button></div>`;
+    draw();
+    d.querySelector('.ux-body').addEventListener('click', e => {
+      const v = e.target.closest('[data-venue]'), pr = e.target.closest('[data-preset]');
+      if (v) B.venue = v.dataset.venue; else if (pr) B.preset = pr.dataset.preset; else return;
+      const nm = d.querySelector('#newname'); if (nm) B.name = nm.value; draw();
+    });
+    d.querySelector('#newgo').onclick = async () => {
+      B.name = (d.querySelector('#newname').value || '').trim() || '新しいショー';
+      const pre = X.PRESETS.find(x => x.id === B.preset);
+      await newCreate(newBlankText({name: B.name, venue: B.venue, counts: pre.counts}), B.name + '.jk');
+    };
+  };
+  const tpls = async () => {
+    const items = (window.JK_EXAMPLES || []).map(e => ({title: e.file.replace(/\.jk$/, ''), src: e.src, file: e.file, kind: 'サンプル'}));
+    for (const t of NEW_TPL) {
+      const pre = X.PRESETS.find(x => x.id === t.o.preset);
+      const m = X.buildModel({name: t.name, venue: t.o.venue, counts: pre.counts, forms: t.o.forms, bpm: 120, moveCount: 16});
+      items.push({title: t.name, src: printModel(m), file: t.name + '.jk', kind: '基本の編成', desc: t.desc});
+    }
+    d.innerHTML = `<div class="ux-head"><span>${illu('mascot-point', 56, 'width:64px;height:64px')}</span><div><h2>テンプレートから</h2><p>えらぶと、新しいショーとして開きます（元のサンプルは変わりません）</p></div>${closeBtn}</div>
+    <div class="ux-body"><div class="exgrid" id="newgrid">${items.map((e, i) => `<button type="button" class="excard" data-i="${i}"><div class="th load">読み込み中…</div><b>${esc(e.title)}</b><span>${esc(e.kind)}${e.desc ? '　' + esc(e.desc) : ''}</span></button>`).join('')}</div></div>
+    <div class="ux-foot">${back}<span class="sp"></span><button type="button" data-close>キャンセル</button></div>`;
+    const grid = d.querySelector('#newgrid');
+    grid.addEventListener('click', async e => { const b = e.target.closest('.excard'); if (!b) return; const it = items[+b.dataset.i]; await newCreate(it.src, it.file); });
+    let touched = false;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      try {
+        const r = exCache[it.file] || (exCache[it.file] = await cj(it.src));
+        touched = true;
+        const card = grid.querySelector(`[data-i="${i}"]`); if (!card) break;
+        if (!r.ok) { card.querySelector('.th').textContent = '読み込めません'; continue; }
+        const D = r.data, base = Math.min(1, D.sets.length - 1);
+        card.querySelector('.th').className = 'th';
+        card.querySelector('.th').innerHTML = X.miniSvg(D.field, dotsOf(D, base), {label: D.name});
+        card.querySelector('span').textContent = `${it.kind}・${D.performers.length}人・${D.sets.length}セット`;
+      } catch (e) { /* この1件だけ飛ばす */ }
+    }
+    if (touched && !window.JK_LOCAL) { try { await fetch('/api/compile', {method: 'POST', body: currentSource()}); } catch (e) { /* 無視 */ } }
+  };
+  home();
+  d.addEventListener('click', async e => {
+    if (e.target.closest('[data-close]')) { d.close(); return; }
+    if (e.target.closest('[data-newback]')) { home(); return; }
+    const b = e.target.closest('[data-new]'); if (!b) return;
+    const g = b.dataset.new;
+    if (g === 'blank') blank();
+    else if (g === 'tpl') tpls();
+    else if (g === 'wizard') { if (await newGuard()) { d.close(); uxWizard(); } }
+    else if (g === 'parade') { if (await newGuard()) { d.close(); setTimeout(() => window.jkOpenParade(), 120); } }
+  });
+  openDlg(d);
+}
+window.uxNewShow = uxNewShow;
+
 // ======================================================================
 // かんたん作成ウィザード
 // ======================================================================
@@ -673,7 +784,7 @@ function uxHint() {
   if (empty) return {cls: '', icon: 'mascot-point', msg: 'まず、隊形を作りましょう。', sub: '形のイラストから選ぶと、人が自動で並びます。', btns: [['＋ 隊形を追加', () => { showTab('pset'); setTimeout(() => uxOpenPalette($('addstmt')), 30); }, 'pri']]};
   if (nColl) return {cls: 'warn', icon: 'mascot-oops', msg: `${nColl}か所で、人がぶつかりそうです。`, sub: '自動で直すと、動き出しのタイミングなどを調整します。', btns: [['自動で直す', () => autoFix(), 'pri'], ['くわしく見る', () => showTab('pwarn')]]};
   if (M.sets.length === 1) return {cls: '', icon: 'mascot-baton', msg: '次のセットを作りましょう。', sub: 'セットを足すと、人が動いて次の隊形になります。', btns: [['次のセットを作る', () => $('addset').click(), 'pri']]};
-  if (!M.sets[curSet].stmts.some(st => st.shape.kind !== 'attr') && curSet > 0) return {cls: '', icon: 'mascot-think', msg: `セット ${M.sets[curSet].name} は、まだ全員その場です。`, sub: '隊形を足して、動きをつけましょう。', btns: [['＋ 隊形を追加', () => { showTab('pset'); setTimeout(() => uxOpenPalette($('addstmt')), 30); }, 'pri']]};
+  if (!M.sets[curSet].stmts.some(st => st.shape.kind !== 'attr') && curSet > 0) return {cls: '', icon: 'mascot-think', msg: `セット ${setLbl(curSet)} は、まだ全員その場です。`, sub: '隊形を足して、動きをつけましょう。', btns: [['＋ 隊形を追加', () => { showTab('pset'); setTimeout(() => uxOpenPalette($('addstmt')), 30); }, 'pri']]};
   if (nOth) return {cls: 'warn', icon: 'mascot-think', msg: `確認したい点が ${nOth}件あります。`, sub: '歩幅が大きすぎる、会場の外に出ているなどです。', btns: [['チェックを見る', () => showTab('pwarn'), 'pri']]};
   return {cls: 'ok', icon: 'mascot-cheer', msg: 'いい感じです！ できあがりを確かめましょう。', sub: '3Dで見たり、動画にしたり、保存したりできます。', btns: [['3Dで見る', () => $('preview').click(), 'pri'], ['動画を書き出す', () => $('video').click()], ['保存', () => save()]]};
 }
@@ -715,7 +826,7 @@ window.uxRenderWarns = function () {
   });
   items.slice(0, MAXS).forEach((g, j) => {
     const w = g.w;
-    const f = X.friendly(D, w, M.sets[w.set] ? M.sets[w.set].name : null, g.who);
+    const f = X.friendly(D, w, M.sets[w.set] ? setLbl(w.set) : null, g.who);
     const btn = {fix: '<button data-wa="fix" class="pri">自動で直す</button>', select: `<button data-wa="select">${g.who.length > 1 ? 'その人たちを選ぶ' : 'その人を選ぶ'}</button>`, goto: '<button data-wa="goto">そのセットへ移動</button>', more: '<button data-wa="more">カウントを＋8する</button>', score: '<button data-wa="score">楽譜を開く</button>'};
     h += `<div class="fw t-${f.kind}" data-j="${j}">${ic(f.icon, 40)}<div class="b"><b>${f.title}</b><p>${esc(f.body)}</p>${f.tip ? `<div class="tip">${esc(f.tip)}</div>` : ''}${UX.mode === 'pro' ? `<div class="raw">${esc(w.msg)}</div>` : ''}<div class="acts">${f.acts.map(a => btn[a]).join('')}</div></div></div>`;
   });
@@ -731,7 +842,7 @@ window.uxRenderWarns = function () {
       if (a === 'score') { showTab('pscore'); return; }
       stopPlay(); playT = null; curSet = w.set; curStmt = -1;
       if (a === 'select') sel = new Set(g.who);
-      if (a === 'more' && M.sets[w.set] && w.set > 0) { M.sets[w.set].counts = String((numOf(M.sets[w.set].counts) || 16) + 8); edited(true); uxToast(`セット ${M.sets[w.set].name} のカウントを増やしました`, 'ok'); return; }
+      if (a === 'more' && M.sets[w.set] && w.set > 0) { M.sets[w.set].counts = String((numOf(M.sets[w.set].counts) || 16) + 8); edited(true); uxToast(`セット ${setLbl(w.set)} のカウントを増やしました`, 'ok'); return; }
       refresh(true); if (a === 'select') { updateSel(); drawCanvas(); }
       $('info').textContent = w.msg;
     });
@@ -775,19 +886,20 @@ let baseVB = null, view = {k: 1};
 function applyView(cx, cy, k) {
   if (!baseVB) return;
   const [bx, by, bw, bh] = baseVB;
-  k = Math.max(1, Math.min(8, k));
+  k = Math.max(0.5, Math.min(8, k));
   const w = bw / k, h = bh / k;
   cx = Math.max(bx, Math.min(bx + bw, cx)); cy = Math.max(by, Math.min(by + bh, cy));
-  if (k === 1) { cx = bx + bw / 2; cy = by + bh / 2; }
+  if (k <= 1) { cx = bx + bw / 2; cy = by + bh / 2; }
   view = {k, cx, cy};
   svg.setAttribute('viewBox', `${cx - w / 2} ${cy - h / 2} ${w} ${h}`);
+  try { window.dispatchEvent(new CustomEvent('jk-view', {detail: {k}})); } catch (e) { /* 無視 */ }
 }
 function curVB() { const v = svg.getAttribute('viewBox').split(/\s+/).map(Number); return v; }
 function toSvg(x, y) { const p = svg.createSVGPoint(); p.x = x; p.y = y; return p.matrixTransform(svg.getScreenCTM().inverse()); }
 function zoomAt(sx, sy, factor) {
   if (!baseVB) return;
   const q0 = toSvg(sx, sy), [vx, vy, vw, vh] = curVB();
-  const k = Math.max(1, Math.min(8, view.k * factor));
+  const k = Math.max(0.5, Math.min(8, view.k * factor));
   applyView(vx + vw / 2, vy + vh / 2, k);
   const q1 = toSvg(sx, sy);
   const [x2, y2, w2, h2] = curVB();
@@ -809,8 +921,10 @@ function initTouch() {
   let gest = null, lp = null, startSrc = '';
   const abortDrags = () => { dragging = pdrag = gdrag = tdrag = null; band = null; if (draw) cancelDraw(); };
   const lpClear = () => { if (lp) { clearTimeout(lp.t); lp = null; } };
-  svg.addEventListener('pointerdown', e => {
+  // window の捕捉段階で受ける: 描画ツールなど、svg 側が先に pointerdown を止める処理より前に2本目の指を拾うため
+  window.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'touch') return;
+    if (!(e.target instanceof Node && svg.contains(e.target)) && !(ptrs.size && wrapEl.contains(e.target))) return;
     ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY});
     if (ptrs.size === 1) {
       startSrc = currentSource();
@@ -849,8 +963,32 @@ function initTouch() {
   }, {passive: false});
   const up = e => { if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); lpClear(); if (ptrs.size < 2) gest = null; };
   window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
-  // ピンチ中の浮動UIは邪魔なので触れない
-  void wrapEl;
+  // ---- 予備の経路（実機のブラウザによっては pointer イベントが途中で cancel されるため）----
+  // touch イベント: pointer 側が2本指の操作を始めていないときだけ、こちらで拡大縮小・移動する。ページ全体のピンチ拡大・スクロールは止める
+  let tg = null;
+  const tpair = e => { const a = e.touches[0], b = e.touches[1]; return {d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1, cx: (a.clientX + b.clientX) / 2, cy: (a.clientY + b.clientY) / 2}; };
+  wrapEl.addEventListener('touchstart', e => {
+    if (e.touches.length >= 2) { e.preventDefault(); if (!gest) { lpClear(); abortDrags(); tg = tpair(e); } }
+  }, {passive: false});
+  wrapEl.addEventListener('touchmove', e => {
+    if (e.touches.length >= 2) {
+      e.preventDefault();
+      if (tg && !gest) { const n = tpair(e); panBy(n.cx - tg.cx, n.cy - tg.cy); zoomAt(n.cx, n.cy, n.d / tg.d); tg = n; }
+    }
+  }, {passive: false});
+  const tend = e => { if (e.touches.length < 2) tg = null; };
+  wrapEl.addEventListener('touchend', tend); wrapEl.addEventListener('touchcancel', tend);
+  // Safari のジェスチャーイベント: 上の2つが働かなかったときの最後の手段（scale の変化分だけ拡大する）
+  let gs = null;
+  document.addEventListener('gesturestart', e => { if (wrapEl.contains(e.target)) { e.preventDefault(); gs = e.scale || 1; } }, {passive: false});
+  document.addEventListener('gesturechange', e => {
+    if (!wrapEl.contains(e.target)) return;
+    e.preventDefault();
+    if (gs !== null && !gest && !tg && e.scale) { zoomAt(e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, e.scale / gs); }
+    gs = e.scale || gs;
+  }, {passive: false});
+  document.addEventListener('gestureend', () => { gs = null; });
+  window.JKUX_pinching = () => !!(gest || tg);
 }
 
 // ======================================================================
@@ -863,7 +1001,7 @@ function init() {
   document.querySelectorAll('#modesw button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
   $('helpbtn').onclick = () => uxHelp();
   $('homebtn').onclick = () => uxWelcome();
-  if (window.JK_LOCAL) { const nf = $('newfile'); nf.title = 'ようこそ画面から、かんたん作成・サンプル・ひな形を選んで新しく作る'; nf.onclick = () => uxWelcome(); $('homebtn').style.display = 'none'; }
+  if (window.JK_LOCAL) { const nf = $('newfile'); nf.title = '新しく作る（白紙・かんたん作成・テンプレート・パレードから選ぶ）'; $('homebtn').style.display = 'none'; }
   setMode(UX.mode);
 
   // 描画のあとに付け足す処理

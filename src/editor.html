@@ -190,6 +190,15 @@ details.adv>div{padding:6px 0 2px}
 #tltime{color:var(--fg);min-width:150px}
 #tltrack{position:relative;height:52px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
 #tlruler{position:absolute;left:0;right:0;top:0;height:16px;cursor:col-resize;background:#16181d;border-radius:4px}
+#tltrack .tlb.sub{top:31px;height:20px;padding:0 5px;font-size:11px;line-height:18px;background:#232b3b;border-style:dashed}
+#tltrack .tlb.sub b{font-size:11px}
+#tltrack .tlb.sub .m,#tltrack .tlb.sub br{display:none}
+#tltrack .tlgrp{position:absolute;top:50px;height:2px;background:#4a5a82;border-radius:2px;pointer-events:none}
+#tlruler .bt{position:absolute;bottom:0;width:1px;height:4px;background:#3a404c;pointer-events:none}
+#tlruler .bt.bar{height:9px;background:#6b7280}
+#tlruler .tk.bar{border-left:0;padding-left:3px;color:#9aa6bd;top:0}
+#seekwrap{display:inline-flex;gap:4px;margin-left:6px}
+#seekwrap select{padding:2px 4px;font-size:12px}
 #tlruler .tk{position:absolute;top:2px;font-size:9px;color:#6b7280;border-left:1px solid #444b57;padding-left:2px;height:12px;line-height:12px;pointer-events:none}
 #playhead{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--acc);pointer-events:none;z-index:3}
 #playhead::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top:8px solid var(--acc);border-bottom:0}
@@ -276,7 +285,7 @@ __BOOT__
     <div id="timeline">
       <div id="tlbar">
         <button id="tlplay" title="ショー全体を再生 (Space)">▶ 全体を再生</button>
-        <span id="tltime"></span><span class="sp"></span>
+        <span id="tltime"></span><span id="seekwrap"><select id="seekunit" aria-label="再生位置の刻み"><option value="beat">刻み: 拍</option><option value="bar">刻み: 小節</option><option value="free">刻み: 自由</option></select><select id="barbeats" aria-label="1小節の拍数" hidden><option value="2">2拍/小節</option><option value="3">3拍/小節</option><option value="4">4拍/小節</option><option value="5">5拍/小節</option><option value="6">6拍/小節</option><option value="7">7拍/小節</option><option value="8">8拍/小節</option></select></span><span class="sp"></span>
         <button id="paradebtn" hidden title="パレード（行進の隊列移動）を自動で作る"></button>
         <span class="splitbtn" id="addsetwrap"><button id="addset" title="新しいセットを足す（直前の長さ・今の隊形のコピー）">＋ セット<small id="addsetn"></small></button><button id="addsetmenu" class="caret" aria-haspopup="true" aria-label="セットの長さを選ぶ・まとめて作る" title="長さを選ぶ・まとめて作る">▾</button></span><button id="dupset" title="今のセットを複製">複製</button><span class="splitbtn" id="splitwrap"><button id="splitbtn" title="再生ヘッドの位置で、今のセットを2つに分ける">分割</button><button id="splitmenu" class="caret" aria-haspopup="true" aria-label="分割・カット・コピーのメニュー" title="分割・カット・コピー">▾</button></span>
         <button id="upset" class="ghost" title="前へ">←</button><button id="downset" class="ghost" title="後ろへ">→</button>
@@ -1353,22 +1362,51 @@ function tOfU(u, lay) {
   const frac = Math.min(1, Math.max(0, (u - seg.u0) / (seg.u1 - seg.u0)));
   return seg.t0 + frac * (seg.t1 - seg.t0);
 }
+// セットの表示名（サブセットは 3A のように 親の名前 + A, B, C…）
+function setLbl(k) { const v = M && M.sets && M.sets[k] ? JKX.displayNames(M.sets)[k] : ''; return v === '' && M && M.sets[k] ? M.sets[k].name : v; }
+// ---- 再生位置の刻み（拍・小節・自由）。選びは端末に覚えておく ----
+const SEEK = {unit: 'beat', beats: 4};
+try { const v = JSON.parse(localStorage.getItem('jk_seek') || '{}'); if (['beat', 'bar', 'free'].includes(v.unit)) SEEK.unit = v.unit; if (v.beats >= 1 && v.beats <= 16) SEEK.beats = +v.beats; } catch (e) { /* 使えない環境 */ }
+const seekBar = () => JKX.barInfo(R && R.data && R.data.parts, SEEK.beats);
+const seekSnap = t => JKX.snapSeek(t, SEEK.unit, seekBar(), tlLayout().total);
+function seekSave() { try { localStorage.setItem('jk_seek', JSON.stringify(SEEK)); } catch (e) { /* 使えない環境 */ } }
+function seekUI() {
+  const u = $('seekunit'), b = $('barbeats'); if (!u || !b) return;
+  u.value = SEEK.unit; b.value = String(SEEK.beats);
+  const bar = seekBar();
+  b.hidden = !(SEEK.unit === 'bar' && bar.from === 'setting');
+  u.title = `再生位置の刻み（タイムラインをなぞる・, . で動かすときの単位）。小節は ${bar.meter}${bar.from === 'part' ? '（パートの拍子）' : '（設定）'}`;
+}
 function renderTimeline() {
   if (!M) return;
   const lay = tlLayout(), ppc = tlPPC(lay), D = R && R.data;
-  let h = '<div id="tlruler">' + lay.segs.map(s => (s.u1 - s.u0) * ppc > 30 ? `<span class="tk" style="left:${s.u0 * ppc}px">${fmt(s.t0)}</span>` : '').join('') + '</div>';
+  const bar = seekBar();
+  let h = '<div id="tlruler" title="タップ・ドラッグで再生位置を動かす（刻み: ' + ({beat: '拍', bar: '小節', free: '自由'})[SEEK.unit] + '）">';
+  { const tk = JKX.rulerTicks(lay.total, bar); let lastLab = -99;
+    tk.forEach((x, i) => {
+      const px = uOfT(x.t, lay) * ppc, nx = i + 1 < tk.length ? uOfT(tk[i + 1].t, lay) * ppc : px + 99;
+      if (x.bar) { h += `<i class="bt bar" style="left:${px}px"></i>`; if (px - lastLab >= 24) { h += `<span class="tk bar" style="left:${px}px">${x.bar}</span>`; lastLab = px; } }
+      else if (nx - px >= 5) h += `<i class="bt" style="left:${px}px"></i>`;
+    }); }
+  h += '</div>';
+  const lbl = JKX.displayNames(M.sets);
+  // サブセットは、親（直前の本セット）にぶら下がった小さなブロックで描く
+  { let g = null;
+    lay.segs.forEach(sg => { const sub = M.sets[sg.k].sub && sg.k > 0; if (!sub) { g = {k: sg.k, u0: sg.u0, u1: sg.u1, n: 0}; sg.g = g; } else if (g) { g.u1 = sg.u1; g.n++; sg.g = g; } });
+    lay.segs.forEach(sg => { const g2 = sg.g; if (g2 && g2.n && g2.k === sg.k) h += `<div class="tlgrp" style="left:${g2.u0 * ppc}px;width:${Math.max(6, (g2.u1 - g2.u0) * ppc - 3)}px"></div>`; }); }
   lay.segs.forEach(s => {
-    const set = M.sets[s.k], w = (s.u1 - s.u0) * ppc - 3, nw = D ? D.warnings.filter(x => x.set === s.k).length : 0;
-    const tip = `セット ${set.name}｜${s.k ? fmt(s.c) + 'カウント' : '開始'}${s.h ? '＋ホールド' + fmt(s.h) : ''}${nw ? '｜⚠' + nw + '件' : ''}\nダブルクリックでカウント数を入力／右端をドラッグで長さを変更（Shift: 0.5刻み）／ドラッグで並べ替え／右クリックで分割・コピー…`;
+    const set = M.sets[s.k], isSub = !!set.sub && s.k > 0, w = (s.u1 - s.u0) * ppc - 3, nw = D ? D.warnings.filter(x => x.set === s.k).length : 0;
+    const tip = `セット ${lbl[s.k]}｜${s.k ? fmt(s.c) + 'カウント' : '開始'}${s.h ? '＋ホールド' + fmt(s.h) : ''}${nw ? '｜⚠' + nw + '件' : ''}\nダブルクリックでカウント数を入力／右端をドラッグで長さを変更（Shift: 0.5刻み）／ドラッグで並べ替え／右クリックで分割・コピー…`;
     const holdW = Math.min(w, s.h * ppc), cEdgeX = Math.max(0, w - holdW);
-    h += `<div class="tlb ${s.k === curSet ? 'cur' : ''}${setSel.has(s.k) ? ' sel' : ''}${setSel.has(s.k) && tlFocus ? ' foc' : ''}" data-k="${s.k}" style="left:${s.u0 * ppc}px;width:${Math.max(6, w)}px" title="${esc(tip)}">
-      <b>${w > 64 ? 'セット ' : ''}${esc(set.name)}</b>${nw ? `<span class="w">⚠${nw}</span>` : ''}<br><span class="m">${s.k ? fmt(s.c) + 'c' : '開始'}${s.h ? ' +' + fmt(s.h) : ''}</span>
+    h += `<div class="tlb ${isSub ? 'sub ' : ''}${s.k === curSet ? 'cur' : ''}${setSel.has(s.k) ? ' sel' : ''}${setSel.has(s.k) && tlFocus ? ' foc' : ''}" data-k="${s.k}" style="left:${s.u0 * ppc}px;width:${Math.max(6, w)}px" title="${esc(tip)}">
+      <b>${w > 64 && !isSub ? 'セット ' : ''}${esc(lbl[s.k])}</b>${nw ? `<span class="w">⚠${nw}</span>` : ''}<br><span class="m">${s.k ? fmt(s.c) + 'c' : '開始'}${s.h ? ' +' + fmt(s.h) : ''}</span>
       ${s.h ? `<div class="hold" style="width:${holdW}px"></div>` : ''}${s.k ? `<div class="edge" data-w="c" style="${s.h ? `right:auto;left:${Math.max(0, cEdgeX - 5)}px` : ''}" title="ドラッグでカウント数を変える（Shift: 0.5刻み／Alt: ホールド）"></div>` : ''}${s.h ? `<div class="edge hedge" data-w="h" title="ドラッグでホールドを変える"></div>` : ''}</div>`;
   });
   h += '<div id="playhead"></div>';
   $('tltrack').innerHTML = h;
   updatePlayhead();
   const an = $('addsetn'); if (an) an.textContent = qsLast();
+  seekUI();
 }
 // 直前に使ったカウント数（新しいセットの既定の長さ）
 function qsLast() { let v = NaN; try { v = parseFloat(localStorage.getItem('jk_qs_last')); } catch (e) { /* 使えない環境 */ } return v >= 0.5 && v <= 999 ? v : 8; }
@@ -1383,7 +1421,7 @@ function updatePlayhead() {
   const lay = tlLayout(), ppc = tlPPC(lay), t = playheadT();
   ph.style.left = (uOfT(t, lay) * ppc + 1) + 'px';
   const s = M.sets[Math.min(curSet, M.sets.length - 1)];
-  $('tltime').textContent = `セット ${s.name}｜${fmt1(t)} / ${fmt1(lay.total)} カウント`;
+  $('tltime').textContent = `セット ${setLbl(Math.min(curSet, M.sets.length - 1))}｜${fmt1(t)} / ${fmt1(lay.total)} カウント`;
 }
 function totalOf(D) { const s = D.sets[D.sets.length - 1]; return s.start + s.counts + s.hold; }
 function drawAt(t) {
@@ -1419,6 +1457,8 @@ function startPlay() {
 $('tlplay').onclick = () => { if (playing) stopPlay(); else startPlay(); };
 function selectSet(k) { stopPlay(); playT = null; curSet = k; curStmt = -1; refresh(true); }
 const tltrack = $('tltrack');
+$('seekunit').onchange = e => { SEEK.unit = e.target.value; seekSave(); renderTimeline(); };
+$('barbeats').onchange = e => { SEEK.beats = +e.target.value; seekSave(); renderTimeline(); };
 tltrack.addEventListener('pointerdown', e => {
   if (!M || !R || e.button !== 0) return;
   const edge = e.target.closest('.edge'), blk = e.target.closest('.tlb'), rul = e.target.closest('#tlruler');
@@ -1452,7 +1492,7 @@ function tlClickSet(k, shift, ctrl) {
 }
 function setFocusInfo() {
   const ks = [...setSel].sort((a, b) => a - b), info = $('info');
-  if (info && ks.length) info.textContent = `セット ${ks.map(i => M.sets[i] && M.sets[i].name).join('・')} を選択中（Ctrl+C コピー／Ctrl+X 切り取り／Ctrl+V 貼り付け／Delete 削除）`;
+  if (info && ks.length) info.textContent = `セット ${ks.map(i => M.sets[i] && setLbl(i)).join('・')} を選択中（Ctrl+C コピー／Ctrl+X 切り取り／Ctrl+V 貼り付け／Delete 削除）`;
 }
 function clearSetFocus() { if (!tlFocus && !setSel.size) return; tlFocus = false; setSel.clear(); if (M) renderTimeline(); }
 // ドラッグでセットを並べ替え: 置く場所の目印
@@ -1481,7 +1521,7 @@ tltrack.addEventListener('contextmenu', e => {
 function scrubTo(e) {
   if (!R || R.data.sets.length !== M.sets.length) return;
   const lay = tlLayout(), ppc = tlPPC(lay), x = e.clientX - tltrack.getBoundingClientRect().left;
-  drawAt(tOfU(x / ppc, lay));
+  drawAt(seekSnap(tOfU(x / ppc, lay)));
 }
 // ---- カウント数の「ライブ表示」（ドラッグ中、右端の近くに浮かぶ） ----
 function tlTip(x, y, text) {
@@ -1520,7 +1560,7 @@ tltrack.addEventListener('pointermove', e => {
   const v = tlApply(d.k, d.which, (d.which === 'h' ? d.h0 : d.c0) + dx, fine);
   if (v == null) return;
   d.last = v;
-  const nm = M.sets[d.k].name, what = d.which === 'h' ? 'ホールド' : 'カウント';
+  const nm = setLbl(d.k), what = d.which === 'h' ? 'ホールド' : 'カウント';
   $('info').textContent = `セット ${nm}: ${v}${d.which === 'h' ? ' ホールド' : 'カウント'}`;
   tlTipAt(d.k, `${v} ${what}`);
 });
@@ -1541,7 +1581,7 @@ function qsEditSet(k, ax) {
   const set = M.sets[k]; let pop = $('qsedit');
   if (pop) pop.remove();
   pop = document.createElement('div'); pop.id = 'qsedit'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'セットの長さ');
-  pop.innerHTML = `<div class="qh2">セット ${esc(set.name)} の長さ</div>
+  pop.innerHTML = `<div class="qh2">セット ${esc(setLbl(k))} の長さ</div>
     <label ${k ? '' : 'class="off"'}>カウント<input id="qsec" inputmode="decimal" autocomplete="off" value="${k ? esc(set.counts) : ''}" ${k ? '' : 'disabled placeholder="—"'}></label>
     <label>ホールド<input id="qseh" inputmode="decimal" autocomplete="off" value="${esc(set.hold || '0')}"></label>
     <label>テンポ<input id="qset" inputmode="decimal" autocomplete="off" value="${set.tempo == null ? '' : esc(set.tempo)}" placeholder="${esc(String(M.tempo))}"></label>
@@ -1591,7 +1631,7 @@ function qsBump(k, which, delta, fine) {
   if (bumpBefore === null) { stopPlay(); playT = null; bumpBefore = currentSource(); holdUndo = true; if (k !== curSet) { curSet = k; curStmt = -1; renderSetPane(); } }
   const set = M.sets[k], cur = which === 'h' ? (parseFloat(set.hold) || 0) : (parseFloat(set.counts) || 0);
   inBump = true; let v; try { v = tlApply(k, which, cur + delta, fine, true); } finally { inBump = false; }
-  if (v != null) { $('info').textContent = `セット ${set.name}: ${v}${which === 'h' ? ' ホールド' : ' カウント'}`; tlTipAt(k, `${v} ${which === 'h' ? 'ホールド' : 'カウント'}`); if (which === 'c') qsSetLast(v); }
+  if (v != null) { $('info').textContent = `セット ${setLbl(k)}: ${v}${which === 'h' ? ' ホールド' : ' カウント'}`; tlTipAt(k, `${v} ${which === 'h' ? 'ホールド' : 'カウント'}`); if (which === 'c') qsSetLast(v); }
   clearTimeout(bumpT); bumpT = setTimeout(flushBump, 650);
   return v;
 }
@@ -1609,12 +1649,13 @@ tltrack.addEventListener('wheel', e => {
 }, {passive: false});
 // 新しいセットを、今のセットの後ろに足す。counts を省くと「直前に使った長さ」。copy: 'prev'（今の隊形をコピー）| 'hold'（全員その場）
 let qsFresh = null;
-function qsNewSet(counts, copy) {
+function qsNewSet(counts, copy, o) {
   if (!M || !R) return false;
   if (counts == null) counts = qsLast();
   copy = copy || (localStorage.getItem('jk_qs_copy') === 'hold' ? 'hold' : 'prev');
   stopPlay(); playT = null;
   const plan = JKSC.planSets(M, curSet, [counts], {copy});
+  if (o && o.sub) plan.sets.forEach(st => { st.sub = true; st.name = ''; });   // サブセットとして足す（名前は 親＋A, B… と自動）
   M.sets.splice(curSet + 1, 0, ...plan.sets); curSet++; curStmt = -1;
   qsSetLast(counts);
   qsFresh = {k: curSet, t: Date.now(), buf: ''};
@@ -1638,7 +1679,7 @@ function qsInsertSets(counts, o) {
 window.qsInsertSets = qsInsertSets;
 $('addset').onclick = () => qsNewSet();
 $('dupset').onclick = () => { const c = JSON.parse(JSON.stringify(M.sets[curSet])); c.name = nextSetName(); c.note = []; if (!+c.counts) c.counts = '16'; M.sets.splice(curSet + 1, 0, c); curSet++; edited(true); };
-$('delset').onclick = async () => { if (M.sets.length < 2) return; if (!(await ask(`セット ${M.sets[curSet].name} を削除しますか？`, '削除する'))) return; M.sets.splice(curSet, 1); curSet = Math.max(0, curSet - 1); curStmt = -1; edited(true); };
+$('delset').onclick = async () => { if (M.sets.length < 2) return; if (!(await ask(`セット ${setLbl(curSet)} を削除しますか？`, '削除する'))) return; M.sets.splice(curSet, 1); curSet = Math.max(0, curSet - 1); curStmt = -1; edited(true); };
 $('upset').onclick = () => { if (curSet < 1) return; [M.sets[curSet - 1], M.sets[curSet]] = [M.sets[curSet], M.sets[curSet - 1]]; curSet--; edited(true); };
 $('downset').onclick = () => { if (curSet >= M.sets.length - 1) return; [M.sets[curSet + 1], M.sets[curSet]] = [M.sets[curSet], M.sets[curSet + 1]]; curSet++; edited(true); };
 window.addEventListener('resize', () => { if (M) renderTimeline(); });
@@ -1972,9 +2013,10 @@ function renderSetPane() {
   const k = curSet, set = M.sets[k];
   if (!set) { $('pset').innerHTML = ''; return; }
   const errLine = lastErr && lastErr.line;
-  let h = `<div class="row">${fld('セット名', set.name, 'name', 'set', '70px')}${k ? fld('移動カウント', set.counts, 'counts', 'set', '70px') : ''}${fld('ホールド', set.hold, 'hold', 'set', '60px')}${fld('テンポ（ここから）', set.tempo, 'tempo', 'set', '70px')}
-    <label class="f" title="ホールド中・出発待ちの間、その場で足踏み" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="mark" ${set.mark ? 'checked' : ''} style="width:auto">マークタイム</label></div>`;
-  if (!set.stmts.length) h += window.uxEmpty ? uxEmpty('no-sets', k ? `セット ${esc(set.name)} は、まだ全員その場です` : 'まだ隊形がありません', '「隊形を追加」で形をえらぶか、左のツールで画面に直接かいてみましょう。', '＋ 隊形を追加', 'emptyadd') : `<div class="note">このセットでは誰も動きません（全員その場）。左の描画ツールで描くか、下のボタンで隊形を追加します。</div>`;
+  let h = `<div class="row">${fld('セット名', set.name, 'name', 'set', '70px')}${set.sub && !set.name ? `<span class="f" style="align-self:end;margin-bottom:6px;color:var(--mut)">表示名: <b style="color:var(--fg)">${esc(setLbl(k))}</b></span>` : ''}${k ? fld('移動カウント', set.counts, 'counts', 'set', '70px') : ''}${fld('ホールド', set.hold, 'hold', 'set', '60px')}${fld('テンポ（ここから）', set.tempo, 'tempo', 'set', '70px')}
+    <label class="f" title="ホールド中・出発待ちの間、その場で足踏み" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="mark" ${set.mark ? 'checked' : ''} style="width:auto">マークタイム</label>
+    ${k ? `<label class="f" title="前のメインのセットの下に、3A・3B のように並ぶ中間のセット（名前は自動。空欄のままにします）" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="sub" data-structural="1" ${set.sub ? 'checked' : ''} style="width:auto">サブセット</label>` : ''}</div>`;
+  if (!set.stmts.length) h += window.uxEmpty ? uxEmpty('no-sets', k ? `セット ${esc(setLbl(k))} は、まだ全員その場です` : 'まだ隊形がありません', '「隊形を追加」で形をえらぶか、左のツールで画面に直接かいてみましょう。', '＋ 隊形を追加', 'emptyadd') : `<div class="note">このセットでは誰も動きません（全員その場）。左の描画ツールで描くか、下のボタンで隊形を追加します。</div>`;
   const inds = [];
   set.stmts.forEach((st, si) => {
     if (stmtIsIndividual(st)) { inds.push(si); return; }
@@ -2026,6 +2068,10 @@ function bindInputs(root) {
       if (key === 'skip') v = [...new Set(String(v).split(/[,、，\s]+/).map(Number).filter(x => Number.isInteger(x) && x >= 1))].sort((a, b) => a - b);
       if (inp.dataset.num) v = v === '' ? null : v;
       if (v === '' && ['assign', 'wait', 'within', 'start', 'spacing', 'rows', 'clearance', 'maxstep', 'look', 'color', 'instrument', 'tempo', 'bend', 'face', 'step', 'action'].includes(key)) v = null;
+      if (key === 'sub' && inp.dataset.path === 'set') {   // 名前は自動に任せる／メインに戻すときは次の番号を付ける
+        if (v && /^\d+$/.test(String(o.name))) o.name = '';
+        else if (!v && o.name === '') { const used = new Set(M.sets.map(x => String(x.name))); let n = 1; for (const x of M.sets) if (!x.sub && /^\d+$/.test(String(x.name))) n = Math.max(n, +x.name + 1); while (used.has(String(n))) n++; o.name = String(n); }
+      }
       o[isNaN(+key) ? key : +key] = v;
       const structural = key === 'group' ? false : (inp.dataset.structural === '1');
       if (inp.dataset.path === 'field' || key === 'type') { renderShowPane(); }
@@ -2523,7 +2569,7 @@ if (window.JK_LOCAL) {
       loadLocal(await (await h.getFile()).text(), h.name, h);
     } catch (e) { if (e.name !== 'AbortError') notice('開けませんでした: ' + e.message); }
   };
-  $('newfile').onclick = () => loadLocal(JK_LOCAL.template, '新しいショー.jk', null);
+  $('newfile').onclick = () => { if (window.uxNewShow) uxNewShow(); else loadLocal(JK_LOCAL.template, '新しいショー.jk', null); };
   window.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
   window.addEventListener('drop', async e => {
     const f = e.dataTransfer && e.dataTransfer.files[0];

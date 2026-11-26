@@ -509,3 +509,10 @@ dialog.uxdlg.qsdlg{width:min(720px,calc(100vw - 20px))}
 #tlbar.narrow #splitbtn .tx,#tlbar.narrow #dupset .tx{display:none}
 #tlbar.narrow #splitbtn,#tlbar.narrow #dupset{padding:4px 7px}
 #tlbar.narrow #upset,#tlbar.narrow #downset{display:none}
+/* --- 新規ショーの選択 --- */
+.newh{margin:14px 0 6px;font-size:13px;color:var(--mut)}
+.newrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.newopt{display:flex;flex-direction:column;gap:2px;text-align:left;white-space:normal;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--fg)}
+.newopt span{font-size:12px;color:var(--mut)}
+.newopt.on{border-color:#5b8def;background:#22305a}
+dialog.uxdlg.newshow{width:min(720px,calc(100vw - 20px))}

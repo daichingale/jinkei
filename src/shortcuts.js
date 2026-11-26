@@ -116,9 +116,11 @@ function scToast(msg, o) {
     b.onclick = () => { close(); o.action.run(); };
     t.appendChild(b);
   }
+  const ph = document.documentElement.classList.contains('mp');
+  if (ph) { while (box.firstChild) box.firstChild.remove(); }   // スマホは常に1つだけ
   box.appendChild(t);
   while (box.children.length > 3) box.firstChild.remove();
-  timer = setTimeout(close, o.ms || (o.undo || o.action ? 8000 : 2600));
+  timer = setTimeout(close, o.ms || (ph ? (o.undo || o.action ? 5000 : 3000) : (o.undo || o.action ? 8000 : 2600)));
   t.addEventListener('mouseenter', () => clearTimeout(timer));
   t.addEventListener('mouseleave', () => { timer = setTimeout(close, 2500); });
   return t;
@@ -201,7 +203,7 @@ let clip = null;
 function copySel(quiet) {
   if (!ready() || !sel.size) { if (!quiet) scToast('先に、コピーしたい人を選んでください', {kind: 'info'}); return false; }
   const pos = R.data.sets[curSet].pos;
-  clip = {set: M.sets[curSet].name, items: selIdx().map(i => ({id: R.data.performers[i].id, p: pos[i].slice()}))};
+  clip = {set: setLbl(curSet), items: selIdx().map(i => ({id: R.data.performers[i].id, p: pos[i].slice()}))};
   if (!quiet) scToast(`${clip.items.length}人の位置をコピーしました`, {kind: 'info', sub: '別のセットに移って Ctrl+V で貼り付けます', icon: 'dup'});
   return true;
 }
@@ -215,7 +217,7 @@ async function pasteSel() {
   await guarded(async () => {
     await commit(SC.pastePositions(M, curSet, t.pairs));
     sel = new Set(t.pairs.map(x => idx.get(x.id))); updateSel(); drawCanvas();
-    scToast(`${t.pairs.length}人の位置を貼り付けました`, {undo: true, sub: t.mode === 'order' ? '選んだ人に、並び順で当てはめました' : `セット ${M.sets[curSet].name} に反映しました`, icon: 'paste'});
+    scToast(`${t.pairs.length}人の位置を貼り付けました`, {undo: true, sub: t.mode === 'order' ? '選んだ人に、並び順で当てはめました' : `セット ${setLbl(curSet)} に反映しました`, icon: 'paste'});
   });
   return true;
 }
@@ -251,11 +253,11 @@ function nudge(dir, combo) {
 
 // ---- セット・時間 ----
 function gotoSet(k) { if (!ready()) return; k = Math.max(0, Math.min(M.sets.length - 1, k)); if (k !== curSet) selectSet(k); }
-function stepCount(d) {
+function stepCount(d, byBar) {   // 刻みの単位（拍・小節）で動かす。byBar: 小節ごと
   if (!ready() || R.data.sets.length !== M.sets.length) return;
   stopPlay();
   const lay = tlLayout();
-  drawAt(Math.max(0, Math.min(lay.total, playheadT() + d)));
+  drawAt(JKX.stepSeek(playheadT(), d, SEEK.unit, seekBar(), lay.total, !!byBar));
 }
 function playFromSet() {
   if (!ready()) return;
@@ -372,8 +374,10 @@ def('set-prev', '前のセットへ', 'set', ['[', 'PageUp'], {icon: 'setprev', 
 def('set-next', '次のセットへ', 'set', [']', 'PageDown'], {icon: 'setnext', kw: 'つぎ せっと next set すすむ', repeat: true, run: () => { gotoSet(curSet + 1); }});
 def('set-first', '最初のセットへ', 'set', ['Home'], {icon: 'setfirst', kw: 'さいしょ せっと first home', run: () => { gotoSet(0); }});
 def('set-last', '最後のセットへ', 'set', ['End'], {icon: 'setlast', kw: 'さいご せっと last end', run: () => { gotoSet(1e9); }});
-def('step-back', '1カウント戻る', 'set', [','], {icon: 'stepb', kw: 'かうんと もどる step back たいむらいん 1かうんと', repeat: true, run: () => { stepCount(-1); }});
-def('step-fwd', '1カウント進む', 'set', ['.'], {icon: 'stepf', kw: 'かうんと すすむ step forward たいむらいん 1かうんと', repeat: true, run: () => { stepCount(1); }});
+def('step-back', '1つ戻る（拍／小節）', 'set', [','], {icon: 'stepb', kw: 'かうんと もどる step back たいむらいん 1かうんと はく しょうせつ', repeat: true, run: () => { stepCount(-1); }});
+def('step-fwd', '1つ進む（拍／小節）', 'set', ['.'], {icon: 'stepf', kw: 'かうんと すすむ step forward たいむらいん 1かうんと はく しょうせつ', repeat: true, run: () => { stepCount(1); }});
+def('bar-back', '1小節戻る（Shift+,）', 'set', ['<'], {icon: 'stepb', kw: 'しょうせつ もどる bar back たいむらいん', repeat: true, run: () => { stepCount(-1, true); }});
+def('bar-fwd', '1小節進む（Shift+.）', 'set', ['>'], {icon: 'stepf', kw: 'しょうせつ すすむ bar forward たいむらいん', repeat: true, run: () => { stepCount(1, true); }});
 def('dup-set', '新しいセット（直前の長さ・今の隊形のコピー）', 'set', ['Mod+Shift+N'], {icon: 'newset', kw: 'あたらしい せっと ふくせい copy new set つくる ついか かうんと', run: () => { qsNewSet(); }});
 def('add-set', '新しいセット（全員その場）', 'set', [], {icon: 'newset', kw: 'あたらしい せっと ついか add new set からの そのば', run: () => { qsNewSet(null, 'hold'); }});
 def('sets-bulk', 'セットをまとめて作る…', 'set', ['Shift+N'], {icon: 'bulk', kw: 'まとめて せっと いっぱい 一括 いっかつ bulk many sets 8 8 16 かうんと しょうせつ', need: 'show', run: () => { openBulk('counts'); }});
@@ -405,7 +409,7 @@ const SETCLIP_KEY = 'jk_setclip_v1', SETCLIP_TAG = '# jinkei-sets ';
 let setClip = null;
 const setFocusOn = () => tlFocus && setSel.size > 0 && !!M;
 const setKs = () => [...setSel].filter(k => M.sets[k]).sort((a, b) => a - b);
-const setNames = ks => ks.map(k => M.sets[k].name).join('・');
+const setNames = ks => ks.map(k => setLbl(k)).join('・');
 // 再生ヘッド → (セット番号, セット内のカウント)
 function playPoint() {
   const D = R.data, t = playheadT(), k = jkSetAt(D, t);
@@ -417,20 +421,21 @@ function canSplitAt(pt) {
   if (pt.k === 0) return pt.c > 0 && pt.c < S.hold - 1e-9 + 0;
   return pt.c > 0 && (pt.c < S.counts - 1e-9 || pt.c < S.counts + S.hold - 1e-9 && pt.c > S.counts + 1e-9);
 }
-async function splitOp(mode, pt) {
+async function splitOp(mode, pt, sub) {
   if (!ready()) { scToast('エラーを直してから操作してください', {kind: 'info'}); return; }
   if (!pt) {
     pt = playPoint();
     if (!pt.scrubbed) { scToast('分けたい位置に、再生ヘッドを置いてください', {kind: 'info', sub: 'タイムラインをクリック、または , . キーで1カウントずつ動かせます。セットを右クリックして、その位置で分けることもできます'}); return; }
   }
   await guarded(async () => {
-    const res = await SC.splitSet(M, pt.k, pt.c, coreOpts(mode));
+    const res = await SC.splitSet(M, pt.k, pt.c, Object.assign(coreOpts(mode), {sub: !!sub}));
     if (!res.ok) { scToast(mode === 'split' ? '分けられませんでした' : 'カットできませんでした', {kind: 'info', sub: res.error}); return; }
-    const A = M.sets[pt.k].name;
+    const A = setLbl(pt.k);
     await commit(res.model);
     selectSet(pt.k);
-    const B = res.model.sets[res.kB >= 0 ? res.kB : pt.k].name;
-    if (mode === 'split') scToast(`セット ${A} を ${fmt(pt.c)} カウントで2つに分けました`, {undo: true, icon: 'split', sub: res.approx ? `「${A}」と「${B}」。フォローの動き（${res.approx}人）は、途中から直線で近似しました` : `「${A}」と「${B}」。動きは分ける前とまったく同じです`});
+    const SB = JKX.displayNames(res.model.sets), B = SB[res.kB >= 0 ? res.kB : pt.k];
+    if (mode === 'split' && sub) scToast(`サブセット ${SB[pt.k]} を ${fmt(pt.c)} カウントの位置に作りました`, {undo: true, icon: 'split', sub: `「${SB[pt.k]}」→「${B}」の順に並びます。名前は自動で付きます`});
+    else if (mode === 'split') scToast(`セット ${A} を ${fmt(pt.c)} カウントで2つに分けました`, {undo: true, icon: 'split', sub: res.approx ? `「${A}」と「${B}」。フォローの動き（${res.approx}人）は、途中から直線で近似しました` : `「${A}」と「${B}」。動きは分ける前とまったく同じです`});
     else if (mode === 'cut') scToast(`セット ${A} を ${fmt(pt.c)} カウントで切りました`, {undo: true, icon: 'trimend', sub: res.trimmed ? 'ホールドを短くしました' : 'その位置で終わり、後ろの動きは捨てました。次のセットはそこから始まります'});
     else scToast(`${fmt(pt.c)} カウントから後ろを削除しました`, {undo: true, icon: 'cutafter', sub: `セット ${A} までが残ります`});
   });
@@ -474,7 +479,7 @@ async function pasteSetsOp(mirror) {
     await commit(res.model);
     sel = new Set(); setSel.clear(); for (let i = 0; i < res.count; i++) setSel.add(res.at + i); setAnchor = res.at; tlFocus = true;
     selectSet(res.at); updateSel();
-    const sub = [`セット ${M.sets[after].name} の後ろに入れました`];
+    const sub = [`セット ${setLbl(after)} の後ろに入れました`];
     if (mirror) sub.push('左右を反転しました');
     if (res.skipped) sub.push(`このショーにいない人の指定 ${res.skipped} 件は外しました`);
     scToast(`${res.count === 1 ? 'セット' : res.count + 'セット'} ${res.names.join('・')} を貼り付けました`, {undo: true, icon: 'paste', sub: sub.join('。')});
@@ -533,19 +538,41 @@ window.scSetCtx = function (x, y, k, c) {
   const m = $('ctx'), pt = {k, c}, ks = setKs(), multi = ks.length > 1, hasClip = !!(setClip || lsGet(SETCLIP_KEY));
   const ok = canSplitAt(pt), inHold = ok && k > 0 && c > R.data.sets[k].counts - 1e-9;
   const it = (act, ic, name, o) => `<button class="mi${o && o.dg ? ' dg' : ''}" data-set="${act}" ${o && o.off ? 'disabled' : ''}>${icon(ic, 15)}<span>${esc2(name)}</span>${o && o.key ? `<span class="ks">${esc2(o.key)}</span>` : ''}</button>`;
-  m.innerHTML = `<div class="mh">${multi ? `セット ${esc2(setNames(ks))}（${ks.length}）` : `セット ${esc2(M.sets[k].name)}｜${fmt(c)} カウント${inHold ? '（ホールド）' : ''}`}</div>`
-    + (multi ? '' : it('split', 'split', 'ここで分割', {off: !ok, key: labelOf('split-here')}) + it('cut', 'trimend', inHold ? 'ここでホールドを切る' : 'ここでカット（後ろを捨てる）', {off: !ok}) + it('after', 'cutafter', 'ここから後ろを削除', {off: !ok}) + '<div class="ms"></div>')
+  m.innerHTML = `<div class="mh">${multi ? `セット ${esc2(setNames(ks))}（${ks.length}）` : `セット ${esc2(setLbl(k))}｜${fmt(c)} カウント${inHold ? '（ホールド）' : ''}`}</div>`
+    + (multi ? '' : it('split', 'split', 'ここで分割', {off: !ok, key: labelOf('split-here')}) + it('splitsub', 'split', 'サブセットとして分割', {off: !ok}) + it('cut', 'trimend', inHold ? 'ここでホールドを切る' : 'ここでカット（後ろを捨てる）', {off: !ok}) + it('after', 'cutafter', 'ここから後ろを削除', {off: !ok}) + '<div class="ms"></div>')
+    + it('togglesub', 'setnext', ks.length && ks.every(q => M.sets[q] && M.sets[q].sub) ? 'メインのセットに戻す' : 'サブセットにする', {off: !ks.some(q => q > 0)})
     + it('copy', 'dup', multi ? `${ks.length}セットをコピー` : 'セットをコピー', {key: labelOf('copy')}) + it('cut2', 'cut', '切り取り', {off: !ks.some(q => q > 0), key: labelOf('cut')}) + it('paste', 'paste', 'セットの後ろに貼り付け', {off: !hasClip, key: labelOf('paste')}) + it('pastem', 'fliph', '左右反転して貼り付け', {off: !hasClip, key: labelOf('paste-sets-mirror')}) + it('dup', 'newset', '複製') + it('mirror', 'fliph', 'このセットを左右反転')
     + '<div class="ms"></div>' + it('del', 'trash', multi ? `${ks.length}セットを削除` : 'セットを削除', {dg: true, off: !ks.some(q => q > 0), key: labelOf('delete')});
   m.dataset.x = x; m.dataset.y = y; m.style.display = 'block';
   m.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
     hidePops(); const a = b.dataset.set;
-    if (a === 'split') splitOp('split', pt); else if (a === 'cut') splitOp('cut', pt); else if (a === 'after') splitOp('cutafter', pt);
+    if (a === 'split') splitOp('split', pt); else if (a === 'splitsub') splitOp('split', pt, true); else if (a === 'togglesub') toggleSubOp(); else if (a === 'cut') splitOp('cut', pt); else if (a === 'after') splitOp('cutafter', pt);
     else if (a === 'copy') copySets(); else if (a === 'cut2') cutSetsOp(); else if (a === 'paste') pasteSetsOp(false); else if (a === 'pastem') pasteSetsOp(true);
     else if (a === 'dup') dupSetsOp(); else if (a === 'mirror') mirrorSetsOp(); else if (a === 'del') deleteSetsOp();
   });
   ctxPlace();
 };
+// 選んだセットを サブセット ⇄ メイン に切り替える（先頭のセットは対象外）
+async function toggleSubOp() {
+  if (!ready()) return;
+  const ks = setKs().filter(k => k > 0); if (!ks.length) { scToast('先頭のセットはサブセットにできません', {kind: 'info'}); return; }
+  const toSub = !ks.every(k => M.sets[k].sub);
+  await guarded(async () => {
+    const m = JSON.parse(JSON.stringify(M));
+    for (const k of ks) {
+      const st = m.sets[k];
+      if (toSub) { st.sub = true; if (/^\d+$/.test(String(st.name))) st.name = ''; }
+      else {
+        st.sub = false;
+        if (st.name === '') { const used = new Set(m.sets.map(x => String(x.name))); let n = 1; for (const x of m.sets) if (!x.sub && /^\d+$/.test(String(x.name))) n = Math.max(n, +x.name + 1); while (used.has(String(n))) n++; st.name = String(n); }
+      }
+    }
+    const names = JKX.displayNames(m.sets);
+    await commit(m);
+    scToast(toSub ? `セット ${ks.map(k => names[k]).join('・')} をサブセットにしました` : `セット ${ks.map(k => names[k]).join('・')} をメインのセットに戻しました`, {undo: true, icon: 'setnext', sub: toSub ? '直前のメインのセットの下に、3A のように表示されます' : ''});
+  });
+}
+window.scToggleSub = toggleSubOp;
 function splitMenu() {
   const b = $('splitmenu').getBoundingClientRect(), pt = ready() ? playPoint() : {k: curSet, c: 0};
   if (!setSel.size) { setSel.add(pt.k); setAnchor = pt.k; }
@@ -591,7 +618,7 @@ function ppRefresh() {
   const plan = ppPlan(), ks = ppTargets(), n = plan.pairs.length;
   ppGhost(plan.pairs);
   const note = p.querySelector('#ppnote');
-  note.textContent = !n ? (pp.mode === 'order' ? '貼り付け先の人を選んでください' : '貼り付けられる人がいません') : `${n}人の位置を、セット ${ks.map(k => M.sets[k].name).join('・')} に貼り付けます` + (plan.skipped ? `（${plan.skipped}人は対象外）` : '') + (plan.extra ? `（選んだ人のうち ${plan.extra}人は余ります）` : '');
+  note.textContent = !n ? (pp.mode === 'order' ? '貼り付け先の人を選んでください' : '貼り付けられる人がいません') : `${n}人の位置を、セット ${ks.map(k => setLbl(k)).join('・')} に貼り付けます` + (plan.skipped ? `（${plan.skipped}人は対象外）` : '') + (plan.extra ? `（選んだ人のうち ${plan.extra}人は余ります）` : '');
   p.querySelector('#ppok').disabled = !n;
 }
 function openPastePop() {
@@ -637,7 +664,7 @@ async function ppCommit() {
     await commit(res.model);
     const idx = new Map(R.data.performers.map((p, i) => [p.id, i]));
     sel = new Set(plan.pairs.map(x => idx.get(x.id)).filter(i => i != null)); updateSel(); drawCanvas();
-    const sub = [mode === 'order' ? '選んだ人に、並び順で当てはめました' : `セット ${ks.map(k => M.sets[k].name).join('・')} に反映しました`];
+    const sub = [mode === 'order' ? '選んだ人に、並び順で当てはめました' : `セット ${ks.map(k => setLbl(k)).join('・')} に反映しました`];
     sub.push(res.shapes ? '形がそろっているので、1つの隊形として書きました' : res.pins ? `個別の位置は${res.pins}件です` : '');
     scToast(`${plan.pairs.length}人の位置を貼り付けました${placed ? '（形として）' : ''}`, {undo: true, sub: sub.filter(Boolean).join('。'), icon: 'paste'});
   });
@@ -663,6 +690,8 @@ function pasteSmart() {
 }
 
 // ---- 操作の登録 ----
+def('toggle-sub', 'セットをサブセットにする／メインに戻す', 'set', [], {icon: 'setnext', kw: 'さぶせっと サブセット めいん もどす subset toggle', need: 'show', run: () => { toggleSubOp(); }});
+def('split-sub', 'ここでサブセットとして分割（3A のように親の名前＋A）', 'set', [], {icon: 'split', kw: 'さぶせっと さぶ ぶんかつ わける サブセット subset 3a split here', need: 'show', run: () => { splitOp('split', null, true); }});
 def('split-here', 'ここで分割（再生ヘッドの位置でセットを2つに）', 'set', ['Mod+Shift+K', '\\'], {icon: 'split', kw: 'ぶんかつ わける さいせい へっど ここで わる split divide きる せっと', need: 'show', run: () => { splitOp('split'); }});
 def('cut-here', 'ここでカット（後ろの動きを捨てる）', 'set', [], {icon: 'trimend', kw: 'かっと きる みじかく うしろ すてる cut trim ここで ほーるど', need: 'show', run: () => { splitOp('cut'); }});
 def('delete-after', 'ここから後ろを削除', 'set', [], {icon: 'cutafter', kw: 'うしろ ぜんぶ さくじょ けす ここから delete after truncate', need: 'show', run: () => { splitOp('cutafter'); }});
@@ -1115,6 +1144,7 @@ function openQsPop() {
     <div class="qs-cust"><input id="qspopn" type="text" inputmode="decimal" autocomplete="off" placeholder="好きな数（例 10・7.5）" aria-label="好きなカウント数"><button type="button" class="pri" id="qspopgo">作る</button></div>
     <div class="qs-rad" role="radiogroup" aria-label="新しいセットの隊形"><label><input type="radio" name="qspc" value="prev" ${copy === 'prev' ? 'checked' : ''}> 今の隊形をコピー</label><label><input type="radio" name="qspc" value="hold" ${copy === 'hold' ? 'checked' : ''}> 全員その場（空のセット）</label></div>
     <div class="qs-sep"></div>
+    <button type="button" class="qs-i" data-qs="sub">${icon('newset', 16)}<span>サブセットを追加（3A のような中間の隊形）</span></button>
     <button type="button" class="qs-i" data-qs="bulk">${icon('bulk', 16)}<span>まとめて作る…</span><span class="ks">${esc2(labelOf('sets-bulk'))}</span></button>
     <button type="button" class="qs-i" data-qs="song">${icon('music', 16)}<span>曲に合わせて区切る…</span><span class="ks">${esc2(labelOf('sets-song'))}</span></button>
     <button type="button" class="qs-i" data-qs="tap">${icon('tap', 16)}<span>タップで区切る…</span><span class="ks">${esc2(labelOf('tap-split'))}</span></button>
@@ -1132,7 +1162,7 @@ function openQsPop() {
   $('qspopn').addEventListener('input', e => e.target.classList.remove('bad'));
   $('qspopn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); make(parseNum($('qspopn').value)); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeQsPop(); $('addsetmenu').focus(); } });
   pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeQsPop(); $('addsetmenu').focus(); } });
-  pop.querySelectorAll('[data-qs]').forEach(b => b.onclick = () => { const k = b.dataset.qs; closeQsPop(); if (k === 'bulk') openBulk('counts'); else if (k === 'song') openBulk('song'); else if (k === 'tap') openTap(); else if (k === 'parade' && hasParade()) window.jkOpenParade(); });
+  pop.querySelectorAll('[data-qs]').forEach(b => b.onclick = () => { const k = b.dataset.qs; closeQsPop(); if (k === 'sub') { qsCall('qsNewSet', JKSC_round(qsCall('qsLast') || 4), copyNow(), {sub: true}); } else if (k === 'bulk') openBulk('counts'); else if (k === 'song') openBulk('song'); else if (k === 'tap') openTap(); else if (k === 'parade' && hasParade()) window.jkOpenParade(); });
   setTimeout(() => document.addEventListener('pointerdown', qsPopOutside, true), 0);
   const f = pop.querySelector('.qs-chips .last') || pop.querySelector('.qs-chips button'); if (f) f.focus();
 }
@@ -1166,7 +1196,7 @@ function qsDigit(e) {
   const set = M.sets[curSet];
   if (String(set.counts) !== String(v)) { holdUndo = true; set.counts = String(v); edited(false); renderTimeline(); holdUndo = false; }
   qsCall('qsSetLast', v);
-  showHint(`${icon('counts', 15)}<b>セット ${esc2(set.name)}</b>　${v} カウント　<span class="kcs-s">続けて数字で桁を足せます</span>`, 1800);
+  showHint(`${icon('counts', 15)}<b>セット ${esc2(setLbl(curSet))}</b>　${v} カウント　<span class="kcs-s">続けて数字で桁を足せます</span>`, 1800);
   return true;
 }
 window.scAfterNewSet = afterNewSet;
@@ -1226,7 +1256,7 @@ function openBulk(initTab) {
   const gb = d.querySelector('#qsgb'); if (gb) gb.value = P.gridBars;
   const pt = d.querySelector('#qspt'); if (pt) pt.value = [...pt.options].some(o => o.value === P.part) ? P.part : '-1';
   setRadio('qsnm', P.names === 'bar' && P.tab !== 'song' ? 'num' : P.names); setRadio('qscp', P.copy); setRadio('qswh', P.where);
-  d.querySelector('#qsnow').textContent = 'セット ' + M.sets[curSet].name;
+  d.querySelector('#qsnow').textContent = 'セット ' + setLbl(curSet);
   let tab = P.tab;
   const showTab_ = t => {
     tab = t;

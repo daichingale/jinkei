@@ -328,7 +328,7 @@
   }, true);
   window.addEventListener('pointermove', e => {
     if (!pan || e.pointerId !== pan.id) return;
-    if (touches.size > 1) { pan = null; return; }
+    if (touches.size > 1 || (window.JKUX_pinching && window.JKUX_pinching())) { pan = null; return; }
     if (!pan.moved && Math.hypot(e.clientX - pan.x0, e.clientY - pan.y0) < 8) return;
     pan.moved = true;
     if (UXA.panBy) UXA.panBy(e.clientX - pan.x, e.clientY - pan.y);
@@ -469,5 +469,13 @@
         }
       };
       const mo = new MutationObserver(sync); mo.observe(nb, {childList: true, subtree: true, characterData: true}); sync();
+    } }
+  // 拡大率の表示（タップで全体表示に戻る）
+  { const zc = $('zoomctl'), zf = $('zfit');
+    if (zc && zf) {
+      const z = el('button', '', '100%'); z.id = 'zpct'; z.type = 'button'; z.title = '拡大率（タップで全体表示）'; z.setAttribute('aria-label', '拡大率。タップで全体表示に戻す');
+      zc.insertBefore(z, zf);
+      z.onclick = () => { if (UXA.applyView) UXA.applyView(0, 0, 1); hap(8); };
+      window.addEventListener('jk-view', e => { const k = e.detail && e.detail.k || 1; z.textContent = Math.round(k * 100) + '%'; z.classList.toggle('on', Math.abs(k - 1) > 0.02); });
     } }
 })();

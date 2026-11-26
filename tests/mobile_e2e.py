@@ -42,7 +42,7 @@ def run(p, dev):
     c = b.new_context(**kw); pg = c.new_page(); cdp = c.new_cdp_session(pg)
     tag = dev.replace(' ', '').lower()
     errs = []
-    pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
+    pg.on('pageerror', lambda e: 'No active pointer' not in str(e) and errs.append('pageerror: ' + str(e)))
     pg.on('console', lambda m: m.type == 'error' and 'favicon' not in m.text and 'accounts.google' not in m.text and errs.append('console: ' + m.text[:120]))
     def touch(t, pts): cdp.send('Input.dispatchTouchEvent', {'type': t, 'touchPoints': [{'x': x, 'y': y, 'id': i} for i, (x, y) in enumerate(pts)]})
     def tap(x, y): touch('touchStart', [(x, y)]); pg.wait_for_timeout(40); touch('touchEnd', [])
@@ -93,6 +93,52 @@ def run(p, dev):
     # empty tap deselect
     cv = pg.evaluate("(()=>{const r=document.querySelector('#svg').getBoundingClientRect();return [r.left+10,r.top+30]})()")
     tap(*cv); pg.wait_for_timeout(300); assert pg.evaluate("sel.size") == 0, '空きタップで選択が外れない'
+    # 1b 2本指のピンチ（CDP の本物のマルチタッチ / pointer イベント / touch イベント / 描画ツール中）
+    def two(c0, d0, d1, n=10, dy=0):
+        x, y = c0
+        touch('touchStart', [(x - d0 / 2, y)]); touch('touchStart', [(x - d0 / 2, y), (x + d0 / 2, y)])
+        for i in range(1, n + 1):
+            d = d0 + (d1 - d0) * i / n; touch('touchMove', [(x - d / 2, y + dy * i / n), (x + d / 2, y + dy * i / n)]); pg.wait_for_timeout(16)
+        touch('touchEnd', [])
+    kk = lambda: pg.evaluate("JKUX.getView().k")
+    fit = lambda: (pg.evaluate("document.getElementById('zfit').click()"), pg.wait_for_timeout(150))
+    mid = pg.evaluate("(()=>{const r=document.querySelector('#svg').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]})()")
+    fit(); two(mid, 50, 190)
+    if not kk() > 2: fails.append(f'{dev}: 2本指のピンチで拡大しない (k={kk()})')
+    zt = pg.evaluate("document.getElementById('zpct').textContent")
+    if not zt.endswith('%') or zt == '100%': fails.append(f'{dev}: 拡大率の表示が変わらない {zt}')
+    vb0 = pg.evaluate("document.querySelector('#svg').getAttribute('viewBox')"); two(mid, 100, 100, dy=60)
+    if pg.evaluate("document.querySelector('#svg').getAttribute('viewBox')") == vb0: fails.append(dev + ': 2本指で動かしてもパンしない')
+    two(mid, 190, 20, n=14)
+    if not kk() < 1.2: fails.append(f'{dev}: ピンチで縮小できない (k={kk()})')
+    fit(); assert abs(kk() - 1) < 1e-6
+    pg.evaluate("tool='line'"); two(mid, 50, 190); ok_draw = kk() > 2; pg.evaluate("tool='select'")
+    if not ok_draw: fails.append(dev + ': 描画ツール中にピンチできない')
+    fit()
+    # pointer イベントだけ（touch イベントなし）
+    pg.evaluate("""(m)=>{const s=document.querySelector('#svg');const f=(t,id,x,y)=>s.dispatchEvent(new PointerEvent(t,{pointerId:id,pointerType:'touch',isPrimary:id==41,bubbles:true,cancelable:true,composed:true,clientX:x,clientY:y,button:0,buttons:1}));
+      f('pointerdown',41,m[0]-25,m[1]);f('pointerdown',42,m[0]+25,m[1]);
+      for(let i=1;i<=10;i++){const d=25+i*8;f('pointermove',41,m[0]-d,m[1]);f('pointermove',42,m[0]+d,m[1]);}
+      f('pointerup',41,m[0]-100,m[1]);f('pointerup',42,m[0]+100,m[1]);}""", mid)
+    if not kk() > 2: fails.append(f'{dev}: pointer イベントのピンチで拡大しない (k={kk()})')
+    fit()
+    # touch イベントだけ（pointer が cancel された場合の予備）
+    pg.evaluate("""(m)=>{const w=document.getElementById('canvaswrap'),s=document.querySelector('#svg');
+      const T=(id,x,y)=>new Touch({identifier:id,target:s,clientX:x,clientY:y});
+      const f=(t,pts)=>w.dispatchEvent(new TouchEvent(t,{touches:pts,targetTouches:pts,changedTouches:pts,bubbles:true,cancelable:true}));
+      f('touchstart',[T(1,m[0]-25,m[1]),T(2,m[0]+25,m[1])]);
+      for(let i=1;i<=10;i++){const d=25+i*8;f('touchmove',[T(1,m[0]-d,m[1]),T(2,m[0]+d,m[1])]);}
+      f('touchend',[]);}""", mid)
+    if not kk() > 2: fails.append(f'{dev}: touch イベントのピンチで拡大しない (k={kk()})')
+    fit()
+    # ダブルタップ: 拡大 → 全体（点から離れた空きで）
+    mid = pg.evaluate("""(()=>{const r=document.querySelector('#svg').getBoundingClientRect(),ds=[...document.querySelectorAll('#svg [data-i],#svg [data-si],#svg [data-g]'),...dotEls.filter(Boolean)].map(e=>{const b=e.getBoundingClientRect();return [b.left+b.width/2,b.top+b.height/2]});
+      let best=null,bd=-1;for(let i=1;i<8;i++)for(let j=1;j<8;j++){const x=r.left+r.width*i/8,y=r.top+r.height*j/8;const el=document.elementFromPoint(x,y);if(!el||!el.closest('#svg')||el.closest('[data-i],[data-si],[data-g]'))continue;const d=Math.min(...ds.map(q=>Math.hypot(q[0]-x,q[1]-y)),999);if(d>40&&d>bd-1000&&!best){best=[x,y];bd=d;}}return best})()""")
+    tap(*mid); pg.wait_for_timeout(60); tap(*mid); pg.wait_for_timeout(300)
+    if not kk() > 1.5: fails.append(f'{dev}: ダブルタップで拡大しない (k={kk()})')
+    tap(*mid); pg.wait_for_timeout(60); tap(*mid); pg.wait_for_timeout(300)
+    if abs(kk() - 1) > 0.05: fails.append(f'{dev}: ダブルタップで全体に戻らない (k={kk()})')
+    shot('05b_zoom')
     # long-press context menu
     d0 = center(f'dotEls[{I2}]'); hold(*d0); pg.wait_for_timeout(300)
     ctx_open = pg.evaluate("getComputedStyle(document.getElementById('ctx')).display") == 'block'

@@ -810,8 +810,9 @@ class Parser {
 
   set(note) {
     const pos = this.pos();
-    const name = this.name();
-    let counts = 0, hold = 0, tempo = null, mark = false;
+    // 名前は省略できる（サブセットのときだけ）: `set sub counts 8 { ... }` → 親の名前 + A, B, C…
+    const name = (this.isKw('sub') || this.isKw('サブ')) ? '' : this.name();
+    let counts = 0, hold = 0, tempo = null, mark = false, sub = false;
     for (;;) {
       if (this.eatKw('counts')) counts = this.num();
       else if (this.eatKw('tempo')) {
@@ -819,10 +820,12 @@ class Parser {
         if (t <= 0) throw this.err('tempo は正の数にしてください');
         tempo = t;
       } else if (this.eatKw('mark')) mark = true;
+      else if (this.eatKw('sub') || this.eatKw('サブ')) sub = true;
       else if (this.eatKw('hold')) hold = this.num();
       else break;
     }
     if (counts < 0 || hold < 0) throw at_(pos.line, pos.col, 'counts / hold は0以上にしてください');
+    if (name === '' && !sub) throw at_(pos.line, pos.col, 'セットの名前が必要です（名前を省けるのは sub のときだけです）');
     this.expectSym('{');
     const tail = this.tail();
     const stmts = [];
@@ -833,7 +836,7 @@ class Parser {
       if (this.cur().t === 'eof') throw this.err("'}' で閉じられていません");
       stmts.push(this.stmt());
     }
-    return { name, counts, hold, tempo, mark, stmts, pos, note, tail, foot };
+    return { name, counts, hold, tempo, mark, sub, stmts, pos, note, tail, foot };
   }
 
   show() {
@@ -1641,6 +1644,16 @@ function detectInstrument(label, id) {
   return Object.prototype.hasOwnProperty.call(ID_INSTR, k) ? ID_INSTR[k] : 'none';
 }
 
+// 表示名: 本セットはその名前。サブセットは名前があればそれ、なければ 親の名前 + A, B, C…（26個を超えたら AA, AB…）
+function setDisplayNames(sets) {
+  const letters = (n) => { let v = ''; for (;;) { v = String.fromCharCode(65 + (n % 26)) + v; if (n < 26) break; n = Math.floor(n / 26) - 1; } return v; };
+  const out = []; let parent = '', idx = 0;
+  for (const s of sets) {
+    if (s.sub) { out.push(s.name === '' ? parent + letters(idx) : s.name); idx++; }
+    else { parent = s.name; idx = 0; out.push(s.name); }
+  }
+  return out;
+}
 function build(a) {
   const field = mkField(a.field);
   const ev = (e) => evalE(field, e);
@@ -1664,6 +1677,7 @@ function build(a) {
   if (a.sets.length === 0) throw at_(0, 0, 'set がありません');
 
   const n = performers.length;
+  const setNames = setDisplayNames(a.sets);
   const sets = [];
   const allHandles = [], allMembers = [], allOwner = [];
   let curTempo = a.tempo;
@@ -1671,6 +1685,7 @@ function build(a) {
   const fb = isFootball(field);
   for (let k = 0; k < a.sets.length; k++) {
     const sa = a.sets[k];
+    if (sa.sub && k === 0) throw at_(sa.pos.line, sa.pos.col, '最初のセットはサブセットにできません（前の本セットがありません）');
     const prev = sets.length ? sets[sets.length - 1].pos : null;
     const recs = [];
     const setHandles = [], setMembers = [];
@@ -1940,7 +1955,7 @@ function build(a) {
     const counts = k === 0 ? 0.0 : sa.counts;
     if (k > 0 && counts === 0.0 && prev !== null) {
       for (let i = 0; i < n; i++) {
-        if (dist(prev[i], pos[i]) > 1e-6) { throw at_(sa.pos.line, sa.pos.col, `セット${sa.name} は counts が0なのに移動があります`); }
+        if (dist(prev[i], pos[i]) > 1e-6) { throw at_(sa.pos.line, sa.pos.col, `セット${setNames[k]} は counts が0なのに移動があります`); }
       }
     }
     const angf = (v) => (Math.hypot(v[0], v[1]) < 1e-9 ? -90.0 : toDeg(Math.atan2(v[1], v[0])));
@@ -2003,7 +2018,7 @@ function build(a) {
     });
     curTempo = sa.tempo !== null ? sa.tempo : curTempo;
     sets.push({
-      name: sa.name, counts, hold: sa.hold, start, pos, wait, end, bend, face: faceArr, route, step, action, pose, carry,
+      name: setNames[k], sub: sa.sub, counts, hold: sa.hold, start, pos, wait, end, bend, face: faceArr, route, step, action, pose, carry,
       tempo: curTempo, mark: sa.mark, line: sa.pos.line, slots,
     });
     allHandles.push(setHandles);
@@ -2176,7 +2191,7 @@ function dataJson(s, r) {
       face: set.face.map((x) => (x === null ? null : N(x))),
       route: set.route.map((rt) => (rt === null ? null : rt.map((p) => [N(p[0]), N(p[1])]))),
       step: set.step.slice(), action: set.action.slice(), pose: set.pose.slice(), carry: set.carry.slice(),
-      tempo: N(set.tempo), mark: set.mark, slots: set.slots.map((r) => r.slice()),
+      tempo: N(set.tempo), mark: set.mark, sub: set.sub, slots: set.slots.map((r) => r.slice()),
       pos: set.pos.map((p) => [N(p[0]), N(p[1])]),
     };
   });
@@ -2250,7 +2265,7 @@ function modelJson(a) {
     sections: a.sections.map((s) => ({ id: s.id, label: s.label, n: s.n, color: s.color, instrument: s.instrument, note: s.note.slice(), tail: s.tail })),
     sets: a.sets.map((s) => ({
       name: s.name, counts: Number(fmtNum(s.counts)), hold: Number(fmtNum(s.hold)),
-      tempo: s.tempo === null ? null : fmtNum(s.tempo), mark: s.mark,
+      tempo: s.tempo === null ? null : fmtNum(s.tempo), mark: s.mark, sub: s.sub,
       note: s.note.slice(), tail: s.tail, foot: s.foot.slice(), line: s.pos.line,
       stmts: s.stmts.map(stmtModel),
     })),
@@ -2355,7 +2370,7 @@ function autoFix(ast) {
       const st = best.a.sets[k].stmts[best.si];
       const group = st.group.map(groupTermStr).join(' + ');
       notes.push(
-        `セット${best.a.sets[k].name}（${st.pos.line}行目）: 「${group}」に \`${editText(best.e)}\` を追加 — ${editExplain(best.e)}（このセットの衝突 ${perSet[k]}件 → ${best.ps[k]}件${best.o > co ? `、ほかの警告 +${best.o - co}件` : ''}）`
+        `セット${setDisplayNames(best.a.sets)[k]}（${st.pos.line}行目）: 「${group}」に \`${editText(best.e)}\` を追加 — ${editExplain(best.e)}（このセットの衝突 ${perSet[k]}件 → ${best.ps[k]}件${best.o > co ? `、ほかの警告 +${best.o - co}件` : ''}）`
       );
       cur = best.a;
       cc = best.c;

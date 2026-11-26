@@ -1,0 +1,11 @@
+# 名前を省けるのはサブセットだけ
+show "エラー" {
+  field gym
+  section tp "トランペット" 2
+  set 1 hold 4 {
+    tp : line (-2, 0) -> (2, 0)
+  }
+  set counts 4 {
+    tp : line (-2, 4) -> (2, 4)
+  }
+}
