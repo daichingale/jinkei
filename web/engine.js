@@ -846,7 +846,7 @@ class Parser {
     this.expectSym('{');
     const s = {
       header, settings_notes: [], foot: [], field_given: false, name,
-      field: { k: 'gym', w: 30, d: 30 }, tempo: 120, clearance: null, maxstep: null, look: null, sections: [], sets: [], parts: [],
+      field: { k: 'gym', w: 30, d: 30 }, tempo: 120, clearance: null, maxstep: null, stride: null, look: null, sections: [], sets: [], parts: [],
     };
     const t0 = this.tail();
     if (t0 !== null) s.settings_notes.push(t0);
@@ -889,6 +889,12 @@ class Parser {
         case 'tempo': s.tempo = this.num(); break;
         case 'clearance': s.clearance = this.num(); break;
         case 'maxstep': s.maxstep = this.num(); break;
+        case 'stride': case '歩幅': {
+          const sp = this.cur();
+          const v = this.num();
+          if (!(v >= 20.0 && v <= 150.0)) throw at_(sp.line, sp.col, 'stride（1歩の長さ）は 20〜150 cm で書いてください（例: stride 62.5）');
+          s.stride = v; break;
+        }
         case 'look': case '見た目': {
           const lt = this.cur();
           if (lt.t !== 'id' && lt.t !== 'str') throw this.err('look の後には real / illust');
@@ -940,7 +946,7 @@ class Parser {
           break;
         }
         default:
-          throw at_(kp.line, kp.col, `不明なキーワード「${kw}」（field / tempo / section / set / part / clearance / maxstep / look が使えます）`);
+          throw at_(kp.line, kp.col, `不明なキーワード「${kw}」（field / tempo / section / set / part / clearance / maxstep / stride / look が使えます）`);
       }
       if (!isItem) {
         const t = this.tail();
@@ -1000,17 +1006,18 @@ function faceStr(f) {
 const STEP_M = 0.5715;
 const GYM_MARGIN = 5.0;
 const BSL = 160.0 * 12.0 / 22.5;
+const DEFAULT_STRIDE_CM = 62.5;
 
 function mkField(a) {
   switch (a.k) {
     case 'football': {
       const level = a.level;
       const inches = level === 'college' ? 60.0 * 12.0 : level === 'nfl' ? 70.0 * 12.0 + 9.0 : 53.0 * 12.0 + 4.0;
-      return { kind: 'football', level, hash: inches / 22.5, unit_m: STEP_M };
+      return { kind: 'football', level, hash: inches / 22.5, unit_m: STEP_M, stride_m: STEP_M };
     }
-    case 'floor': return { kind: 'floor', w: a.w, d: a.d, unit_m: 1.0 };
-    case 'gym': return { kind: 'gym', w: a.w, d: a.d, unit_m: 1.0 };
-    default: return { kind: 'stage', w: a.w, d: a.d, wing: a.wing, unit_m: 1.0 };
+    case 'floor': return { kind: 'floor', w: a.w, d: a.d, unit_m: 1.0, stride_m: DEFAULT_STRIDE_CM / 100.0 };
+    case 'gym': return { kind: 'gym', w: a.w, d: a.d, unit_m: 1.0, stride_m: DEFAULT_STRIDE_CM / 100.0 };
+    default: return { kind: 'stage', w: a.w, d: a.d, wing: a.wing, unit_m: 1.0, stride_m: DEFAULT_STRIDE_CM / 100.0 };
   }
 }
 const isFootball = (f) => f.kind === 'football';
@@ -1080,6 +1087,18 @@ function inBounds(f, x, y) {
     default: return Math.abs(x) <= f.w / 2.0 + f.wing + e && y >= -e && y <= f.d + e;
   }
 }
+// 5m ポイントと歩で表した長さ（a は m）。Rust の Field::point_steps と同じ
+function pointSteps(f, a) {
+  const st = f.stride_m, n = 5.0 / st;
+  let p = Math.floor(a / 5.0 + 1e-9);
+  let s = Math.round((a - p * 5.0) / st * 10.0) / 10.0;
+  if (s >= n - 0.05) { p += 1; s = 0.0; }
+  const num = (v) => { const t = Math.round(v * 10.0); return t % 10 === 0 ? String(t / 10) : `${Math.trunc(t / 10)}.${t % 10}`; };
+  const parts = [];
+  if (p > 0) parts.push(`${p}ポイント`);
+  if (s > 0) parts.push(`${num(s)}歩`);
+  return parts.length ? parts.join('+') : '0歩';
+}
 function describeX(f, x) {
   switch (f.kind) {
     case 'football': {
@@ -1095,11 +1114,11 @@ function describeX(f, x) {
     }
     case 'floor': case 'gym':
       if (Math.abs(x) < 0.005) return 'センター';
-      return `${x < 0.0 ? '下手' : '上手'} ${rfixed(Math.abs(x), 2)}m`;
+      return `センターから${x < 0.0 ? '下手' : '上手'}へ ${pointSteps(f, Math.abs(x))}（${rfixed(Math.abs(x), 2)}m）`;
     default:
       if (Math.abs(x) < 0.005) return 'センター';
-      if (Math.abs(x) > f.w / 2.0 + 1e-9) return `${x < 0.0 ? '下手' : '上手'}袖（センターから ${rfixed(Math.abs(x), 2)}m）`;
-      return `${x < 0.0 ? '下手' : '上手'} ${rfixed(Math.abs(x), 2)}m`;
+      if (Math.abs(x) > f.w / 2.0 + 1e-9) return `${x < 0.0 ? '下手' : '上手'}袖（センターから${x < 0.0 ? '下手' : '上手'}へ ${pointSteps(f, Math.abs(x))}（${rfixed(Math.abs(x), 2)}m））`;
+      return `センターから${x < 0.0 ? '下手' : '上手'}へ ${pointSteps(f, Math.abs(x))}（${rfixed(Math.abs(x), 2)}m）`;
   }
 }
 function describeY(f, y) {
@@ -1112,13 +1131,15 @@ function describeY(f, y) {
       if (Math.abs(off) < 0.05) return `${best[1]}上`;
       return `${best[1]}から${off > 0.0 ? '後ろ' : '前'}へ ${rfixed(Math.abs(off), 2)}歩`;
     }
-    case 'floor': return `前端から ${rfixed(y, 2)}m`;
+    case 'floor':
+      if (Math.abs(y) < 0.005) return '前端（客席側の端）';
+      return `前端から奥へ ${pointSteps(f, Math.abs(y))}（${rfixed(y, 2)}m）`;
     case 'gym':
       if (Math.abs(y) < 0.005) return 'センターライン上';
-      return `センターから${y < 0.0 ? '前（客席側）' : '奥'} ${rfixed(Math.abs(y), 2)}m`;
+      return `センターから${y < 0.0 ? '客席側' : '奥'}へ ${pointSteps(f, Math.abs(y))}（${rfixed(Math.abs(y), 2)}m）`;
     default:
       if (Math.abs(y) < 0.005) return '舞台前端';
-      return `舞台前端から ${rfixed(y, 2)}m`;
+      return `舞台前端から奥へ ${pointSteps(f, Math.abs(y))}（${rfixed(y, 2)}m）`;
   }
 }
 function describeFace(f, a) {
@@ -1656,6 +1677,7 @@ function setDisplayNames(sets) {
 }
 function build(a) {
   const field = mkField(a.field);
+  if (!isFootball(field) && a.stride !== null) field.stride_m = a.stride / 100.0;
   const ev = (e) => evalE(field, e);
   const pt = (p) => evalPt(field, p);
   const sections = [];
@@ -2176,10 +2198,10 @@ function dataJson(s, r) {
   const f = s.field;
   let field;
   switch (f.kind) {
-    case 'football': field = { type: 'football', level: f.level, hash: N(f.hash), bsl: N(BSL) }; break;
-    case 'floor': field = { type: 'floor', w: N(f.w), d: N(f.d) }; break;
-    case 'gym': field = { type: 'gym', w: N(f.w), d: N(f.d), margin: N(GYM_MARGIN) }; break;
-    default: field = { type: 'stage', w: N(f.w), d: N(f.d), wing: N(f.wing) };
+    case 'football': field = { type: 'football', level: f.level, hash: N(f.hash), bsl: N(BSL), stride_m: N(f.stride_m) }; break;
+    case 'floor': field = { type: 'floor', w: N(f.w), d: N(f.d), stride_m: N(f.stride_m) }; break;
+    case 'gym': field = { type: 'gym', w: N(f.w), d: N(f.d), margin: N(GYM_MARGIN), stride_m: N(f.stride_m) }; break;
+    default: field = { type: 'stage', w: N(f.w), d: N(f.d), wing: N(f.wing), stride_m: N(f.stride_m) };
   }
   const sets = s.sets.map((set, k) => {
     const mc = minCounts(s, r, k);
@@ -2261,6 +2283,7 @@ function modelJson(a) {
     field, field_given: a.field_given, tempo: Number(fmtNum(a.tempo)),
     clearance: a.clearance === null ? null : fmtNum(a.clearance),
     maxstep: a.maxstep === null ? null : fmtNum(a.maxstep),
+    stride: a.stride === null ? null : fmtNum(a.stride),
     look: a.look || null,
     sections: a.sections.map((s) => ({ id: s.id, label: s.label, n: s.n, color: s.color, instrument: s.instrument, note: s.note.slice(), tail: s.tail })),
     sets: a.sets.map((s) => ({

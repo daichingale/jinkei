@@ -202,13 +202,16 @@ fn default_venue_is_gym_and_samples_are_clean() {
 #[test]
 fn gym_and_stage_language() {
     let g = field::Field::gym(30.0, 30.0);
-    assert_eq!(g.describe_x(-3.5), "下手 3.50m");
+    assert_eq!(g.describe_x(-3.5), "センターから下手へ 5.6歩（3.50m）");
+    assert_eq!(g.describe_x(11.875), "センターから上手へ 2ポイント+3歩（11.88m）");
+    assert_eq!(g.describe_y(7.5), "センターから奥へ 1ポイント+4歩（7.50m）");
+    assert_eq!(g.describe_x(5.0), "センターから上手へ 1ポイント（5.00m）");
     assert_eq!(g.describe_x(0.0), "センター");
-    assert_eq!(g.describe_y(-5.0), "センターから前（客席側） 5.00m");
+    assert_eq!(g.describe_y(-5.0), "センターから客席側へ 1ポイント（5.00m）");
     assert_eq!(g.constant("KAMI20"), Some(10.0));
     let s = field::Field::stage(16.0, 10.0, 4.0);
-    assert_eq!(s.describe_x(9.5), "上手袖（センターから 9.50m）");
-    assert_eq!(s.describe_y(2.0), "舞台前端から 2.00m");
+    assert_eq!(s.describe_x(9.5), "上手袖（センターから上手へ 1ポイント+7.2歩（9.50m））");
+    assert_eq!(s.describe_y(2.0), "舞台前端から奥へ 3.2歩（2.00m）");
     // 舞台前端より前は転落（場外）、袖は可
     assert!(!s.in_bounds(0.0, -0.5));
     assert!(s.in_bounds(11.0, 5.0));

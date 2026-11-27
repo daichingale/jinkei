@@ -26,7 +26,12 @@ pub const GYM_MARGIN: f64 = 5.0;
 pub struct Field {
     pub kind: FieldKind,
     pub unit_m: f64,
+    /// 1歩の長さ（m）。既定 0.625m = 5m を 8 歩（吹奏楽コンクールの 5m ポイントと同じ）。football は 1 歩 = unit_m
+    pub stride_m: f64,
 }
+
+/// 既定の 1 歩（cm）
+pub const DEFAULT_STRIDE_CM: f64 = 62.5;
 
 pub const BSL: f64 = 160.0 * 12.0 / 22.5; // 85.333 歩
 
@@ -37,16 +42,16 @@ impl Field {
             "nfl" => 70.0 * 12.0 + 9.0,
             _ => 53.0 * 12.0 + 4.0,
         };
-        Field { kind: FieldKind::Football { level: level.into(), hash: inches / 22.5 }, unit_m: STEP_M }
+        Field { kind: FieldKind::Football { level: level.into(), hash: inches / 22.5 }, unit_m: STEP_M, stride_m: STEP_M }
     }
     pub fn floor(w: f64, d: f64) -> Field {
-        Field { kind: FieldKind::Floor { w, d }, unit_m: 1.0 }
+        Field { kind: FieldKind::Floor { w, d }, unit_m: 1.0, stride_m: DEFAULT_STRIDE_CM / 100.0 }
     }
     pub fn gym(w: f64, d: f64) -> Field {
-        Field { kind: FieldKind::Gym { w, d }, unit_m: 1.0 }
+        Field { kind: FieldKind::Gym { w, d }, unit_m: 1.0, stride_m: DEFAULT_STRIDE_CM / 100.0 }
     }
     pub fn stage(w: f64, d: f64, wing: f64) -> Field {
-        Field { kind: FieldKind::Stage { w, d, wing }, unit_m: 1.0 }
+        Field { kind: FieldKind::Stage { w, d, wing }, unit_m: 1.0, stride_m: DEFAULT_STRIDE_CM / 100.0 }
     }
     pub fn is_football(&self) -> bool {
         matches!(self.kind, FieldKind::Football { .. })
@@ -126,6 +131,34 @@ impl Field {
         }
     }
 
+    /// 5m ポイントと歩で表した長さ（a は m。例: 8.75m → "1ポイント+6歩"）
+    pub fn point_steps(&self, a: f64) -> String {
+        let st = self.stride_m;
+        let n = 5.0 / st;
+        let mut p = (a / 5.0 + 1e-9).floor();
+        let mut s = ((a - p * 5.0) / st * 10.0).round() / 10.0;
+        if s >= n - 0.05 {
+            p += 1.0;
+            s = 0.0;
+        }
+        let num = |v: f64| {
+            let t = (v * 10.0).round() as i64;
+            if t % 10 == 0 { format!("{}", t / 10) } else { format!("{}.{}", t / 10, t % 10) }
+        };
+        let mut parts = vec![];
+        if p > 0.0 {
+            parts.push(format!("{}ポイント", p as i64));
+        }
+        if s > 0.0 {
+            parts.push(format!("{}歩", num(s)));
+        }
+        if parts.is_empty() {
+            "0歩".into()
+        } else {
+            parts.join("+")
+        }
+    }
+
     /// 左右方向の言い方
     pub fn describe_x(&self, x: f64) -> String {
         match &self.kind {
@@ -149,16 +182,16 @@ impl Field {
                 if x.abs() < 0.005 {
                     "センター".into()
                 } else {
-                    format!("{} {:.2}m", if x < 0.0 { "下手" } else { "上手" }, x.abs())
+                    format!("センターから{}へ {}（{:.2}m）", if x < 0.0 { "下手" } else { "上手" }, self.point_steps(x.abs()), x.abs())
                 }
             }
             FieldKind::Stage { w, .. } => {
                 if x.abs() < 0.005 {
                     "センター".into()
                 } else if x.abs() > w / 2.0 + 1e-9 {
-                    format!("{}袖（センターから {:.2}m）", if x < 0.0 { "下手" } else { "上手" }, x.abs())
+                    format!("{}袖（センターから{}へ {}（{:.2}m））", if x < 0.0 { "下手" } else { "上手" }, if x < 0.0 { "下手" } else { "上手" }, self.point_steps(x.abs()), x.abs())
                 } else {
-                    format!("{} {:.2}m", if x < 0.0 { "下手" } else { "上手" }, x.abs())
+                    format!("センターから{}へ {}（{:.2}m）", if x < 0.0 { "下手" } else { "上手" }, self.point_steps(x.abs()), x.abs())
                 }
             }
         }
@@ -185,19 +218,25 @@ impl Field {
                     format!("{}から{}へ {:.2}歩", name, if off > 0.0 { "後ろ" } else { "前" }, off.abs())
                 }
             }
-            FieldKind::Floor { .. } => format!("前端から {:.2}m", y),
+            FieldKind::Floor { .. } => {
+                if y.abs() < 0.005 {
+                    "前端（客席側の端）".into()
+                } else {
+                    format!("前端から奥へ {}（{:.2}m）", self.point_steps(y.abs()), y)
+                }
+            }
             FieldKind::Gym { .. } => {
                 if y.abs() < 0.005 {
                     "センターライン上".into()
                 } else {
-                    format!("センターから{} {:.2}m", if y < 0.0 { "前（客席側）" } else { "奥" }, y.abs())
+                    format!("センターから{}へ {}（{:.2}m）", if y < 0.0 { "客席側" } else { "奥" }, self.point_steps(y.abs()), y.abs())
                 }
             }
             FieldKind::Stage { .. } => {
                 if y.abs() < 0.005 {
                     "舞台前端".into()
                 } else {
-                    format!("舞台前端から {:.2}m", y)
+                    format!("舞台前端から奥へ {}（{:.2}m）", self.point_steps(y.abs()), y)
                 }
             }
         }

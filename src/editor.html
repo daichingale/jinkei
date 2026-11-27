@@ -140,6 +140,14 @@ details.adv>div{padding:6px 0 2px}
 /* 選んだ人への操作バー: 画面（フィールド）の外、タイムラインのすぐ上に1行で置く。フィールドは覆わない */
 #selbar{flex:0 0 auto;display:flex;align-items:center;gap:4px;min-height:38px;padding:3px 8px 3px 6px;border-top:1px solid var(--line);border-left:3px solid var(--blue);background:#1a1e27;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;white-space:nowrap}
 #selbar.none{border-left-color:transparent}
+#print{display:none}
+#printmenu{position:fixed;z-index:170;background:#1c1f25;border:1px solid #3a4152;border-radius:10px;padding:6px;box-shadow:0 8px 28px #000c;display:grid;gap:3px;min-width:250px}
+#printmenu[hidden]{display:none}
+#printmenu button{text-align:left;padding:9px 12px;font-size:13px}
+#printmenu small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+#selbar .lbl.pos{color:#ffe08a;margin-left:0;max-width:52vw;overflow:hidden;text-overflow:ellipsis}
+#selbar.none .lbl.pos{display:none}
+#selcard .indrow .d{white-space:normal}
 #selbar .lbl{color:#cfe0ff;font-size:12px;margin:0 4px 0 2px;flex:none;cursor:default}
 #selbar .acts{display:flex;align-items:center;gap:3px;flex:1 1 auto;min-width:0}
 #selbar.none .acts,#selbar.col .acts{display:none}
@@ -268,6 +276,7 @@ __BOOT__
   <button id="homebtn" title="はじめに（かんたん作成・サンプル・ファイルを開く）">はじめに</button><button id="helpbtn" title="使い方ガイドと用語集"><span class="q">?</span>ヘルプ</button><button id="scpalbtn" class="scbtn" title="コマンド検索 (Ctrl+K)" aria-label="コマンド検索"></button><button id="scbtn" class="scbtn" title="ショートカット一覧 (?)" aria-label="ショートカット一覧"></button>
   <button id="undo" title="元に戻す (Ctrl+Z)">↶</button><button id="redo" title="やり直す (Ctrl+Shift+Z)">↷</button>
   <button id="preview" title="2D/3Dプレビューを新しいタブで開く">プレビュー</button>
+  <button id="printbtn" title="印刷（A4・白地。隊形図とドットシート）" aria-haspopup="true">印刷</button>
   <select id="vcam" title="動画のカメラ"><option value="audience">客席から</option><option value="orbit">回り込み</option><option value="top">真上</option><option value="low">目線</option></select>
   <button id="video">3D動画を書き出す</button><progress id="vprog" max="1" value="0"></progress>
   <button id="save" class="pri" title="Ctrl+S">保存</button>
@@ -298,7 +307,7 @@ __BOOT__
       <label><input type="checkbox" id="showprev" checked> 前のセット</label>
       <label><input type="checkbox" id="shownames"> 名前</label>
       <label title="ドラッグ時のマス目（Shift を押しながらで自由に）。線の間隔にぴったり合います">吸着 <select id="snap"><option value="0.25">0.25</option><option value="0.5" selected>0.5</option><option value="1">1</option><option value="2.5">2.5</option><option value="5">5</option><option value="0">なし</option></select></label>
-      <label title="下の方眼の細かさ。拡大するほど細かい線が出ます">グリッド <select id="gridmode"><option value="fine">細かい</option><option value="normal">普通</option><option value="off">オフ</option></select></label>
+      <label title="下の方眼の細かさ。拡大するほど細かい線が出ます">グリッド <select id="gridmode"><option value="step">歩（1歩ごと）</option><option value="fine">細かい（1m）</option><option value="normal">普通</option><option value="off">オフ</option></select></label>
       <label title="5m ごとの交点に小さな十字（本番のフロアと同じ印）を出します"><input type="checkbox" id="gridpts" checked> <span id="gridptsl">5mポイント</span></label>
       <span id="info"></span>
     </div>
@@ -316,6 +325,8 @@ __BOOT__
     <div class="pane" id="pwarn"></div>
   </div>
 </main>
+<div id="print"></div>
+<div id="printmenu" role="menu" hidden></div>
 <div id="ctx"></div>
 <div id="modalbg"><div id="modal"><div class="mt" id="modalt"></div><div class="mb" id="modalb"></div><div class="mbt" id="modalbt"></div></div></div>
 <dialog id="syncdialog" class="project-dialog" aria-labelledby="synctitle">
@@ -411,7 +422,7 @@ const sbi = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${SBI[n] || ''}</s
   const arr = (k, ic, t) => `<button type="button" class="ib" data-arr="${k}" title="${t}" aria-label="${t}">${sbi(ic)}</button>`;
   $('selbar').innerHTML =
     `<button type="button" id="selcollapse" class="ib tg" title="この操作バーをたたむ／ひらく" aria-label="操作バーをたたむ／ひらく" aria-expanded="true">${sbi('chev')}</button>` +
-    `<span class="lbl" id="selinfo"></span><span class="hintx">人（丸）をクリック・範囲ドラッグで選ぶと、向きや並べ方をここで変えられます</span>` +
+    `<span class="lbl" id="selinfo"></span><span class="lbl pos" id="selpos"></span><span class="hintx">人（丸）をクリック・範囲ドラッグで選ぶと、向きや並べ方をここで変えられます</span>` +
     `<div class="acts">` +
     b('selface', 'face', '選んだ人の向きを決める', 'dd') + b('selpose', 'pose', '選んだ人の姿勢を決める', 'dd') + b('selcarry', 'carry', '選んだ人の楽器の構え（演奏・右手・左手・正面・斜め）を決める', 'dd') + b('selstep', 'step', '選んだ人の歩き方（グライド・バックなど）を決める', 'dd') + b('selaction', 'action', '選んだ人の動作（スピン・トスなど。カラーガード向け）を決める', 'dd') +
     `<span class="vs"></span>` + b('flipx', 'fliph', '選んだ人を左右に反転（上手と下手を入れ替え）') + b('flipy', 'flipv', '選んだ人を前後に反転（客席側と奥を入れ替え）') +
@@ -543,6 +554,19 @@ const isFB = () => F().type === 'football';
 const DOT = () => (isFB() ? 0.95 : 0.34) * (window.JK_DOT_SCALE || 1);
 const HND = () => (isFB() ? 1.3 : 0.45) * (window.JK_DOT_SCALE || 1);
 const unitLen = v => isFB() ? `${fmt1(v)}歩` : `${fmt1(v)}m`;
+// 5m ポイント + 歩（1歩 = ショー設定の stride。既定 62.5cm = 5m を 8 歩）。ドットシートと同じ言い方
+const strideM = () => { const f = F(); return f.stride_m || 0.625; };
+function pointSteps(a) {
+  const st = strideM(), n = 5 / st;
+  let p = Math.floor(a / 5 + 1e-9), s = Math.round((a - p * 5) / st * 10) / 10;
+  if (s >= n - 0.05) { p += 1; s = 0; }
+  const nm = v => { const t = Math.round(v * 10); return t % 10 === 0 ? String(t / 10) : `${Math.trunc(t / 10)}.${t % 10}`; };
+  const parts = [];
+  if (p > 0) parts.push(`${p}ポイント`);
+  if (s > 0) parts.push(`${nm(s)}歩`);
+  return parts.length ? parts.join('+') : '0歩';
+}
+const fmt2 = v => (Math.round(v * 100) / 100).toFixed(2);
 function dX(x) {
   const f = F();
   if (f.type === 'football') {
@@ -551,9 +575,9 @@ function dX(x) {
     const line = yl <= 0 ? 'ゴールライン' : `${yl}ydライン`, off = ax - 8 * kk;
     return Math.abs(off) < 0.05 ? `${side} ${line}上` : `${side} ${line}から${off > 0 ? '外' : '内'}へ${fmt1(Math.abs(off))}歩`;
   }
-  if (Math.abs(x) < 0.05) return 'センター';
-  if (f.type === 'stage' && Math.abs(x) > f.w / 2 + 1e-9) return `${x < 0 ? '下手' : '上手'}袖（センターから${fmt1(Math.abs(x))}m）`;
-  return `${x < 0 ? '下手' : '上手'} ${fmt1(Math.abs(x))}m`;
+  if (Math.abs(x) < 0.005) return 'センター';
+  const sd = x < 0 ? '下手' : '上手', tx = `センターから${sd}へ ${pointSteps(Math.abs(x))}（${fmt2(Math.abs(x))}m）`;
+  return f.type === 'stage' && Math.abs(x) > f.w / 2 + 1e-9 ? `${sd}袖（${tx}）` : tx;
 }
 function dY(y) {
   const f = F();
@@ -562,10 +586,19 @@ function dY(y) {
     const [r, name] = refs.reduce((a, b) => Math.abs(y - b[0]) < Math.abs(y - a[0]) ? b : a), off = y - r;
     return Math.abs(off) < 0.05 ? `${name}上` : `${name}から${off > 0 ? '後ろ' : '前'}へ${fmt1(Math.abs(off))}歩`;
   }
-  if (f.type === 'floor') return `客席側の端から奥へ${fmt1(y)}m`;
-  if (f.type === 'stage') return Math.abs(y) < 0.05 ? '舞台前端' : `舞台前端から奥へ${fmt1(y)}m`;
-  if (Math.abs(y) < 0.05) return 'センターライン上';
-  return `センターから${y < 0 ? '手前' : '奥'} ${fmt1(Math.abs(y))}m`;
+  if (f.type === 'floor') return Math.abs(y) < 0.005 ? '前端（客席側の端）' : `前端から奥へ ${pointSteps(Math.abs(y))}（${fmt2(y)}m）`;
+  if (f.type === 'stage') return Math.abs(y) < 0.005 ? '舞台前端' : `舞台前端から奥へ ${pointSteps(Math.abs(y))}（${fmt2(y)}m）`;
+  if (Math.abs(y) < 0.005) return 'センターライン上';
+  return `センターから${y < 0 ? '客席側' : '奥'}へ ${pointSteps(Math.abs(y))}（${fmt2(Math.abs(y))}m）`;
+}
+// 短い言い方（選択バー・ツールチップ用）: 「センターから上手へ 2ポイント+3歩、奥へ 1ポイント+5歩」
+function dShort(p) {
+  const f = F();
+  if (f.type === 'football') return `${dX(p[0])}・${dY(p[1])}`;
+  const ax = Math.abs(p[0]), ay = Math.abs(p[1]), org = f.type === 'gym' ? 'センター' : f.type === 'stage' ? '舞台前端の中央' : '前端の中央';
+  const xs = ax < 0.005 ? 'センターライン上' : `${p[0] < 0 ? '下手' : '上手'}へ ${pointSteps(ax)}`;
+  const ys = (f.type === 'gym' ? ay < 0.005 : ay < 0.005) ? '' : `${f.type === 'gym' && p[1] < 0 ? '客席側' : '奥'}へ ${pointSteps(ay)}`;
+  return `${org}から${xs}${ys ? '、' + ys : ''}`;
 }
 const dPt = p => dX(p[0]) + '・' + dY(p[1]);
 const faceNames = {front: '客席', back: '奥', kami: '上手', shimo: '下手', center: '中心へ', out: '外へ', travel: '進行方向'};
@@ -625,13 +658,17 @@ function syncGridUI() {
   const fb = isFB(), cfg = jkField.cfg;
   $('gridmode').value = cfg.mode; $('gridpts').checked = !!cfg.pts;
   $('gridptsl').textContent = fb ? '8歩ポイント' : '5mポイント';
-  const sn = $('snap'), cur = sn.value, vals = fb ? ['0.5', '1', '2', '4', '8'] : ['0.25', '0.5', '1', '2.5', '5'];
-  if (sn.dataset.fb !== String(fb)) {
-    sn.dataset.fb = String(fb);
-    sn.innerHTML = vals.map(v => `<option value="${v}">${v}${fb ? '歩' : 'm'}</option>`).join('') + '<option value="0">なし</option>';
-    sn.value = vals.includes(cur) || cur === '0' ? cur : '0.5';
+  // 吸着の刻み。格子は会場の中心（舞台は前端の中央）が原点なので、ここに合わせるとぴったり線の上に乗る
+  const sn = $('snap'), cur = sn.value, st = strideM(), key = fb + ':' + st;
+  const opts = fb ? [['0.5', '半歩'], ['1', '1歩'], ['2', '2歩'], ['4', '4歩'], ['8', '8歩（5ydライン）']]
+    : [[f3(st / 2), '半歩（' + fmt(st * 50) + 'cm）'], [f3(st), '1歩（' + fmt(st * 100) + 'cm）'], ['0.25', '0.25m'], ['0.5', '0.5m'], ['1', '1m'], ['2.5', '2.5m'], ['5', '5mポイント']];
+  if (sn.dataset.key !== key) {
+    sn.dataset.key = key;
+    sn.innerHTML = opts.map(([v, n]) => `<option value="${v}">${n}</option>`).join('') + '<option value="0">なし</option>';
+    sn.value = opts.some(o => o[0] === cur) || cur === '0' ? cur : (fb ? '0.5' : '0.5');
   }
 }
+window.addEventListener('jk-grid', () => { $('gridmode').value = jkField.cfg.mode; $('gridpts').checked = !!jkField.cfg.pts; });
 $('gridmode').onchange = () => { jkField.setGrid({mode: $('gridmode').value}); };
 $('gridpts').onchange = () => { jkField.setGrid({pts: $('gridpts').checked}); };
 function ensureField() {
@@ -641,7 +678,7 @@ function ensureField() {
   svg.innerHTML = '';
   FLD = jkField(svg, R.data.field);
   syncGridUI();
-  for (const k of ['ghost', 'paths', 'dots', 'shape', 'handles', 'draw']) layers[k] = FLD.el('g', {id: 'L' + k});
+  for (const k of ['ghost', 'paths', 'hint', 'dots', 'shape', 'handles', 'draw']) layers[k] = FLD.el('g', {id: 'L' + k});
 }
 function refresh(full) {
   setStatusFromState();
@@ -687,6 +724,7 @@ function drawCanvas(anim) {
       'stroke-width': (sel.has(i) || bad.has(i) || (mem && mem.has(i))) ? DOT() * 0.38 : DOT() * 0.15, style: 'cursor:move'}, layers.dots);
     c.addEventListener('pointerdown', e => dotDown(e, i));
     dotEls[i] = c;
+    if (!anim) { const tt = FLD.el('title', {}, c); tt.textContent = `${D.performers[i].id}（${D.sections[D.performers[i].sec].label}）　${dShort(pos[i])}`; }
     const fa = rad(anim ? anim.face[i] : (D.sets[k].face || [])[i] ?? -90);
     el('line', {x1: pos[i][0], y1: Y(pos[i][1]), x2: pos[i][0] + Math.cos(fa) * DOT() * 1.05, y2: Y(pos[i][1] + Math.sin(fa) * DOT() * 1.05), stroke: '#000', 'stroke-width': DOT() * 0.3, 'stroke-linecap': 'round', opacity: 0.7, 'pointer-events': 'none'}, layers.dots);
     if (poses[i]) {
@@ -696,8 +734,40 @@ function drawCanvas(anim) {
     }
     if (names) { const t = el('text', {x: pos[i][0], y: Y(pos[i][1]) - DOT() * 1.5, 'font-size': DOT() * 1.4, 'text-anchor': 'middle', fill: '#fff', stroke: '#000', 'stroke-width': DOT() * 0.2, 'paint-order': 'stroke', 'pointer-events': 'none'}, layers.dots); t.textContent = D.performers[i].id; }
   }
-  if (!anim) drawOverlays(k);
+  if (!anim) { drawHints(pos); drawOverlays(k); }
 }
+
+// 選んだ人の「自分のポイント」: 最寄りの 5m ポイントを丸で囲み、そこから人まで 1歩ごとの目盛りを引く
+function drawHints(pos) {
+  if (!sel.size || sel.size > 12 || !FLD || !FLD.nearestPoint) return;
+  const {el, Y} = FLD, L = layers.hint, ids = [...sel].filter(i => pos[i]), st = FLD.step, u = DOT(), many = ids.length > 3;
+  const col = '#ff7ad9', ln = {stroke: col, 'stroke-width': u * 0.07, fill: 'none', 'stroke-dasharray': `${u * 0.35} ${u * 0.25}`, opacity: 0.85, 'pointer-events': 'none'};
+  const nm = v => { const t = Math.round(v * 10) / 10; return Number.isInteger(t) ? String(t) : t.toFixed(1); };
+  for (const i of ids) {
+    const p = pos[i], q = FLD.nearestPoint(p[0], p[1]);
+    el('circle', {cx: q[0], cy: Y(q[1]), r: u * 1.55, fill: col, 'fill-opacity': 0.16, stroke: col, 'stroke-width': u * 0.14, 'pointer-events': 'none'}, L);
+    el('path', {d: `M${q[0] - u * 0.9} ${Y(q[1])}H${q[0] + u * 0.9}M${q[0]} ${Y(q[1]) - u * 0.9}V${Y(q[1]) + u * 0.9}`, stroke: col, 'stroke-width': u * 0.12, 'pointer-events': 'none'}, L);
+    if (many) continue;
+    const legs = [[q[0], q[1], p[0], q[1], 'x'], [p[0], q[1], p[0], p[1], 'y']];
+    for (const [x0, y0, x1, y1, ax] of legs) {
+      const len = Math.hypot(x1 - x0, y1 - y0); if (len < 1e-6) continue;
+      el('line', Object.assign({x1: x0, y1: Y(y0), x2: x1, y2: Y(y1)}, ln), L);
+      const n = Math.floor(len / st + 1e-6), sx = Math.sign(x1 - x0), sy = Math.sign(y1 - y0);
+      if (n > 0 && n <= 48) {
+        let d = '';
+        for (let j = 1; j <= n; j++) {
+          const tx = x0 + sx * j * st * (ax === 'x' ? 1 : 0), ty = y0 + sy * j * st * (ax === 'y' ? 1 : 0), h = u * (j % 4 === 0 ? 0.55 : 0.32);
+          d += ax === 'x' ? `M${tx} ${Y(ty) - h}V${Y(ty) + h}` : `M${tx - h} ${Y(ty)}H${tx + h}`;
+        }
+        el('path', {d, stroke: col, 'stroke-width': u * 0.09, 'pointer-events': 'none'}, L);
+      }
+      const mx = (x0 + x1) / 2 + (ax === 'y' ? u * 0.9 : 0), my = (y0 + y1) / 2 + (ax === 'x' ? u * 0.9 : 0);
+      const t = el('text', {x: mx, y: Y(my), 'font-size': u * 1.05, 'text-anchor': ax === 'y' ? 'start' : 'middle', 'dominant-baseline': 'central', fill: col, stroke: '#000', 'stroke-width': u * 0.2, 'paint-order': 'stroke', 'pointer-events': 'none'}, L);
+      t.textContent = nm(len / st) + '歩';
+    }
+  }
+}
+
 
 // ハンドル（ドラッグで隊形を編集）
 function drawHandles(k) {
@@ -949,10 +1019,10 @@ svg.addEventListener('pointermove', e => {
   if (!dragging) return;
   const [x0, y0] = toField(e), x = snapv(x0, e), y = snapv(y0, e);
   const {st, role, center} = dragging, s = st.shape;
-  if (role === 'a' || role === 'b') s[role] = [fmt(x), fmt(y)];
-  else if (role === 'p') s.p = [fmt(x), fmt(y)];
-  else if (role[0] === 'p') s.pts[+role.slice(1)] = [fmt(x), fmt(y)];
-  else if (role === 'c') { s.c = [fmt(x), fmt(y)]; }
+  if (role === 'a' || role === 'b') s[role] = [f3(x), f3(y)];
+  else if (role === 'p') s.p = [f3(x), f3(y)];
+  else if (role[0] === 'p') s.pts[+role.slice(1)] = [f3(x), f3(y)];
+  else if (role === 'c') { s.c = [f3(x), f3(y)]; }
   else if (role === 'r') { s.r = fmt(Math.max(0.1, Math.hypot(x0 - center[0], y0 - center[1]))); s.r = fmt(snapv(+s.r, e) || +s.r); }
   else if (role === 'a1' || role === 'a2') {
     let ang = Math.atan2(y0 - center[1], x0 - center[0]) * 180 / Math.PI;
@@ -1049,6 +1119,20 @@ svg.addEventListener('pointerup', e => {
     updateSel(); drawCanvas();
   }
 });
+// 選んだ人の「自分のポイント」: いちばん近い 5m ポイントと、そこからの歩数
+function nearestText(p) {
+  if (!FLD || isFB()) return '';
+  const q = FLD.nearestPoint(p[0], p[1]), st = FLD.step, nm = v => { const t = Math.round(Math.abs(v) / st * 10) / 10; return Number.isInteger(t) ? String(t) : t.toFixed(1); };
+  const ox = p[0] - q[0], oy = p[1] - q[1], where = `${q[0] === 0 ? 'センター' : (q[0] < 0 ? '下手' : '上手') + Math.abs(q[0]) + 'm'}・${q[1] === 0 && F().type === 'gym' ? 'センター' : (q[1] < 0 ? '客席側' : '奥') + Math.abs(q[1]) + 'm'}`;
+  const parts = []; if (Math.abs(ox) > 0.005) parts.push(`${ox < 0 ? '下手' : '上手'}へ${nm(ox)}歩`); if (Math.abs(oy) > 0.005) parts.push(`${oy < 0 ? '客席側' : '奥'}へ${nm(oy)}歩`);
+  return `最寄りの5mポイント（${where}）` + (parts.length ? 'から ' + parts.join('・') : 'の上');
+}
+function renderSelCard() {
+  const box = $('selcard'); if (!box) return;
+  const D = R && R.data, k = D ? Math.min(curSet, D.sets.length - 1) : 0, ids = [...sel].filter(i => D && D.performers[i]);
+  if (!D || !ids.length || ids.length > 8) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="card ind"><div class="note" style="color:var(--fg);font-weight:600">選んだ人の位置（${ids.length}人）</div>` + ids.map(i => { const p = D.sets[k].pos[i]; return `<div class="indrow on"><b>${esc(D.performers[i].id)}</b><span class="d">${esc(dShort(p))}${isFB() ? '' : '<br>' + esc(nearestText(p))}</span></div>`; }).join('') + '</div>';
+}
 function updateSel() {
   if (sel.size && tlFocus) { tlFocus = false; setSel.clear(); if (M) renderTimeline(); } // 人を選んだら、コピー・削除の対象は人になる
   const n = sel.size, D = R && R.data, bar = $('selbar');
@@ -1057,6 +1141,9 @@ function updateSel() {
   const names = [...sel].slice(0, 5).map(i => D.performers[i].id).join(', ') + (n > 5 ? ' …' : '');
   $('selinfo').innerHTML = `${n}<span class="u">人選択</span>`;
   $('selinfo').title = `${n}人選択: ${names}`;
+  const sp = $('selpos'), p1 = n === 1 && D.sets[Math.min(curSet, D.sets.length - 1)] ? D.sets[Math.min(curSet, D.sets.length - 1)].pos[[...sel][0]] : null;
+  sp.textContent = p1 ? `${D.performers[[...sel][0]].id}　${dShort(p1)}` : ''; sp.title = p1 ? nearestText(p1) : '';
+  renderSelCard();
   document.querySelectorAll('#selbar [data-arr]').forEach(b => b.disabled = n < 2);
   $('selarr').disabled = n < 2;
   $('mkfollow').disabled = n < 2 || curSet === 0;
@@ -1137,7 +1224,7 @@ function arrange(kind) {
   const need = (n - 1) * sp;
   if (tmax - tmin < need) { const m = (tmax + tmin) / 2; tmin = m - need / 2; tmax = m + need / 2; }
   const at = s => [c[0] + u[0] * s, c[1] + u[1] * s];
-  const F2 = p => [fmt(p[0]), fmt(p[1])];
+  const F2 = p => [f3(p[0]), f3(p[1])];
   const byT = ids.map((i, j) => [i, t[j]]).sort((x, y) => x[1] - y[1]).map(x => x[0]);
   let shape, order = byT;
   const meanR = Math.max(pts.reduce((s, p) => s + Math.hypot(p[0] - c[0], p[1] - c[1]), 0) / n, n * sp / (2 * Math.PI));
@@ -2030,7 +2117,7 @@ function renderSetPane() {
   const k = curSet, set = M.sets[k];
   if (!set) { $('pset').innerHTML = ''; return; }
   const errLine = lastErr && lastErr.line;
-  let h = `<div class="row">${fld('セット名', set.name, 'name', 'set', '70px')}${set.sub && !set.name ? `<span class="f" style="align-self:end;margin-bottom:6px;color:var(--mut)">表示名: <b style="color:var(--fg)">${esc(setLbl(k))}</b></span>` : ''}${k ? fld('移動カウント', set.counts, 'counts', 'set', '70px') : ''}${fld('ホールド', set.hold, 'hold', 'set', '60px')}${fld('テンポ（ここから）', set.tempo, 'tempo', 'set', '70px')}
+  let h = `<div id="selcard"></div><div class="row">${fld('セット名', set.name, 'name', 'set', '70px')}${set.sub && !set.name ? `<span class="f" style="align-self:end;margin-bottom:6px;color:var(--mut)">表示名: <b style="color:var(--fg)">${esc(setLbl(k))}</b></span>` : ''}${k ? fld('移動カウント', set.counts, 'counts', 'set', '70px') : ''}${fld('ホールド', set.hold, 'hold', 'set', '60px')}${fld('テンポ（ここから）', set.tempo, 'tempo', 'set', '70px')}
     <label class="f" title="ホールド中・出発待ちの間、その場で足踏み" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="mark" ${set.mark ? 'checked' : ''} style="width:auto">マークタイム</label>
     ${k ? `<label class="f" title="前のメインのセットの下に、3A・3B のように並ぶ中間のセット（名前は自動。空欄のままにします）" style="flex-direction:row;align-items:center;gap:4px;margin-bottom:4px"><input type="checkbox" data-path="set" data-key="sub" data-structural="1" ${set.sub ? 'checked' : ''} style="width:auto">サブセット</label>` : ''}</div>`;
   if (!set.stmts.length) h += window.uxEmpty ? uxEmpty('no-sets', k ? `セット ${esc(setLbl(k))} は、まだ全員その場です` : 'まだ隊形がありません', '「隊形を追加」で形をえらぶか、左のツールで画面に直接かいてみましょう。', '＋ 隊形を追加', 'emptyadd') : `<div class="note">このセットでは誰も動きません（全員その場）。左の描画ツールで描くか、下のボタンで隊形を追加します。</div>`;
@@ -2055,6 +2142,7 @@ function renderSetPane() {
       <b>人を動かす</b>: ドットをドラッグ。<kbd>Shift</kbd>/<kbd>Ctrl</kbd>+クリックで追加選択、何もない所をドラッグで範囲選択。選んだ人は枠の ↻ ⤡ ✥ でまとめて回転・拡大・移動。右クリックでメニュー。<br>
       吸着は下のバーで設定（ドラッグ中 <kbd>Shift</kbd> で吸着なし）。</div>`;
   $('pset').innerHTML = h;
+  renderSelCard();
   $('addstmt').onclick = () => {
     const used = new Set(set.stmts.flatMap(st => groupTokens(st.group)));
     const free = M.sections.find(s => !used.has(s.id)) || M.sections[0];
@@ -2084,7 +2172,7 @@ function bindInputs(root) {
       let v = inp.type === 'checkbox' ? inp.checked : inp.value;
       if (key === 'skip') v = [...new Set(String(v).split(/[,、，\s]+/).map(Number).filter(x => Number.isInteger(x) && x >= 1))].sort((a, b) => a - b);
       if (inp.dataset.num) v = v === '' ? null : v;
-      if (v === '' && ['assign', 'wait', 'within', 'start', 'spacing', 'rows', 'clearance', 'maxstep', 'look', 'color', 'instrument', 'tempo', 'bend', 'face', 'step', 'action'].includes(key)) v = null;
+      if (v === '' && ['assign', 'wait', 'within', 'start', 'spacing', 'rows', 'clearance', 'maxstep', 'stride', 'look', 'color', 'instrument', 'tempo', 'bend', 'face', 'step', 'action'].includes(key)) v = null;
       if (key === 'sub' && inp.dataset.path === 'set') {   // 名前は自動に任せる／メインに戻すときは次の番号を付ける
         if (v && /^\d+$/.test(String(o.name))) o.name = '';
         else if (!v && o.name === '') { const used = new Set(M.sets.map(x => String(x.name))); let n = 1; for (const x of M.sets) if (!x.sub && /^\d+$/.test(String(x.name))) n = Math.max(n, +x.name + 1); while (used.has(String(n))) n++; o.name = String(n); }
@@ -2198,6 +2286,12 @@ function renderSecPane() {
   };
 }
 
+// 1歩の長さ（5m ポイントとの対応）。よく使う値を選ぶか、cm で自由に入力
+const STRIDES = [['', '62.5cm（5mを8歩・標準）'], ['71.4', '71.4cm（5mを7歩）'], ['83.3', '83.3cm（5mを6歩）'], ['100', '100cm（5mを5歩）'], ['50', '50cm（5mを10歩）']];
+function strideField() {
+  const cur = M.stride == null ? '' : String(M.stride), known = STRIDES.some(x => x[0] === cur);
+  return `<label class="f" title="1歩の長さ。方眼の「歩」、ドットシートの「ポイント+歩」、吸着の「1歩」がこれに合わせて変わります">1歩<select data-path="show" data-key="stride">${STRIDES.map(([v, n]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${n}</option>`).join('')}${known ? '' : `<option value="${esc(cur)}" selected>${esc(cur)}cm（自分で指定）</option>`}</select></label>${fld('cm', M.stride, 'stride', 'show', '56px')}`;
+}
 // ---- ショー設定 ----
 function renderShowPane() {
   const f = M.field;
@@ -2205,7 +2299,7 @@ function renderShowPane() {
   <div class="row"><label class="f">会場<select data-path="field" data-key="type"><option value="gym" ${f.type === 'gym' ? 'selected' : ''}>体育館</option><option value="stage" ${f.type === 'stage' ? 'selected' : ''}>ステージ</option><option value="football" ${f.type === 'football' ? 'selected' : ''}>フットボールフィールド</option><option value="floor" ${f.type === 'floor' ? 'selected' : ''}>フロア（任意）</option></select></label>`;
   if (f.type === 'football') h += `<label class="f">ハッシュ<select data-path="field" data-key="level"><option value="hs" ${f.level === 'hs' ? 'selected' : ''}>高校</option><option value="college" ${f.level === 'college' ? 'selected' : ''}>大学</option><option value="nfl" ${f.level === 'nfl' ? 'selected' : ''}>NFL</option></select></label>`;
   else h += fld(f.type === 'stage' ? '間口(m)' : '横(m)', f.w, 'w', 'field', '60px') + fld('奥行(m)', f.d, 'd', 'field', '60px') + (f.type === 'stage' ? fld('袖(m)', f.wing, 'wing', 'field', '50px') : '');
-  h += `</div><div class="row">${fld('テンポ', M.tempo, 'tempo', 'show', '60px')}${fld('衝突とみなす距離', M.clearance, 'clearance', 'show', '70px')}${fld('歩幅の上限', M.maxstep, 'maxstep', 'show', '70px')}<label class="f">見た目<select data-path="show" data-key="look"><option value="" ${!M.look || M.look === 'real' ? 'selected' : ''}>リアル（既定）</option><option value="illust" ${M.look === 'illust' ? 'selected' : ''}>イラスト</option></select></label></div>
+  h += `</div><div class="row">${fld('テンポ', M.tempo, 'tempo', 'show', '60px')}${fld('衝突とみなす距離', M.clearance, 'clearance', 'show', '70px')}${fld('歩幅の上限', M.maxstep, 'maxstep', 'show', '70px')}${f.type === 'football' ? '' : strideField()}<label class="f">見た目<select data-path="show" data-key="look"><option value="" ${!M.look || M.look === 'real' ? 'selected' : ''}>リアル（既定）</option><option value="illust" ${M.look === 'illust' ? 'selected' : ''}>イラスト</option></select></label></div>
   <div class="hint">空欄は既定値です。体育館・ステージ: 衝突 0.6m、歩幅の上限は1カウント0.8m。フットボール: 衝突 1歩、6 to 5 より大股で警告。<br>会場を変えると座標の意味が変わります（体育館は中心が原点、ステージは舞台前端の中央が原点）。</div>`;
   $('pshow').innerHTML = h;
   $('pshow').querySelector('[data-key="type"]').addEventListener('change', e => {
@@ -2521,6 +2615,28 @@ function openLocalPreview(hash) {
   const h = JK_LOCAL.previewHtml(R.data, R.data.name);
   window.open(URL.createObjectURL(new Blob([h], {type: 'text/html'})) + (hash || ''), '_blank');
 }
+// ---- 印刷（A4・白地・モノクロでも読める。jkField.print は field2d.js） ----
+$('printbtn').onclick = e => {
+  e.stopPropagation();
+  const m = $('printmenu');
+  if (!m.hidden) { m.hidden = true; return; }
+  if (!R || lastErr) { notice('エラーを直してから印刷してください'); return; }
+  const k = Math.min(curSet, R.data.sets.length - 1), one = sel.size === 1 ? [...sel][0] : -1;
+  m.innerHTML = `<button data-pk="set">いまのセットの隊形図<small>セット ${esc(R.data.sets[k].name)}・A4 横</small></button><button data-pk="sets">全セットの隊形図<small>${R.data.sets.length}ページ・A4 横</small></button>` +
+    `<button data-pk="one" ${one < 0 ? 'disabled' : ''}>選んだ人のドットシート<small>${one < 0 ? '人を1人選ぶと使えます' : esc(R.data.performers[one].id) + '・自分のポイントを丸で囲んだ図つき'}</small></button><button data-pk="all">全員分のドットシート<small>${R.data.performers.length}ページ・A4 縦</small></button>`;
+  const r = $('printbtn').getBoundingClientRect(); m.style.top = r.bottom + 6 + 'px'; m.style.left = Math.max(8, Math.min(innerWidth - 270, r.left)) + 'px'; m.hidden = false;
+  m.querySelectorAll('button').forEach(b => b.onclick = () => {
+    m.hidden = true; const D = R.data, t = b.dataset.pk;
+    if (t === 'set') { const one1 = Object.assign({}, D, {sets: [D.sets[k]]}); jkField.print(one1, 'sets'); }
+    else if (t === 'sets') jkField.print(D, 'sets');
+    else if (t === 'one') jkField.print(D, 'member', one);
+    else jkField.print(D, 'members');
+  });
+};
+document.addEventListener('pointerdown', e => { const m = $('printmenu'); if (!m.hidden && !m.contains(e.target) && e.target !== $('printbtn')) m.hidden = true; }, true);
+// Ctrl+P でも、画面の部品ではなく全セットの隊形図が印刷されるように
+window.addEventListener('beforeprint', () => { const b = $('print'); if (b && !b.innerHTML && R && !lastErr) { b.innerHTML = jkField.printHtml(R.data, 'sets'); let st = $('jkprintcss'); if (!st) { st = document.createElement('style'); st.id = 'jkprintcss'; st.textContent = jkField.PRINT_CSS; document.head.appendChild(st); } } });
+window.addEventListener('afterprint', () => { const b = $('print'); if (b) b.innerHTML = ''; });
 $('preview').onclick = () => { if (window.JK_LOCAL) openLocalPreview(''); else window.open('/preview', '_blank'); };
 $('video').onclick = async () => {
   if (window.JK_LOCAL) { openLocalPreview('#view=3d&rec=1&cam=' + encodeURIComponent($('vcam').value)); return; }

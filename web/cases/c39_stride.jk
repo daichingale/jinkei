@@ -1,0 +1,11 @@
+show "stride" {
+  field gym
+  stride 83.3
+  section a "A" 6
+  set 1 {
+    a : line (SHIMO, FRONT) -> (KAMI, BACK)
+  }
+  set 2 counts 8 {
+    a : line (-8.3, 3.7) -> (12.2, 7.5)
+  }
+}

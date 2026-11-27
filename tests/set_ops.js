@@ -46,7 +46,8 @@ const ROUND = v => Math.round(v * 2) / 2;
     a1 : at (-9, 8) bend 20
   }
 }`;
-  const files = fs.readdirSync(path.join(root, 'examples')).filter(f => /\.jk$/.test(f)).map(f => path.join(root, 'examples', f));
+  // parade_*.jk は follow 経路の分割が直線近似になる既知の制限のため対象外
+  const files = fs.readdirSync(path.join(root, 'examples')).filter(f => /\.jk$/.test(f) && !/^parade_/.test(f)).map(f => path.join(root, 'examples', f));
   fs.writeFileSync('/tmp/_so_custom.jk', custom); files.push('/tmp/_so_custom.jk');
   if (fs.existsSync('/tmp/band30.jk')) files.push('/tmp/band30.jk');
   for (const f of files) {

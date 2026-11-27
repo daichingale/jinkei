@@ -202,6 +202,7 @@
     menu.appendChild(el('h3', '', 'つくる・見る'));
     menu.appendChild(item('search', '検索（コマンド）', '機能を名前で探して実行', clickId('scpalbtn')));
     menu.appendChild(item('cube', 'プレビュー（3D）', '新しいタブで2D/3Dを再生', clickId('preview')));
+    menu.appendChild(item('dl', '印刷（隊形図・ドットシート）', 'A4・白地。PDFにも保存できます', clickId('printbtn')));
     const vb = item('video', '3D動画を書き出す', canVideo() ? 'プレビュー画面で録画して保存します' : 'このブラウザは録画に対応していません', () => {
       if (!canVideo()) { if (window.uxToast) uxToast('この端末のブラウザは動画の録画に対応していません。Android の Chrome か、パソコンで書き出してください', 'err'); return; }
       $('video').click();
