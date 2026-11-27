@@ -471,3 +471,20 @@ html.mp .exgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .mp #tltrack .tlb.sub{top:21px;height:42px;font-size:12px;line-height:1.3;padding:3px 8px 0}
 .mp #tltrack .tlgrp{top:61px;height:3px}
 .mp #tltrack .tlb.sub .m,.mp #tltrack .tlb.sub br{display:revert}
+
+/* ===== 日本語で指示する（src/cmd_ui.js） ===== */
+.mp #aibar{padding:6px 10px}
+.mp .aib-row input{font-size:16px;min-height:44px}
+.mp .aib-mic,.mp .aib-go{width:44px;height:44px}
+.mp .aib-panel{left:6px;right:6px;max-height:56vh}
+.mp .ai-b{min-height:44px}
+.mp .ai-chip{min-height:44px;padding:8px 14px}
+.mp .ai-autochk{min-height:44px}
+.mp .ai-autochk input{width:22px;height:22px}
+.mp .scp-aitg{display:none}
+.mp .scp-mic{width:44px;height:44px;flex:none}
+.mp .scp-list.ai-on{padding:10px 10px calc(10px + var(--sab))}
+.mp .ai-go kbd,.mp .ai-note{display:none}
+.mp .ai-ex .ai-chip:nth-of-type(n+5){display:none}
+.mp .aib-panel{max-height:62vh}
+.mp-land #aibar{display:none}   /* 横向きのスマホは高さが足りないので、入力欄は出さない（⋮ →「検索（コマンド）」から使える） */

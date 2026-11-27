@@ -70,7 +70,11 @@ const IC = {
   split: '<path d="M12 3v18" stroke-dasharray="2 2.2"/><rect x="3" y="7" width="6" height="10" rx="1"/><rect x="15" y="7" width="6" height="10" rx="1"/>',
   trimend: '<rect x="3" y="7" width="12" height="10" rx="1"/><path d="M18 5v14M21 9l-3 3 3 3"/>',
   cutafter: '<rect x="3" y="7" width="9" height="10" rx="1"/><path d="M15 7l6 10M21 7l-6 10"/>',
-  chev: '<path d="M6 9l6 6 6-6"/>'
+  chev: '<path d="M6 9l6 6 6-6"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21M9 21h6"/>',
+  send: '<path d="M4 12l16-8-6 16-3-7z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  warn: '<path d="M12 4l9 16H3zM12 10v4.5M12 17.5h.01"/>'
 };
 const icon = (n, s) => `<svg class="sci" width="${s || 18}" height="${s || 18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || IC.gen}</svg>`;
 window.scIcon = icon;
@@ -96,6 +100,7 @@ const isMobileW = () => window.matchMedia && matchMedia('(max-width:760px)').mat
 let toastLast = {msg: '', t: 0};
 function scToast(msg, o) {
   o = o || {};
+  if (window.JK_TOAST_MUTE && !o.force) { (window.JK_TOAST_LOG = window.JK_TOAST_LOG || []).push({msg, sub: o.sub || '', kind: o.kind || 'ok'}); return; }   // 日本語の指示を実行している間は、中の操作のトーストを出さず記録だけする（最後に1つだけ出す）
   const now = Date.now();
   if (!o.undo && msg === toastLast.msg && now - toastLast.t < 1500) return;
   toastLast = {msg, t: now};
@@ -931,9 +936,11 @@ function buildPalette() {
   document.body.appendChild(palEl);
   palEl.addEventListener('mousedown', e => { if (e.target === palEl) closePalette(true); });
   const inp = palEl.querySelector('#scpin');
+  if (window.JKCMDUI) JKCMDUI.palMount(palEl, {render: renderPalette, close: closePalette});
   inp.addEventListener('input', () => renderPalette(inp.value));
   inp.addEventListener('keydown', e => {
     if (e.isComposing || e.keyCode === 229) return; // 変換中の Enter / 矢印は触らない
+    if (window.JKCMDUI && JKCMDUI.palKey(e)) return;   // 「AIに頼む」の表示中は、そちらが矢印・Enter を扱う
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePalette(true); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); movePal(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); movePal(-1); }
@@ -947,19 +954,24 @@ function buildPalette() {
 function renderPalette(q) {
   const list = palEl.querySelector('#scplist');
   q = (q || '').trim();
+  if (window.JKCMDUI) { if (JKCMDUI.palActive()) { JKCMDUI.palRender(q); return; } JKCMDUI.palHide(); }
   let rows = [];
   if (!q) {
     const rec = recent().map(id => BYID[id]);
     const sug = ['delete', 'add-member', 'duplicate', 'undo', 'play', 'shortcuts'].map(id => BYID[id]).filter(a => !rec.includes(a));
     rows = [{h: rec.length ? '最近使った操作' : 'よく使う操作'}].concat((rec.length ? rec : sug).map(a => ({a})));
     if (rec.length) rows.push({h: 'おすすめ'}, ...sug.map(a => ({a})));
+    if (window.JKCMDUI && JKCMDUI.ready()) rows.push({h: '日本語で指示する'}, {ai: ''});
   } else {
     rows = ACTIONS.filter(a => !a.noPal && (!a.if || a.if())).map(a => ({a, s: SC.fuzzyScore(q, {name: a.name, kw: a.kw, group: GNAME[a.group]})})).filter(x => x.s > 0).sort((x, y) => y.s - x.s).slice(0, 40);
+    if (!rows.length && window.JKCMDUI && JKCMDUI.ready()) { JKCMDUI.palAuto(q); return; }   // メニューに無いことばは、そのまま日本語の指示として読む
     if (!rows.length) rows = [{none: true}];
+    else if (window.JKCMDUI && JKCMDUI.ready() && q.length >= 2) rows.push({ai: q});
   }
   palItems = [];
   list.innerHTML = rows.map(r => {
     if (r.h) return `<div class="scp-h">${r.h}</div>`;
+    if (typeof r.ai === 'string') { const i = palItems.push({ai: r.ai}) - 1; return `<div class="scp-i scp-ai" role="option" data-pi="${i}">${icon('wand', 19)}<span class="nm">${r.ai ? `AIに頼む「${esc2(r.ai)}」` : '日本語でそのまま頼む'}<small>${r.ai ? '日本語の指示として、確認してから実行します' : '例: トランペットを前に3歩動かして／全員を円にして'}</small></span><span class="gp">AI</span><span class="ky"></span></div>`; }
     if (r.none) return `<div class="scp-none">${icon('search', 28)}<b>見つかりませんでした</b><span>「削除」「回転」「保存」「セット」など、短い言葉で試してください。</span></div>`;
     const a = r.a, i = palItems.push(a) - 1, en = enabledOf(a);
     return `<div class="scp-i${en ? '' : ' off'}" role="option" data-pi="${i}" data-id="${a.id}">${icon(a.icon, 19)}<span class="nm">${esc2(a.name)}${en ? '' : `<small>${esc2(a.need === 'sel2' ? '2人以上選ぶと使えます' : a.need === 'sel' ? '人を選ぶと使えます' : 'いまは使えません')}</small>`}</span><span class="gp">${esc2(GNAME[a.group])}</span><span class="ky">${(KM[a.id] || []).slice(0, 2).map(k => capsHtml(k)).join('<i class="or">/</i>')}</span></div>`;
@@ -972,17 +984,19 @@ function markPal(scroll) {
 function movePal(d) { if (!palItems.length) return; palSel = (palSel + d + palItems.length) % palItems.length; markPal(true); }
 function runPal(i) {
   const a = palItems[i]; if (!a) return;
+  if (a.ai) { JKCMDUI.palStart(a.ai); return; }
   closePalette(false);
   setTimeout(() => { rememberRecent(a.id); execute(a, {}, (KM[a.id] || [])[0] || ''); }, 0);
 }
-function openPalette() {
+function openPalette(opt) {
   if (document.querySelector('dialog[open]')) return;
   closeSheet();
   if (!palEl) buildPalette();
   palPrev = document.activeElement;
   palEl.style.display = 'flex';
   const inp = palEl.querySelector('#scpin'); inp.value = '';
-  renderPalette('');
+  if (window.JKCMDUI) JKCMDUI.palReset(opt);
+  renderPalette(inp.value);
   setTimeout(() => inp.focus(), 0);
 }
 function closePalette(restore) {
@@ -993,6 +1007,7 @@ function closePalette(restore) {
 }
 function togglePalette() { if (palEl && palEl.style.display === 'flex') closePalette(true); else openPalette(); }
 window.scOpenPalette = openPalette;
+window.scClosePalette = closePalette;
 
 // ================= ショートカット一覧（キーの変更もここで） =================
 let sheetEl = null, capture = null, sheetQuery = '', pendingConf = null, showUnbound = false;
@@ -1544,6 +1559,10 @@ function init() {
   window.addEventListener('resize', scheduleFloat);
   try { new MutationObserver(scheduleFloat).observe(svg, {attributes: true, attributeFilter: ['viewBox']}); } catch (e) { /* 古いブラウザ */ }
   if (R) { try { enhanceSecPane(); } catch (e) { /* まだ */ } }
+  // 「日本語で指示する」（src/cmd_ui.js）が、ここの部品を使う。操作そのものは、手でやるときと同じ部品を通る
+  window.JKSCAPI = {SC, scToast, icon, esc2, ready, selIdx, selIds, allIds, commit, coreOpts, guarded, copySel, pasteSel, removeMembers, rotateSel, scaleSel, transformSel, selCenter, gotoSet, playFromSet, splitOp, playPoint, canSplitAt, copySets, pasteSetsOp, dupSetsOp, mirrorSetsOp, deleteSetsOp, setKs, BYID, execute, openPalette, closePalette, isMobileW, lsGet, lsSet, isTyping, MAC,
+    labelOf: id => labelOf(id), runAction: id => { const a = BYID[id]; if (a && a.run) { a.run({}, ''); return true; } return false; }};
+  if (window.JKCMDUI) JKCMDUI.init();
 }
 init();
 })();

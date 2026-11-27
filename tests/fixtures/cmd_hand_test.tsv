@@ -1,0 +1,105 @@
+# 手書きの「現実的な指示」: 最終テスト用（調整には使わない。結果を見て語彙を足した場合は、その旨を README に書く）。
+# 列は cmd_hand_dev.tsv と同じ。ショーも同じ固定。
+トランペット、あと2歩だけ前進して	move	{"target":{"secs":[0]},"dirs":["front"],"amount":{"v":2,"unit":"step"}}
+みんな客席側にもう1歩	move	{"target":{"all":true},"dirs":["front"],"amount":{"v":1,"unit":"step"}}
+トロンボーンは上手へ4歩ずれて	move	{"target":{"secs":[1]},"dirs":["kami"],"amount":{"v":4,"unit":"step"}}
+パーカッションを奥に3メートル移動	move	{"target":{"secs":[2]},"dirs":["back"],"amount":{"v":3,"unit":"m"}}
+選んだ子たちを左に1ポイントずつ寄せて	move	{"dirs":["shimo"],"amount":{"v":1,"unit":"point"}}	@tb
+右前に2歩	move	{"dirs":["kami","front"],"amount":{"v":2,"unit":"step"}}	@tp
+後ろの列を3歩後ろへ	move	{"target":{"region":"back-row"},"dirs":["back"],"amount":{"v":3,"unit":"step"}}
+tp2、tp3を右に1歩	move	{"target":{"ids":["tp2","tp3"]},"dirs":["kami"],"amount":{"v":1,"unit":"step"}}
+tb 全員 前に出て	move	{"target":{"secs":[1]},"dirs":["front"]}
+全員ど真ん中に集まって	move_to	{"target":{"all":true}}
+トランペットを右回りに30度ひねって	rotate	{"target":{"secs":[0]},"deg":30,"cw":true}
+全体を反時計方向に90度回して	rotate	{"target":{"all":true},"deg":90,"cw":false}
+ちょっとだけ回して	rotate	{"deg":15}	@pc
+全員を広げて	scale	{"target":{"all":true}}
+トランペットをぎゅっと詰めて	scale	{"target":{"secs":[0]}}
+ひとまわり大きくして	scale		@tb
+横に1.5倍広げて	scale	{"factor":1.5}	@tp
+全員の間隔を3歩に	spacing	{"target":{"all":true},"value":{"v":3,"unit":"step"}}
+トランペットの左右を入れ替えて	flip	{"target":{"secs":[0]},"axis":"x"}
+鏡みたいに左右ひっくり返して	flip	{"axis":"x"}	@tb
+トランペットとトロンボーンの位置を替えて	swap	{"a":{"secs":[0]},"b":{"secs":[1]}}
+tb2とtb3を入れ替えたい	swap	{"a":{"ids":["tb2"]},"b":{"ids":["tb3"]}}
+選んだ人をまっすぐ横に並べて	arrange_line		@tp
+トランペット全員を直線に	arrange_line	{"target":{"secs":[0]}}
+みんなで丸くなって	arrange_circle	{"target":{"all":true}}
+打楽器を輪にして	arrange_circle	{"target":{"secs":[2]}}
+半円に並べたい	arrange_arc		@tb
+トロンボーンを三角に並べて	arrange_wedge	{"target":{"secs":[1]}}
+V字にして	arrange_wedge		@tp
+4列で並べ直して	arrange_block	{"cols":4}	@tp
+トランペットを四角くまとめて	arrange_block	{"target":{"secs":[0]}}
+斜め一列にして	arrange_diag		@tb
+波みたいな曲線にして	arrange_curve		@tp
+前の人についていく形にして	arrange_follow		@tp
+手動で動かした位置を元に戻して	unpin		@tb
+tb4はいらないから消して	delete_members	{"target":{"ids":["tb4"]}}
+トロンボーンの子を1人抜いて	delete_members	{"target":{"secs":[1]}}
+ホルンじゃなくてトランペットを3人足して	add_members	{"target":{"secs":[0]},"count":3}
+トランペットにあと1人入れて	add_members	{"target":{"secs":[0]},"count":1}
+この人たちを丸ごと複製して	duplicate_members		@pc
+選んだ人の位置を覚えておいて	copy_members		@tp
+コピーした位置を貼ってください	paste_members
+この人たちをカットして	cut_members		@pc
+セットを4拍で足して	set_add	{"counts":4}
+新しいセットを16カウントでお願い	set_add	{"counts":16}
+4 4 8 8でセットをまとめて作りたい	set_bulk	{"counts":[4,4,8,8]}
+8拍のセットを3つ作って	set_bulk	{"counts":[8,8,8]}
+4カウント目で2つに分けて	set_split	{"at":{"c":4}}
+16拍目でカット	set_cut	{"at":{"c":16}}
+いまのセットをコピーしておいて	set_copy
+さっきコピーしたセットを貼って	set_paste
+このセットをもう1つ作って	set_dup
+いまのセットは要らないので消して	set_delete
+ひとつ先のセットを見せて	set_next
+1つ前のセットに行って	set_prev
+3番目のセットを開いて	set_goto	{"to":{"index":2}}
+ラストのセットへ飛んで	set_goto	{"to":{"last":true}}
+このセットを1つ前にずらして	set_move	{"dir":"prev"}
+今のセットを鏡写しにして	set_mirror
+このセットの長さを32にして	set_counts	{"value":{"abs":32}}
+このセットを8カウント短くして	set_counts	{"value":{"rel":-8}}
+最後に4カウント止まって	set_hold	{"value":{"abs":4}}
+ホールドをなくして	set_hold	{"value":{"abs":0}}
+テンポを140に変えて	tempo	{"value":{"abs":140}}
+もう少しゆっくりにして	tempo	{"value":{"rel":-5}}
+トロンボーンは正面を向いて	face	{"target":{"secs":[1]},"value":"front"}
+みんな中心を向いて	face	{"target":{"all":true},"value":"center"}
+打楽器は外向きにして	face	{"target":{"secs":[2]},"value":"out"}
+足を開いて	pose		@tp
+全員 気をつけの姿勢	pose	{"target":{"all":true},"value":"attention"}
+片膝をついて	pose	{"value":"kneel"}	@pc
+右手持ちにして	carry	{"value":"right"}	@tp
+ジャズランで歩かせて	step_style	{"value":"jazz"}	@tb
+トスにして	action	{"value":"toss"}	@pc
+衝突を直して	auto_fix
+行進を作ってほしい	parade
+最初から流して	play
+再生をいったん止めて	stop
+立体で見せて	view_3d
+mp4で書き出して	export_video
+A4に印刷して	print
+忘れないうちに保存して	save
+1つ前に戻して	undo
+取り消し	undo
+やっぱりやり直し	redo
+グリッドを標準に戻して	grid	{"mode":"normal"}
+5mポイントを出して	grid_points	{"on":true}
+吸着をなしにして	snap	{"value":{"off":true}}
+縮小して	zoom	{"dir":"out"}
+番号を見せて	names	{"on":true}
+円ツールに切り替えて	tool	{"tool":"circle"}
+何ができるの	help
+ホルンだけ選んで	select
+tp4を選択	select	{"target":{"ids":["tp4"]}}
+一番前の人を選んで	select	{"target":{"region":"front-row"}}
+選んでるのを全部外して	select_none
+メンバー全員を選択	select_all
+それ以外を選んで	select_invert		@pc
+うーん	none
+お腹すいた	none
+トランペットを選んで右に2歩、そのあと円にして	compound	[{"intent":"select"},{"intent":"move"},{"intent":"arrange_circle"}]
+全員選んで客席を向かせて	compound	[{"intent":"select_all"},{"intent":"face"}]
+トロンボーンを選択、左に90度回して	compound	[{"intent":"select"},{"intent":"rotate"}]
