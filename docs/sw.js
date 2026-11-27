@@ -1,7 +1,8 @@
 // 自動生成（tools/build_pages.js）。内容が変わるとバージョンが変わり、古いキャッシュは消える。
 'use strict';
-const CACHE = 'jinkei-2bd1632b1e';
-const FILES = ["./","index.html","manifest.webmanifest","assets/three.min.js","assets/view3d.js","assets/human.bin.gz","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","icons/apple-touch-icon.png","icons/icon.svg","snare-preview.html"];
+const CACHE = 'jinkei-74da135c20';
+const FILES = ["./","index.html","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","icons/apple-touch-icon.png","icons/icon.svg"];
+const LAZY = ["assets/three.min.js","assets/view3d.js","assets/human2.bin.gz","snare-preview.html"];   // 初めて取りに行ったときにキャッシュへ入れる
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('jinkei-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -12,7 +13,8 @@ self.addEventListener('fetch', e => {
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(r, {ignoreSearch: true});
-    const net = fetch(r).then(res => { if (res && res.ok && r.mode === 'navigate') c.put(r, res.clone()); return res; });
+    const rel = new URL(r.url).pathname.replace(/^.*/(?=(assets|snare-preview)[/.])/, '');
+    const net = fetch(r).then(res => { if (res && res.ok && (r.mode === 'navigate' || LAZY.includes(rel))) c.put(r, res.clone()); return res; });
     if (hit) { if (r.mode === 'navigate') net.catch(() => {}); return hit; }
     try { return await net; } catch (err) { return (r.mode === 'navigate' && await c.match('index.html')) || Response.error(); }
   }));

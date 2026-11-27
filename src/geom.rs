@@ -217,6 +217,46 @@ pub struct Mv<'a> {
     pub route: Option<&'a [P]>,
 }
 
+/// 外接矩形どうしが cl 以上離れているか（そうなら最接近距離も cl 以上）
+pub fn bbox_far(a: &(f64, f64, f64, f64), b: &(f64, f64, f64, f64), cl: f64) -> bool {
+    a.1 + cl <= b.0 || b.1 + cl <= a.0 || a.3 + cl <= b.2 || b.3 + cl <= a.2
+}
+
+/// 外接矩形が cl 未満まで近い組 (a, b)（a < b）だけを昇順で返す。人数が多いときは x 方向に整列して走査し、全組は調べない
+pub fn near_pairs(bbs: &[(f64, f64, f64, f64)], cl: f64) -> Vec<(usize, usize)> {
+    let n = bbs.len();
+    let mut out = vec![];
+    if n < 24 {
+        for a in 0..n {
+            for b in a + 1..n {
+                if !bbox_far(&bbs[a], &bbs[b], cl) {
+                    out.push((a, b));
+                }
+            }
+        }
+        return out;
+    }
+    let mut ord: Vec<usize> = (0..n).collect();
+    ord.sort_by(|&x, &y| bbs[x].0.partial_cmp(&bbs[y].0).unwrap_or(std::cmp::Ordering::Equal).then(x.cmp(&y)));
+    for u in 0..n {
+        let a = ord[u];
+        let p = bbs[a];
+        let lim = p.1 + cl;
+        for &b in &ord[u + 1..] {
+            let q = bbs[b];
+            if lim <= q.0 {
+                break;
+            }
+            if p.3 + cl <= q.2 || q.3 + cl <= p.2 || q.1 + cl <= p.0 {
+                continue;
+            }
+            out.push(if a < b { (a, b) } else { (b, a) });
+        }
+    }
+    out.sort_unstable();
+    out
+}
+
 /// 折れ線の長さ
 pub fn poly_len(r: &[P]) -> f64 {
     r.windows(2).map(|w| dist(w[0], w[1])).sum()
@@ -303,7 +343,8 @@ impl<'a> Mv<'a> {
             let ys = r.iter().map(|p| p.1);
             return (xs.clone().fold(f64::MAX, f64::min), xs.fold(f64::MIN, f64::max), ys.clone().fold(f64::MAX, f64::min), ys.fold(f64::MIN, f64::max));
         }
-        let pad = if self.bend.abs() >= 1e-6 { dist(self.a, self.b) * 0.5 * (self.bend.abs().min(179.0).to_radians() / 2.0).tan().abs().min(50.0) } else { 0.0 };
+        // 円弧は弦から矢高 = 弦/2·tan(θ/4) より外へは出ない
+        let pad = if self.bend.abs() >= 1e-6 { dist(self.a, self.b) * 0.5 * (self.bend.abs().min(179.0).to_radians() / 4.0).tan() } else { 0.0 };
         (self.a.0.min(self.b.0) - pad, self.a.0.max(self.b.0) + pad, self.a.1.min(self.b.1) - pad, self.a.1.max(self.b.1) + pad)
     }
     pub fn u(&self, t: f64) -> f64 {
@@ -350,15 +391,132 @@ pub fn moving(a0: P, a1: P, w: f64, e: f64, t: f64) -> P {
     Mv::lin(a0, a1, w, e).at(t)
 }
 
+/// 区切り時刻の並べ替え・間引き（closest と同じ規則）。配列を作らない版
+#[inline]
+fn sort_dedup(cs: &mut [f64], n: usize) -> usize {
+    for i in 1..n {
+        let v = cs[i];
+        let mut j = i;
+        while j > 0 && cs[j - 1] > v {
+            cs[j] = cs[j - 1];
+            j -= 1;
+        }
+        cs[j] = v;
+    }
+    let mut m = 1;
+    for i in 1..n {
+        if !((cs[i] - cs[m - 1]).abs() < 1e-12) {
+            cs[m] = cs[i];
+            m += 1;
+        }
+    }
+    m
+}
+
+/// 円弧の定数（arc_point と同じ式）
+#[derive(Clone, Copy)]
+struct ArcK {
+    th: f64,
+    t00: f64,
+    t01: f64,
+    n00: f64,
+    n01: f64,
+    r: f64,
+}
+fn arc_k(m: &Mv<'_>) -> Option<ArcK> {
+    let d = (m.b.0 - m.a.0, m.b.1 - m.a.1);
+    let l = (d.0 * d.0 + d.1 * d.1).sqrt();
+    if m.bend.abs() < 1e-6 || l < 1e-9 {
+        return None;
+    }
+    let th = m.bend.abs().min(179.0).to_radians();
+    let s = -m.bend.signum();
+    let dh = (d.0 / l, d.1 / l);
+    let rot = |v: P, ang: f64| (v.0 * ang.cos() - v.1 * ang.sin(), v.0 * ang.sin() + v.1 * ang.cos());
+    let t0 = rot(dh, -s * th / 2.0);
+    let n0 = rot(t0, s * std::f64::consts::FRAC_PI_2);
+    let r = l / (2.0 * (th / 2.0).sin());
+    Some(ArcK { th, t00: t0.0, t01: t0.1, n00: n0.0, n01: n0.1, r })
+}
+#[inline]
+fn pos_at(m: &Mv<'_>, k: &Option<ArcK>, t: f64) -> P {
+    let u = m.u(t);
+    match k {
+        None => (m.a.0 + (m.b.0 - m.a.0) * u, m.a.1 + (m.b.1 - m.a.1) * u),
+        Some(k) => {
+            let ph = k.th * u;
+            let (sp, cp) = (ph.sin(), 1.0 - ph.cos());
+            (m.a.0 + k.r * (sp * k.t00 + cp * k.n00), m.a.1 + k.r * (sp * k.t01 + cp * k.n01))
+        }
+    }
+}
+
+/// 折れ線（route）を含まない2人の最接近。直線どうしなら配列を作らず、曲線は16分割で計算（closest_slow と同じ結果）
+fn closest_fast(a: &Mv<'_>, b: &Mv<'_>, c: f64) -> (f64, f64) {
+    let cm = c.max(0.0);
+    let mut cs = [0.0f64; 48];
+    let mut n = 0;
+    cs[n] = 0.0;
+    n += 1;
+    cs[n] = cm;
+    n += 1;
+    let push = |t: f64, cs: &mut [f64; 48], n: &mut usize| {
+        if t >= 0.0 && t <= cm {
+            cs[*n] = t;
+            *n += 1;
+        }
+    };
+    for m in [a, b] {
+        push(m.w, &mut cs, &mut n);
+        push(m.e, &mut cs, &mut n);
+        if m.curved() {
+            for j in 1..16 {
+                push(m.w + (m.e - m.w) * j as f64 / 16.0, &mut cs, &mut n);
+            }
+        }
+    }
+    let k = sort_dedup(&mut cs, n);
+    let (ka, kb) = (arc_k(a), arc_k(b));
+    if k == 1 {
+        let (pa, pb) = (pos_at(a, &ka, cs[0]), pos_at(b, &kb, cs[0]));
+        return (dist(pa, pb), cs[0]);
+    }
+    let (mut best, mut best_t) = (f64::MAX, c);
+    let (pa0, pb0) = (pos_at(a, &ka, cs[0]), pos_at(b, &kb, cs[0]));
+    let mut d0 = (pa0.0 - pb0.0, pa0.1 - pb0.1);
+    for i in 0..k - 1 {
+        let (t0, t1) = (cs[i], cs[i + 1]);
+        let (pa1, pb1) = (pos_at(a, &ka, t1), pos_at(b, &kb, t1));
+        let d1 = (pa1.0 - pb1.0, pa1.1 - pb1.1);
+        let dv = (d1.0 - d0.0, d1.1 - d0.1);
+        let vv = dv.0 * dv.0 + dv.1 * dv.1;
+        let u = if vv < 1e-12 { 1.0 } else { (-(d0.0 * dv.0 + d0.1 * dv.1) / vv).clamp(0.0, 1.0) };
+        let d = ((d0.0 + dv.0 * u).powi(2) + (d0.1 + dv.1 * u).powi(2)).sqrt();
+        if d < best - 1e-12 {
+            best = d;
+            best_t = t0 + (t1 - t0) * u;
+        }
+        d0 = d1;
+    }
+    (best, best_t)
+}
+
 /// 2人の動きの最接近距離と時刻（0..c）。直線は厳密、曲線は16分割の折れ線で計算
 pub fn closest(a: &Mv<'_>, b: &Mv<'_>, c: f64) -> (f64, f64) {
+    if a.route.is_none() && b.route.is_none() {
+        return closest_fast(a, b, c);
+    }
+    closest_slow(a, b, c)
+}
+
+/// 折れ線（フォロー）を含む場合の計算
+pub fn closest_slow(a: &Mv<'_>, b: &Mv<'_>, c: f64) -> (f64, f64) {
     let mut cuts = vec![0.0, c.max(0.0)];
     a.times(&mut cuts);
     b.times(&mut cuts);
     cuts.retain(|t| *t >= 0.0 && *t <= c.max(0.0));
     cuts.sort_by(|x, y| x.partial_cmp(y).unwrap());
     cuts.dedup_by(|x, y| (*x - *y).abs() < 1e-12);
-    // 区間内で一次式になるよう、曲線の位置は区切り点どうしを直線で結んだ値を使う
     let (mut best, mut best_t) = (f64::MAX, c);
     if cuts.len() == 1 {
         let (pa, pb) = (a.at(cuts[0]), b.at(cuts[0]));
@@ -383,6 +541,7 @@ pub fn closest(a: &Mv<'_>, b: &Mv<'_>, c: f64) -> (f64, f64) {
 
 /// 他のメンバーの動きとぶつかる経路にペナルティを付けた割り当て
 pub fn assign_avoiding(from: &[P], to: &[P], w: f64, e: f64, bend: f64, others: &[Mv<'_>], c: f64, clearance: f64) -> Vec<usize> {
+    let oboxes: Vec<(f64, f64, f64, f64)> = others.iter().map(|o| o.bbox()).collect();
     let cost: Vec<Vec<f64>> = from
         .iter()
         .map(|a| {
@@ -394,8 +553,8 @@ pub fn assign_avoiding(from: &[P], to: &[P], w: f64, e: f64, bend: f64, others: 
                     // 経路の外接矩形で粗く絞り込んでから厳密判定
                     let (minx, maxx, miny, maxy) = me.bbox();
                     let (minx, maxx, miny, maxy) = (minx - clearance, maxx + clearance, miny - clearance, maxy + clearance);
-                    for o in others {
-                        let (ominx, omaxx, ominy, omaxy) = o.bbox();
+                    for (o, ob) in others.iter().zip(oboxes.iter()) {
+                        let (ominx, omaxx, ominy, omaxy) = *ob;
                         if omaxx < minx || ominx > maxx || omaxy < miny || ominy > maxy {
                             continue;
                         }

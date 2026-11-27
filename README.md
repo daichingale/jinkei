@@ -423,6 +423,29 @@ JSON では `parts: [{name, members, meter, start, end, bars, notes: [[t, dur, "
 
 速度: 200人 × 20セットで、割り当て・全チェック・HTML出力まで 約0.4秒。3D動画は 37人・39秒の動画（1280×720, 30fps）が 2コアで約35秒（コア数に比例して速くなる）。
 
+## 性能
+
+計測は `node tools/bench.js`（エンジン・Rust。`--compare 前.json 後.json` で比較）と `python3 tools/bench_browser.py`（ページの重さ・起動・3D の最初の描画）。入力は決定的なシードで作る（`tools/gen_shows.js`）。
+下の数字は 2 コアの環境で、変更前（main）→ 変更後。結果は変更前と完全に同じ（`tests/perf_equiv.js` が元のエンジンとコンパイル 260 件・総当たり修正 40 件を照合）。
+
+| 項目 | 変更前 | 変更後 |
+|---|---|---|
+| 80人×40セットのコンパイル（初回） | 582ms | 277ms |
+| 同・ドラッグ後の再計算（数字を 1 つ変える） | 657ms | 13ms |
+| 80人パレード（143セット）ドラッグ後 | 492ms | 49ms |
+| 自動修正 24 本（JS） | 204 秒 | 49 秒 |
+| 自動修正 12 本（Rust） | 19.5 秒 | 3.2 秒 |
+| メンバー追加（80人パレード） | 22.6 秒 | 1.9 秒 |
+| `jinkei json`（80人パレード） | 620ms | 65ms |
+| 人体データ `assets/human` | 8.6MB（gzip 4.5MB） | 4.4MB（gzip 1.3MB） |
+| 単体エディタ HTML | 13.7MB | 3.9MB |
+| Pages の先取り込み / 3D を開くときの転送 | 6.8MB / 4.6MB | 0.6MB / 1.5MB |
+
+- **速くなった理由**（古典的な手法）: セットごとの結果を内容で覚えて再利用（前のセットの状態が同じなら再計算しない = 変えたセット以降だけ再計算）、自動修正は文字列を作らずに数える・変えたセットから状態が元に戻るところまでだけ作り直す、最接近距離の計算でオブジェクトを作らない、Rust は近い組だけ調べる。
+- **判断AI**（`web/engine.js` の `FIX_MODEL` / `src/fix.rs`、モデルは `assets/fix_model.json` 11KB）: 自動修正の候補を、30 個の安い特徴量で採点して「衝突が全部消える」ものから順に試し、見つかった時点で打ち切る。`tools/train_fix_ai.js`（シード固定）で総当たりの結果から学習する。打ち切ったうえで衝突が残るときは総当たりもやり直して良いほうを返すので、結果は総当たり以上（保持データ 179 本で 同じ 179 / 悪い 0）。全体の速度は約 1.04 倍で、効くのは「完全に直せるセットがある」ショー（約 6 倍）だけ。速度の大半は AI ではなく上の手法による。衝突判定には使っていない（厳密な解析解のほうが確実）。
+- **画面を止めない**: ブラウザ版のコンパイルと自動修正は Web Worker で動く。自動修正は進み具合と「やめる」ボタンつき。
+- **人体データ**: `node tools/pack_human.js` が `human.bin` から `human2.bin(.gz)`（JKH1 version 2、量子化・可変長）を作る。読み込み側は元の並びに戻して使う（誤差は位置 0.02mm・法線 0.6° 以下。`tests/human_asset.js`）。3D の部品（three.js・人体・view3d.js）は 3D を初めて開くときに読み込む。
+
 ## インストールせずに使う（GitHub で自動ビルド）
 
 このフォルダを GitHub のリポジトリに push すると、`.github/workflows/release.yml` が Mac（Apple Silicon / Intel）・Windows・Linux 用の実行ファイルを自動で作る（テストもすべて実行）。`v1.0` のようなタグを push すると、リリースページに各OS用の zip が付くので、Rust を入れていない人もダウンロードして `jinkei edit myshow.jk` だけで使える。
@@ -445,6 +468,9 @@ node tests/roundtrip.js target/release/jinkei examples/*.jk   # エディタの�
 node tests/ux_core.js                                  # かんたん作成まわりのロジック
 node tests/shortcuts.js                                # ショートカット・メンバー削除/追加のロジック
 node tests/set_ops.js                                  # セットの分割・カット・コピー・貼り付け・位置の貼り付け
+node tests/perf_equiv.js                               # 高速化版が元のエンジンと完全に同じ結果か（tests/fixtures/golden_perf.json）
+node tests/fix_ai.js --bin target/release/jinkei       # 判断AIが総当たり以上か・Rust と JS で同じ修正案か
+node tests/human_asset.js                              # 人体アセット（version 2）の往復と誤差
 ```
 
 ## 同梱物

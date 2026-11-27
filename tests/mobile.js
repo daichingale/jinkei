@@ -22,7 +22,7 @@ ok(/viewport-fit=cover/.test(one), 'viewport-fit=cover');
 ok(/id="jkboot"/.test(one) && /window\.jkBoot/.test(one), '読み込み画面');
 ok(/classList\.toggle\('mp'/.test(one), 'html.mp の早期判定');
 const mb = (one.length / 1048576);
-ok(mb > 10 && mb < 16, `単体 HTML の大きさ ${mb.toFixed(1)} MiB（約 12.8 MiB 前後のはず）`);
+ok(mb > 2 && mb < 6, `単体 HTML の大きさ ${mb.toFixed(1)} MiB（約 3.6 MiB 前後のはず。人体データは gzip で埋め込み、3D を開くときに展開する）`);
 ok(!/src="assets\//.test(one), '単体 HTML は外部ファイルを読まない');
 
 // 2) スマホ用 CSS は .mp の下だけ（デスクトップ・タブレットの見た目を変えない）
@@ -58,7 +58,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jk-pages-'));
 const r = spawnSync('node', [path.join(ROOT, 'tools/build_pages.js'), tmp], {encoding: 'utf8'});
 assert.equal(r.status, 0, 'build_pages.js が失敗: ' + r.stderr);
 const f = x => path.join(tmp, x);
-for (const x of ['index.html', 'sw.js', 'manifest.webmanifest', 'assets/three.min.js', 'assets/view3d.js', 'assets/human.bin.gz', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'snare-preview.html', '.nojekyll']) ok(fs.existsSync(f(x)), x + ' がない');
+for (const x of ['index.html', 'sw.js', 'manifest.webmanifest', 'assets/three.min.js', 'assets/view3d.js', 'assets/human2.bin.gz', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'snare-preview.html', '.nojekyll']) ok(fs.existsSync(f(x)), x + ' がない');
 const png = x => { const b = fs.readFileSync(f(x)); assert.equal(b.slice(1, 4).toString(), 'PNG'); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 assert.deepEqual(png('icons/icon-192.png'), [192, 192]); assert.deepEqual(png('icons/icon-512.png'), [512, 512]); n += 2;
 const man = JSON.parse(fs.readFileSync(f('manifest.webmanifest'), 'utf8'));
@@ -66,14 +66,17 @@ ok(man.display === 'standalone' && man.icons.some(i => i.sizes === '512x512') &&
 const sw = fs.readFileSync(f('sw.js'), 'utf8');
 const files = JSON.parse(sw.match(/const FILES = (\[.*\]);/)[1]);
 for (const x of files) ok(x === './' || fs.existsSync(f(x)), 'sw.js のキャッシュ一覧にある ' + x + ' がない');
-ok(files.includes('assets/human.bin.gz') && files.includes('index.html'), 'sw.js が主要ファイルを持つ');
+ok(files.includes('index.html') && !files.some(x => /^assets\//.test(x)), 'sw.js は起動に要る分だけ先に取り込む（3D の部品は初回利用時）');
+const lazy = JSON.parse(sw.match(/const LAZY = (\[.*\]);/)[1]);
+ok(lazy.includes('assets/human2.bin.gz') && lazy.includes('assets/three.min.js') && lazy.every(x => fs.existsSync(f(x))), 'sw.js が3D の部品を実行時にキャッシュする');
 const idx = fs.readFileSync(f('index.html'), 'utf8');
 ok(/rel="manifest"/.test(idx) && /serviceWorker/.test(idx), 'index.html が manifest と SW を使う');
+ok(!/<script type="text\/plain" id="jk-three"/.test(idx) && /jkLoad3d/.test(idx), '3D の部品は初めて開くときに別ファイルから読む');
 ok(idx.length / 1048576 < 3, `Pages の index.html は軽い（${(idx.length / 1048576).toFixed(2)} MiB）`);
 ok(!idx.includes('JKH1') && !/window\.JK_HUMAN="/.test(idx), '人体データを index.html に埋め込まない');
 // gzip が展開でき、人体データとして正しい
-const bin = require('zlib').gunzipSync(fs.readFileSync(f('assets/human.bin.gz')));
-ok(bin.slice(0, 4).toString() === 'JKH1' && bin.equals(fs.readFileSync(path.join(ROOT, 'assets/human.bin'))), 'human.bin.gz が元と一致');
+const bin = require('zlib').gunzipSync(fs.readFileSync(f('assets/human2.bin.gz')));
+ok(bin.slice(0, 4).toString() === 'JKH1' && bin.equals(fs.readFileSync(path.join(ROOT, 'assets/human2.bin'))), 'human2.bin.gz が元と一致');
 // 内容が同じなら SW のバージョンも同じ、違えば変わる
 const ver = s => s.match(/const CACHE = '([^']+)'/)[1];
 const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'jk-pages-'));

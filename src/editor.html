@@ -2327,11 +2327,21 @@ function renderWarns() {
 }
 async function autoFix() {
   const bt = $('autofix'); if (bt) { bt.disabled = true; bt.textContent = '探しています…'; }
+  // ブラウザ版: Worker で計算しているので、進み具合を見せて、途中でやめられるようにする
+  const L = window.JK_LOCAL; let cb = null;
+  if (bt && L && L.cancelFix) {
+    cb = document.createElement('button'); cb.id = 'autofixcancel'; cb.textContent = 'やめる'; cb.title = '自動修正を中止します（編集内容はそのまま）';
+    cb.onclick = () => L.cancelFix(); bt.after(cb);
+    L.onFixProgress = (k, n) => { bt.textContent = `探しています… ${Math.min(k + 1, n)}/${n} セット`; };
+  }
   if (window.uxBusy) uxBusy(true);
   let r;
   try { r = await fetch('/api/fix', {method: 'POST', body: currentSource()}).then(r => r.json()); }
   catch (e) { r = {ok: false, error: '自動修正に失敗しました'}; }
+  if (L) L.onFixProgress = null;
+  if (cb) cb.remove();
   if (window.uxBusy) uxBusy(false);
+  if (r.cancelled) { renderWarns(); if (window.uxToast) uxToast('自動修正を中止しました（変更はしていません）', 'info', 3000); return; }
   if (!r.ok) { notice(r.error); renderWarns(); return; }
   if (!r.notes.length) { fixNotes = ['自動で直せる組み合わせは見つかりませんでした。隊形や counts を見直してください。']; renderWarns(); if (window.uxToast) uxToast('自動では直せませんでした。カウントを増やすか、位置を動かしてみましょう', 'err', 4200); return; }
   pushUndo(currentSource());

@@ -1,7 +1,7 @@
 //! AST → 各セットでの全員の位置
 use crate::field::Field;
 use crate::geom::{self, P};
-use crate::syntax::{Assign, Expr, FieldAst, GroupTerm, PointE, Pos, Shape, ShowAst, Xf};
+use crate::syntax::{Assign, Expr, FieldAst, GroupTerm, PointE, Pos, SetAst, Shape, ShowAst, Xf};
 use crate::{Error, Result};
 use std::collections::HashMap;
 
@@ -305,7 +305,529 @@ enum FaceSpec {
     Out(P),
 }
 
-pub fn build(a: &ShowAst) -> Result<Show> {
+/// 1セットの組み立て結果（エディタ用の付随情報つき）
+pub struct SetOut {
+    pub set: Set,
+    pub handles: Vec<Vec<(String, f64, f64)>>,
+    pub members: Vec<Vec<usize>>,
+    pub owner: Vec<i64>,
+}
+
+/// 組み立ての共通部分（会場・メンバー・セット名）。セットの文だけが変わる再計算（自動修正の候補など）で使い回す
+pub struct BuildCx {
+    pub field: Field,
+    pub sections: Vec<Section>,
+    pub performers: Vec<Performer>,
+    secs: HashMap<String, usize>,
+    ids: HashMap<String, usize>,
+    set_names: Vec<String>,
+    pub n: usize,
+}
+
+/// 1セットを組み立てる。入力は AST のセットと直前のセットの結果だけ（なので前のセットまでを使い回せる）
+pub fn build_set(bx: &BuildCx, a: &ShowAst, sa: &SetAst, k: usize, last: Option<&Set>) -> Result<SetOut> {
+    let field = &bx.field;
+    let ctx = Ctx { field };
+    let performers = &bx.performers;
+    let secs = &bx.secs;
+    let ids = &bx.ids;
+    let set_names = &bx.set_names;
+    let n = bx.n;
+    let mut cur_tempo = last.map(|s| s.tempo).unwrap_or(a.tempo);
+    let start = last.map(|s| s.start + (s.counts + s.hold)).unwrap_or(0.0);
+    {
+    if sa.sub && k == 0 {
+        return Err(err(sa.pos, "最初のセットはサブセットにできません（前の本セットがありません）"));
+    }
+    let prev: Option<Vec<P>> = last.map(|s: &Set| s.pos.clone());
+    // 文ごとの結果。同じ人を後の文でもう一度指定したら、後の文が優先（その人だけ上書き）
+    struct Rec {
+        group: Vec<usize>,
+        spots: Vec<P>,
+        auto: bool,
+        assigned: Vec<P>,
+        order: Vec<usize>,
+        keep: Vec<usize>,
+        w: f64,
+        e: f64,
+        bend: f64,
+        face: FaceSpec,
+        routes: Option<Vec<Vec<P>>>,
+        step: Option<String>,
+        action: Option<String>,
+        pose: Option<String>,
+        carry: Option<String>,
+        /// 位置を変えない指定（向き・姿勢などだけ）
+        attr: bool,
+        face_given: bool,
+    }
+    let mut recs: Vec<Rec> = vec![];
+    let mut set_handles = vec![];
+    let mut set_members = vec![];
+    for st in &sa.stmts {
+        let group = resolve_group(&st.group, &performers, &secs, &ids)?;
+        let (mut tw, mut te) = (0.0, sa.counts);
+        let tb = match &st.bend {
+            Some(e) => {
+                let v = ctx.eval(e)?;
+                if v.abs() >= 180.0 {
+                    return Err(err(st.pos, "bend は -179〜179 度にしてください"));
+                }
+                if k == 0 && v != 0.0 {
+                    return Err(err(st.pos, "最初のセットでは bend は使えません"));
+                }
+                v
+            }
+            None => 0.0,
+        };
+        if st.wait.is_some() || st.within.is_some() {
+            if k == 0 {
+                return Err(err(st.pos, "最初のセットでは wait / in は使えません"));
+            }
+            let w = match &st.wait {
+                Some(e) => ctx.eval(e)?,
+                None => 0.0,
+            };
+            let d = match &st.within {
+                Some(e) => ctx.eval(e)?,
+                None => sa.counts - w,
+            };
+            if w < 0.0 || d <= 0.0 || w + d > sa.counts + 1e-9 {
+                return Err(err(
+                    st.pos,
+                    format!("wait {} + in {} がセットの counts（{}）に収まりません", w, d, sa.counts),
+                ));
+            }
+            tw = w;
+            te = w + d;
+        }
+        let g = group.len();
+        let is_same = matches!(st.shape, Shape::Same);
+        let h = |r: &str, p: P| (r.to_string(), p.0, p.1);
+        let handles: Vec<(String, f64, f64)> = match &st.shape {
+            Shape::Line(a, b) => vec![h("a", ctx.pt(a)?), h("b", ctx.pt(b)?)],
+            Shape::Arc { c, r, a1, a2 } => {
+                let (c, r) = (ctx.pt(c)?, ctx.eval(r)?);
+                let at = |deg: f64| (c.0 + r * deg.to_radians().cos(), c.1 + r * deg.to_radians().sin());
+                vec![h("c", c), h("a1", at(ctx.eval(a1)?)), h("a2", at(ctx.eval(a2)?))]
+            }
+            Shape::Circle { c, r, start } => {
+                let (c, r) = (ctx.pt(c)?, ctx.eval(r)?);
+                let s0 = match start {
+                    Some(e) => ctx.eval(e)?,
+                    None => 270.0,
+                };
+                vec![h("c", c), h("r", (c.0 + r * s0.to_radians().cos(), c.1 + r * s0.to_radians().sin()))]
+            }
+            Shape::Block { c, .. } => vec![h("c", ctx.pt(c)?)],
+            Shape::Curve(ps) | Shape::Poly(ps) => {
+                let mut v = vec![];
+                for (k, p) in ps.iter().enumerate() {
+                    v.push((format!("p{}", k), ctx.eval(&p.0)?, ctx.eval(&p.1)?));
+                }
+                v
+            }
+            Shape::At(p) => vec![h("p", ctx.pt(p)?)],
+            Shape::Same | Shape::Attr => vec![],
+            Shape::Follow { pts, .. } => {
+                let mut v = vec![];
+                for (k, p) in pts.iter().enumerate() {
+                    v.push((format!("p{}", k), ctx.eval(&p.0)?, ctx.eval(&p.1)?));
+                }
+                v
+            }
+        };
+        set_handles.push(handles);
+        set_members.push(group.clone());
+        // 空き: 席数 = 人数 + 空きの数。席の並びは変えず、空けた席だけ取り除く
+        let skips: Vec<usize> = st.skip.clone();
+        if !skips.is_empty() {
+            if matches!(st.shape, Shape::At(_) | Shape::Same | Shape::Follow { .. } | Shape::Attr) {
+                return Err(err(st.pos, "skip（空き）は line / arc / circle / block / curve / poly の隊形で使えます"));
+            }
+            let total = g + skips.len();
+            if let Some(bad) = skips.iter().find(|&&x| x > total) {
+                return Err(err(st.pos, format!("skip（空き）の席 {} が席数（{}人 + 空き{} = {}）を超えています", bad, g, skips.len(), total)));
+            }
+        }
+        let gt = g + skips.len();
+        let mut spots: Vec<P> = match &st.shape {
+            Shape::Line(p1, p2) => geom::line(ctx.pt(p1)?, ctx.pt(p2)?, gt),
+            Shape::Arc { c, r, a1, a2 } => geom::arc(ctx.pt(c)?, ctx.eval(r)?, ctx.eval(a1)?, ctx.eval(a2)?, gt),
+            Shape::Circle { c, r, start } => {
+                let s0 = match start {
+                    Some(e) => ctx.eval(e)?,
+                    None => 270.0,
+                };
+                geom::circle(ctx.pt(c)?, ctx.eval(r)?, s0, gt)
+            }
+            Shape::Block { c, cols, spacing, rowsp } => {
+                let cols = ctx.eval(cols)?;
+                if cols < 1.0 {
+                    return Err(err(st.pos, "cols は1以上にしてください"));
+                }
+                let def = if field.is_football() { 2.0 } else { 1.5 };
+                let sp = match spacing {
+                    Some(e) => ctx.eval(e)?,
+                    None => def,
+                };
+                let rsp = match rowsp {
+                    Some(e) => ctx.eval(e)?,
+                    None => sp,
+                };
+                geom::block(ctx.pt(c)?, cols.round() as usize, sp, rsp, gt)
+            }
+            Shape::Curve(ps) => geom::curve(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, gt),
+            Shape::Poly(ps) => geom::resample(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, gt),
+            Shape::At(p) => {
+                if g != 1 {
+                    return Err(err(st.pos, format!("at は1人用です（{}人指定されています）", g)));
+                }
+                vec![ctx.pt(p)?]
+            }
+            Shape::Same => match &prev {
+                Some(pv) => group.iter().map(|&i| pv[i]).collect(),
+                None => return Err(err(st.pos, "最初のセットでは same は使えません")),
+            },
+            // いったん経路の通過点を入れておき、変形のあとで各人の経路と到着点を計算する
+            Shape::Follow { pts, .. } => pts.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?,
+            Shape::Attr => vec![],
+        };
+        for x in &st.xf {
+            match x {
+                Xf::Rotate(a, about) => {
+                    let c = match about {
+                        Some(p) => ctx.pt(p)?,
+                        None => geom::centroid(&spots),
+                    };
+                    geom::rotate(&mut spots, ctx.eval(a)?, c);
+                }
+                Xf::Shift(d) => {
+                    let (dx, dy) = ctx.pt(d)?;
+                    spots.iter_mut().for_each(|p| *p = (p.0 + dx, p.1 + dy));
+                }
+                Xf::Scale(s) => {
+                    let s = ctx.eval(s)?;
+                    let c = geom::centroid(&spots);
+                    spots.iter_mut().for_each(|p| *p = (c.0 + (p.0 - c.0) * s, c.1 + (p.1 - c.1) * s));
+                }
+            }
+        }
+        if spots.iter().any(|p| !p.0.is_finite() || !p.1.is_finite()) {
+            return Err(err(st.pos, "座標が計算できません（0で割っていませんか）"));
+        }
+        // 向きの基準（center / out）は、空きを含めた隊形全体の中心
+        let cen_full = geom::centroid(&spots);
+        let keep: Vec<usize> = (0..spots.len()).filter(|i| !skips.contains(&(i + 1))).collect();
+        if !skips.is_empty() {
+            spots = keep.iter().map(|&i| spots[i]).collect();
+        }
+        let mut routes: Option<Vec<Vec<P>>> = None;
+        if let Shape::Follow { spacing, .. } = &st.shape {
+            let Some(pv) = &prev else { return Err(err(st.pos, "最初のセットでは follow は使えません")) };
+            let r = spots.clone();
+            let sp = match spacing {
+                Some(e) => ctx.eval(e)?,
+                None => {
+                    if field.is_football() {
+                        2.0
+                    } else {
+                        1.2
+                    }
+                }
+            };
+            // 並び順: assign keep なら書いた順。既定は経路の始点に近い人を先頭に、近い人を順にたどる
+            let order: Vec<usize> = if st.assign == Some(Assign::Keep) {
+                (0..g).collect()
+            } else {
+                let mut left: Vec<usize> = (0..g).collect();
+                let mut ord = vec![];
+                let mut cur = r[0];
+                while !left.is_empty() {
+                    let j = (0..left.len())
+                        .min_by(|&x, &y| geom::dist(pv[group[left[x]]], cur).partial_cmp(&geom::dist(pv[group[left[y]]], cur)).unwrap())
+                        .unwrap();
+                    let gi = left.remove(j);
+                    cur = pv[group[gi]];
+                    ord.push(gi);
+                }
+                ord
+            };
+            let mut lead_trail = vec![pv[group[order[0]]]];
+            lead_trail.extend(r.iter().copied());
+            let l_lead = geom::poly_len(&lead_trail);
+            let mut fin = vec![(0.0, 0.0); g];
+            let mut rts = vec![vec![]; g];
+            for (j, &gi) in order.iter().enumerate() {
+                // j 番目の人: 自分の位置 → 前の人たちの位置 → 先頭の位置 → 経路
+                let mut trail: Vec<P> = (0..=j).rev().map(|q| pv[group[order[q]]]).collect();
+                let chain = geom::poly_len(&trail);
+                trail.extend(r.iter().copied());
+                let path = geom::poly_cut(&trail, chain + (l_lead - j as f64 * sp).max(0.0));
+                fin[gi] = *path.last().unwrap();
+                rts[gi] = path;
+            }
+            spots = fin;
+            routes = Some(rts);
+        }
+        let mode = st.assign.unwrap_or(if is_same { Assign::Keep } else { Assign::Auto });
+        let is_attr = matches!(st.shape, Shape::Attr);
+        let auto = prev.is_some() && mode == Assign::Auto && routes.is_none() && !is_attr;
+        let order: Vec<usize> = match &prev {
+            _ if is_attr => vec![],
+            Some(pv) if auto => {
+                let from: Vec<P> = group.iter().map(|&i| pv[i]).collect();
+                geom::assign(&from, &spots)
+            }
+            _ => (0..g).collect(),
+        };
+        let assigned = if is_attr { vec![] } else { (0..g).map(|gi| spots[order[gi]]).collect() };
+        let cen = if skips.is_empty() { geom::centroid(&spots) } else { cen_full };
+        let face = match &st.face {
+            None if st.step.as_deref() == Some("slide") => FaceSpec::Angle(-90.0),
+            None => FaceSpec::Auto,
+            Some(crate::syntax::FaceAst::Named(n)) => match n.as_str() {
+                "front" => FaceSpec::Angle(-90.0),
+                "back" => FaceSpec::Angle(90.0),
+                "kami" => FaceSpec::Angle(0.0),
+                "shimo" => FaceSpec::Angle(180.0),
+                "center" => FaceSpec::Center(cen),
+                "out" => FaceSpec::Out(cen),
+                _ => FaceSpec::Auto,
+            },
+            Some(crate::syntax::FaceAst::Toward(p)) => FaceSpec::Toward(ctx.pt(p)?),
+            Some(crate::syntax::FaceAst::Deg(e)) => FaceSpec::Angle(-90.0 + ctx.eval(e)?),
+        };
+        let spots_len = spots.len();
+        recs.push(Rec {
+            group,
+            spots,
+            auto,
+            assigned,
+            order,
+            keep: if skips.is_empty() { (0..spots_len).collect() } else { keep },
+            w: tw,
+            e: te,
+            bend: tb,
+            face,
+            routes,
+            step: st.step.clone(),
+            action: st.action.clone(),
+            pose: st.pose.clone(),
+            carry: st.carry.clone(),
+            attr: is_attr,
+            face_given: st.face.is_some(),
+        });
+    }
+    // 各メンバーを最後に指定した文（なければ前のセットのまま）
+    let mut owner: Vec<Option<(usize, usize)>> = vec![None; n];
+    for (si, r) in recs.iter().enumerate() {
+        if r.attr {
+            continue;
+        }
+        for (gi, &i) in r.group.iter().enumerate() {
+            owner[i] = Some((si, gi));
+        }
+    }
+    let mut wait = vec![0.0; n];
+    let mut end = vec![sa.counts; n];
+    let mut bend = vec![0.0; n];
+    let mut route: Vec<Option<Vec<P>>> = vec![None; n];
+    let mut step: Vec<Option<String>> = vec![None; n];
+    let mut action: Vec<Option<String>> = vec![None; n];
+    let mut pose: Vec<Option<String>> = vec![None; n];
+    let mut carry: Vec<Option<String>> = vec![None; n];
+    for i in 0..n {
+        if let Some((si, gi)) = owner[i] {
+            wait[i] = recs[si].w;
+            end[i] = recs[si].e;
+            bend[i] = recs[si].bend;
+            route[i] = recs[si].routes.as_ref().map(|r| r[gi].clone());
+            step[i] = recs[si].step.clone();
+            action[i] = recs[si].action.clone();
+            pose[i] = recs[si].pose.clone();
+            carry[i] = recs[si].carry.clone();
+        }
+    }
+    let compose = |recs: &Vec<Rec>| -> Vec<Option<P>> {
+        (0..n).map(|i| owner[i].map(|(si, gi)| recs[si].assigned[gi])).collect()
+    };
+    let pos = compose(&recs);
+    let pos: Vec<P> = match &prev {
+        Some(pv) => pos.iter().enumerate().map(|(i, p)| p.unwrap_or(pv[i])).collect(),
+        None => {
+            let missing: Vec<&str> =
+                pos.iter().enumerate().filter(|(_, p)| p.is_none()).map(|(i, _)| performers[i].id.as_str()).collect();
+            if !missing.is_empty() {
+                return Err(err(
+                    sa.pos,
+                    format!("最初のセットで位置が決まっていないメンバーがいます: {}", missing.join(", ")),
+                ));
+            }
+            pos.into_iter().map(|p| p.unwrap()).collect()
+        }
+    };
+    // 他のメンバーの動きを避けるように自動割り当てをやり直す（数回反復）
+    let mut pos = pos;
+    if let Some(pv) = &prev {
+        let cl = a.clearance.unwrap_or(if field.is_football() { 1.0 } else { 0.6 });
+        for _ in 0..3 {
+            let mut changed = false;
+            for si in 0..recs.len() {
+                if !recs[si].auto {
+                    continue;
+                }
+                let r = &recs[si];
+                let others: Vec<geom::Mv> = (0..n)
+                    .filter(|i| !r.group.contains(i))
+                    .map(|i| geom::Mv { a: pv[i], b: pos[i], w: wait[i], e: end[i], bend: bend[i], route: route[i].as_deref() })
+                    .collect();
+                let from: Vec<P> = r.group.iter().map(|&i| pv[i]).collect();
+                let order = geom::assign_avoiding(&from, &r.spots, r.w, r.e, r.bend, &others, sa.counts, cl);
+                let assigned: Vec<P> = (0..r.group.len()).map(|gi| r.spots[order[gi]]).collect();
+                if assigned.iter().zip(&r.assigned).any(|(a, b)| geom::dist(*a, *b) > 1e-9) {
+                    changed = true;
+                }
+                recs[si].assigned = assigned;
+                recs[si].order = order;
+                for (i, p) in compose(&recs).into_iter().enumerate() {
+                    if let Some(p) = p {
+                        pos[i] = p;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        // グループ内の衝突（同じ線上での追い越しなど）は、2人の行き先を入れ替えて解消を試みる
+        for (si, r) in recs.iter().enumerate() {
+            if r.auto {
+                let owned: Vec<usize> = r.group.iter().copied().filter(|&i| owner[i].map(|o| o.0) == Some(si)).collect();
+                untangle(&owned, pv, &mut pos, &Timing { wait: &wait, end: &end, bend: &bend, route: &route }, sa.counts, cl);
+            }
+        }
+    }
+    let counts = if k == 0 { 0.0 } else { sa.counts };
+    if k > 0 && counts == 0.0 {
+        if let Some(pv) = &prev {
+            if pv.iter().zip(&pos).any(|(a, b)| geom::dist(*a, *b) > 1e-6) {
+                return Err(err(sa.pos, format!("セット{} は counts が0なのに移動があります", set_names[k])));
+            }
+        }
+    }
+    // 向き（最終位置が決まってから）
+    let ang = |v: P| if v.0.hypot(v.1) < 1e-9 { -90.0 } else { v.1.atan2(v.0).to_degrees() };
+    let resolve = |spec: FaceSpec, p: P| -> Option<f64> {
+        match spec {
+            FaceSpec::Auto => None,
+            FaceSpec::Angle(a) => Some(a),
+            FaceSpec::Toward(q) | FaceSpec::Center(q) => Some(ang((q.0 - p.0, q.1 - p.1))),
+            FaceSpec::Out(q) => Some(ang((p.0 - q.0, p.1 - q.1))),
+        }
+    };
+    let mut face: Vec<Option<f64>> = (0..n).map(|i| owner[i].and_then(|(si, _)| resolve(recs[si].face, pos[i]))).collect();
+    let mut touched: Vec<bool> = owner.iter().map(|o| o.is_some()).collect();
+    // 位置を変えない指定: 後に書いたものが優先（その人の位置を決めた文より後なら上書き）
+    for (si, r) in recs.iter().enumerate() {
+        if !r.attr {
+            continue;
+        }
+        let cen = geom::centroid(&r.group.iter().map(|&i| pos[i]).collect::<Vec<_>>());
+        for &i in &r.group {
+            if owner[i].map(|o| o.0 > si).unwrap_or(false) {
+                continue;
+            }
+            if !touched[i] {
+                // 位置は前のセットのまま。属性は前のセットから引き継いでから上書き
+                if let Some(ps) = last {
+                    face[i] = ps.face[i];
+                    pose[i] = ps.pose[i].clone();
+                    carry[i] = ps.carry[i].clone();
+                }
+                touched[i] = true;
+            }
+            if r.face_given {
+                let spec = match r.face {
+                    FaceSpec::Center(_) => FaceSpec::Center(cen),
+                    FaceSpec::Out(_) => FaceSpec::Out(cen),
+                    f => f,
+                };
+                face[i] = resolve(spec, pos[i]);
+            }
+            if r.pose.is_some() {
+                pose[i] = r.pose.clone();
+            }
+            if r.carry.is_some() {
+                carry[i] = r.carry.clone();
+            }
+            if r.step.is_some() {
+                step[i] = r.step.clone();
+            }
+            if r.action.is_some() {
+                action[i] = r.action.clone();
+            }
+        }
+    }
+    // このセットで触れなかった人は、向きと姿勢を前のセットから引き継ぐ
+    for i in 0..n {
+        if !touched[i] {
+            if let Some(ps) = last {
+                face[i] = ps.face[i];
+                pose[i] = ps.pose[i].clone();
+                carry[i] = ps.carry[i].clone();
+            }
+        }
+    }
+    cur_tempo = sa.tempo.unwrap_or(cur_tempo);
+    // エディタ用: 文ごとに、各メンバーがその文の隊形の何番目の席（1始まり。空きを含む）にいるか
+    let slots: Vec<Vec<usize>> = recs
+        .iter()
+        .enumerate()
+        .map(|(si, r)| {
+            if r.attr {
+                return vec![];
+            }
+            (0..r.group.len())
+                .map(|gi| {
+                    let i = r.group[gi];
+                    let mut j = r.order[gi];
+                    if owner[i] == Some((si, gi)) {
+                        if let Some(q) = r.spots.iter().position(|p| geom::dist(*p, pos[i]) < 1e-9) {
+                            j = q;
+                        }
+                    }
+                    r.keep[j] + 1
+                })
+                .collect()
+        })
+        .collect();
+    let set = Set {
+        name: set_names[k].clone(),
+        counts,
+        hold: sa.hold,
+        start,
+        pos,
+        wait,
+        end,
+        bend,
+        face,
+        route,
+        step,
+        action,
+        pose,
+        carry,
+        tempo: cur_tempo,
+        mark: sa.mark,
+        sub: sa.sub,
+        line: sa.pos.line,
+        slots,
+    };
+    Ok(SetOut { set, handles: set_handles, members: set_members, owner: owner.iter().map(|o| o.map(|x| x.0 as i64).unwrap_or(-1)).collect() })
+    }
+}
+
+pub fn build_setup(a: &ShowAst) -> Result<BuildCx> {
     let mut field = match &a.field {
         FieldAst::Football(k) => Field::football(k),
         FieldAst::Floor { w, d } => Field::floor(*w, *d),
@@ -315,7 +837,6 @@ pub fn build(a: &ShowAst) -> Result<Show> {
     if let (false, Some(c)) = (field.is_football(), a.stride) {
         field.stride_m = c / 100.0;
     }
-    let ctx = Ctx { field: &field };
     let mut sections = vec![];
     let mut performers = vec![];
     let mut secs = HashMap::new();
@@ -347,507 +868,24 @@ pub fn build(a: &ShowAst) -> Result<Show> {
     }
 
     let n = performers.len();
+    let set_names = crate::syntax::set_display_names(&a.sets);
+    Ok(BuildCx { field, sections, performers, secs, ids, set_names, n })
+}
+
+pub fn build(a: &ShowAst) -> Result<Show> {
+    let bx = build_setup(a)?;
     let mut sets: Vec<Set> = vec![];
     let mut all_handles = vec![];
     let mut all_members = vec![];
     let mut all_owner = vec![];
-    let mut cur_tempo = a.tempo;
-    let mut start = 0.0;
-    let set_names = crate::syntax::set_display_names(&a.sets);
-    for (k, sa) in a.sets.iter().enumerate() {
-        if sa.sub && k == 0 {
-            return Err(err(sa.pos, "最初のセットはサブセットにできません（前の本セットがありません）"));
-        }
-        let prev: Option<Vec<P>> = sets.last().map(|s: &Set| s.pos.clone());
-        // 文ごとの結果。同じ人を後の文でもう一度指定したら、後の文が優先（その人だけ上書き）
-        struct Rec {
-            group: Vec<usize>,
-            spots: Vec<P>,
-            auto: bool,
-            assigned: Vec<P>,
-            order: Vec<usize>,
-            keep: Vec<usize>,
-            w: f64,
-            e: f64,
-            bend: f64,
-            face: FaceSpec,
-            routes: Option<Vec<Vec<P>>>,
-            step: Option<String>,
-            action: Option<String>,
-            pose: Option<String>,
-            carry: Option<String>,
-            /// 位置を変えない指定（向き・姿勢などだけ）
-            attr: bool,
-            face_given: bool,
-        }
-        let mut recs: Vec<Rec> = vec![];
-        let mut set_handles = vec![];
-        let mut set_members = vec![];
-        for st in &sa.stmts {
-            let group = resolve_group(&st.group, &performers, &secs, &ids)?;
-            let (mut tw, mut te) = (0.0, sa.counts);
-            let tb = match &st.bend {
-                Some(e) => {
-                    let v = ctx.eval(e)?;
-                    if v.abs() >= 180.0 {
-                        return Err(err(st.pos, "bend は -179〜179 度にしてください"));
-                    }
-                    if k == 0 && v != 0.0 {
-                        return Err(err(st.pos, "最初のセットでは bend は使えません"));
-                    }
-                    v
-                }
-                None => 0.0,
-            };
-            if st.wait.is_some() || st.within.is_some() {
-                if k == 0 {
-                    return Err(err(st.pos, "最初のセットでは wait / in は使えません"));
-                }
-                let w = match &st.wait {
-                    Some(e) => ctx.eval(e)?,
-                    None => 0.0,
-                };
-                let d = match &st.within {
-                    Some(e) => ctx.eval(e)?,
-                    None => sa.counts - w,
-                };
-                if w < 0.0 || d <= 0.0 || w + d > sa.counts + 1e-9 {
-                    return Err(err(
-                        st.pos,
-                        format!("wait {} + in {} がセットの counts（{}）に収まりません", w, d, sa.counts),
-                    ));
-                }
-                tw = w;
-                te = w + d;
-            }
-            let g = group.len();
-            let is_same = matches!(st.shape, Shape::Same);
-            let h = |r: &str, p: P| (r.to_string(), p.0, p.1);
-            let handles: Vec<(String, f64, f64)> = match &st.shape {
-                Shape::Line(a, b) => vec![h("a", ctx.pt(a)?), h("b", ctx.pt(b)?)],
-                Shape::Arc { c, r, a1, a2 } => {
-                    let (c, r) = (ctx.pt(c)?, ctx.eval(r)?);
-                    let at = |deg: f64| (c.0 + r * deg.to_radians().cos(), c.1 + r * deg.to_radians().sin());
-                    vec![h("c", c), h("a1", at(ctx.eval(a1)?)), h("a2", at(ctx.eval(a2)?))]
-                }
-                Shape::Circle { c, r, start } => {
-                    let (c, r) = (ctx.pt(c)?, ctx.eval(r)?);
-                    let s0 = match start {
-                        Some(e) => ctx.eval(e)?,
-                        None => 270.0,
-                    };
-                    vec![h("c", c), h("r", (c.0 + r * s0.to_radians().cos(), c.1 + r * s0.to_radians().sin()))]
-                }
-                Shape::Block { c, .. } => vec![h("c", ctx.pt(c)?)],
-                Shape::Curve(ps) | Shape::Poly(ps) => {
-                    let mut v = vec![];
-                    for (k, p) in ps.iter().enumerate() {
-                        v.push((format!("p{}", k), ctx.eval(&p.0)?, ctx.eval(&p.1)?));
-                    }
-                    v
-                }
-                Shape::At(p) => vec![h("p", ctx.pt(p)?)],
-                Shape::Same | Shape::Attr => vec![],
-                Shape::Follow { pts, .. } => {
-                    let mut v = vec![];
-                    for (k, p) in pts.iter().enumerate() {
-                        v.push((format!("p{}", k), ctx.eval(&p.0)?, ctx.eval(&p.1)?));
-                    }
-                    v
-                }
-            };
-            set_handles.push(handles);
-            set_members.push(group.clone());
-            // 空き: 席数 = 人数 + 空きの数。席の並びは変えず、空けた席だけ取り除く
-            let skips: Vec<usize> = st.skip.clone();
-            if !skips.is_empty() {
-                if matches!(st.shape, Shape::At(_) | Shape::Same | Shape::Follow { .. } | Shape::Attr) {
-                    return Err(err(st.pos, "skip（空き）は line / arc / circle / block / curve / poly の隊形で使えます"));
-                }
-                let total = g + skips.len();
-                if let Some(bad) = skips.iter().find(|&&x| x > total) {
-                    return Err(err(st.pos, format!("skip（空き）の席 {} が席数（{}人 + 空き{} = {}）を超えています", bad, g, skips.len(), total)));
-                }
-            }
-            let gt = g + skips.len();
-            let mut spots: Vec<P> = match &st.shape {
-                Shape::Line(p1, p2) => geom::line(ctx.pt(p1)?, ctx.pt(p2)?, gt),
-                Shape::Arc { c, r, a1, a2 } => geom::arc(ctx.pt(c)?, ctx.eval(r)?, ctx.eval(a1)?, ctx.eval(a2)?, gt),
-                Shape::Circle { c, r, start } => {
-                    let s0 = match start {
-                        Some(e) => ctx.eval(e)?,
-                        None => 270.0,
-                    };
-                    geom::circle(ctx.pt(c)?, ctx.eval(r)?, s0, gt)
-                }
-                Shape::Block { c, cols, spacing, rowsp } => {
-                    let cols = ctx.eval(cols)?;
-                    if cols < 1.0 {
-                        return Err(err(st.pos, "cols は1以上にしてください"));
-                    }
-                    let def = if field.is_football() { 2.0 } else { 1.5 };
-                    let sp = match spacing {
-                        Some(e) => ctx.eval(e)?,
-                        None => def,
-                    };
-                    let rsp = match rowsp {
-                        Some(e) => ctx.eval(e)?,
-                        None => sp,
-                    };
-                    geom::block(ctx.pt(c)?, cols.round() as usize, sp, rsp, gt)
-                }
-                Shape::Curve(ps) => geom::curve(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, gt),
-                Shape::Poly(ps) => geom::resample(&ps.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?, gt),
-                Shape::At(p) => {
-                    if g != 1 {
-                        return Err(err(st.pos, format!("at は1人用です（{}人指定されています）", g)));
-                    }
-                    vec![ctx.pt(p)?]
-                }
-                Shape::Same => match &prev {
-                    Some(pv) => group.iter().map(|&i| pv[i]).collect(),
-                    None => return Err(err(st.pos, "最初のセットでは same は使えません")),
-                },
-                // いったん経路の通過点を入れておき、変形のあとで各人の経路と到着点を計算する
-                Shape::Follow { pts, .. } => pts.iter().map(|p| ctx.pt(p)).collect::<Result<Vec<_>>>()?,
-                Shape::Attr => vec![],
-            };
-            for x in &st.xf {
-                match x {
-                    Xf::Rotate(a, about) => {
-                        let c = match about {
-                            Some(p) => ctx.pt(p)?,
-                            None => geom::centroid(&spots),
-                        };
-                        geom::rotate(&mut spots, ctx.eval(a)?, c);
-                    }
-                    Xf::Shift(d) => {
-                        let (dx, dy) = ctx.pt(d)?;
-                        spots.iter_mut().for_each(|p| *p = (p.0 + dx, p.1 + dy));
-                    }
-                    Xf::Scale(s) => {
-                        let s = ctx.eval(s)?;
-                        let c = geom::centroid(&spots);
-                        spots.iter_mut().for_each(|p| *p = (c.0 + (p.0 - c.0) * s, c.1 + (p.1 - c.1) * s));
-                    }
-                }
-            }
-            if spots.iter().any(|p| !p.0.is_finite() || !p.1.is_finite()) {
-                return Err(err(st.pos, "座標が計算できません（0で割っていませんか）"));
-            }
-            // 向きの基準（center / out）は、空きを含めた隊形全体の中心
-            let cen_full = geom::centroid(&spots);
-            let keep: Vec<usize> = (0..spots.len()).filter(|i| !skips.contains(&(i + 1))).collect();
-            if !skips.is_empty() {
-                spots = keep.iter().map(|&i| spots[i]).collect();
-            }
-            let mut routes: Option<Vec<Vec<P>>> = None;
-            if let Shape::Follow { spacing, .. } = &st.shape {
-                let Some(pv) = &prev else { return Err(err(st.pos, "最初のセットでは follow は使えません")) };
-                let r = spots.clone();
-                let sp = match spacing {
-                    Some(e) => ctx.eval(e)?,
-                    None => {
-                        if field.is_football() {
-                            2.0
-                        } else {
-                            1.2
-                        }
-                    }
-                };
-                // 並び順: assign keep なら書いた順。既定は経路の始点に近い人を先頭に、近い人を順にたどる
-                let order: Vec<usize> = if st.assign == Some(Assign::Keep) {
-                    (0..g).collect()
-                } else {
-                    let mut left: Vec<usize> = (0..g).collect();
-                    let mut ord = vec![];
-                    let mut cur = r[0];
-                    while !left.is_empty() {
-                        let j = (0..left.len())
-                            .min_by(|&x, &y| geom::dist(pv[group[left[x]]], cur).partial_cmp(&geom::dist(pv[group[left[y]]], cur)).unwrap())
-                            .unwrap();
-                        let gi = left.remove(j);
-                        cur = pv[group[gi]];
-                        ord.push(gi);
-                    }
-                    ord
-                };
-                let mut lead_trail = vec![pv[group[order[0]]]];
-                lead_trail.extend(r.iter().copied());
-                let l_lead = geom::poly_len(&lead_trail);
-                let mut fin = vec![(0.0, 0.0); g];
-                let mut rts = vec![vec![]; g];
-                for (j, &gi) in order.iter().enumerate() {
-                    // j 番目の人: 自分の位置 → 前の人たちの位置 → 先頭の位置 → 経路
-                    let mut trail: Vec<P> = (0..=j).rev().map(|q| pv[group[order[q]]]).collect();
-                    let chain = geom::poly_len(&trail);
-                    trail.extend(r.iter().copied());
-                    let path = geom::poly_cut(&trail, chain + (l_lead - j as f64 * sp).max(0.0));
-                    fin[gi] = *path.last().unwrap();
-                    rts[gi] = path;
-                }
-                spots = fin;
-                routes = Some(rts);
-            }
-            let mode = st.assign.unwrap_or(if is_same { Assign::Keep } else { Assign::Auto });
-            let is_attr = matches!(st.shape, Shape::Attr);
-            let auto = prev.is_some() && mode == Assign::Auto && routes.is_none() && !is_attr;
-            let order: Vec<usize> = match &prev {
-                _ if is_attr => vec![],
-                Some(pv) if auto => {
-                    let from: Vec<P> = group.iter().map(|&i| pv[i]).collect();
-                    geom::assign(&from, &spots)
-                }
-                _ => (0..g).collect(),
-            };
-            let assigned = if is_attr { vec![] } else { (0..g).map(|gi| spots[order[gi]]).collect() };
-            let cen = if skips.is_empty() { geom::centroid(&spots) } else { cen_full };
-            let face = match &st.face {
-                None if st.step.as_deref() == Some("slide") => FaceSpec::Angle(-90.0),
-                None => FaceSpec::Auto,
-                Some(crate::syntax::FaceAst::Named(n)) => match n.as_str() {
-                    "front" => FaceSpec::Angle(-90.0),
-                    "back" => FaceSpec::Angle(90.0),
-                    "kami" => FaceSpec::Angle(0.0),
-                    "shimo" => FaceSpec::Angle(180.0),
-                    "center" => FaceSpec::Center(cen),
-                    "out" => FaceSpec::Out(cen),
-                    _ => FaceSpec::Auto,
-                },
-                Some(crate::syntax::FaceAst::Toward(p)) => FaceSpec::Toward(ctx.pt(p)?),
-                Some(crate::syntax::FaceAst::Deg(e)) => FaceSpec::Angle(-90.0 + ctx.eval(e)?),
-            };
-            let spots_len = spots.len();
-            recs.push(Rec {
-                group,
-                spots,
-                auto,
-                assigned,
-                order,
-                keep: if skips.is_empty() { (0..spots_len).collect() } else { keep },
-                w: tw,
-                e: te,
-                bend: tb,
-                face,
-                routes,
-                step: st.step.clone(),
-                action: st.action.clone(),
-                pose: st.pose.clone(),
-                carry: st.carry.clone(),
-                attr: is_attr,
-                face_given: st.face.is_some(),
-            });
-        }
-        // 各メンバーを最後に指定した文（なければ前のセットのまま）
-        let mut owner: Vec<Option<(usize, usize)>> = vec![None; n];
-        for (si, r) in recs.iter().enumerate() {
-            if r.attr {
-                continue;
-            }
-            for (gi, &i) in r.group.iter().enumerate() {
-                owner[i] = Some((si, gi));
-            }
-        }
-        let mut wait = vec![0.0; n];
-        let mut end = vec![sa.counts; n];
-        let mut bend = vec![0.0; n];
-        let mut route: Vec<Option<Vec<P>>> = vec![None; n];
-        let mut step: Vec<Option<String>> = vec![None; n];
-        let mut action: Vec<Option<String>> = vec![None; n];
-        let mut pose: Vec<Option<String>> = vec![None; n];
-        let mut carry: Vec<Option<String>> = vec![None; n];
-        for i in 0..n {
-            if let Some((si, gi)) = owner[i] {
-                wait[i] = recs[si].w;
-                end[i] = recs[si].e;
-                bend[i] = recs[si].bend;
-                route[i] = recs[si].routes.as_ref().map(|r| r[gi].clone());
-                step[i] = recs[si].step.clone();
-                action[i] = recs[si].action.clone();
-                pose[i] = recs[si].pose.clone();
-                carry[i] = recs[si].carry.clone();
-            }
-        }
-        let compose = |recs: &Vec<Rec>| -> Vec<Option<P>> {
-            (0..n).map(|i| owner[i].map(|(si, gi)| recs[si].assigned[gi])).collect()
-        };
-        let pos = compose(&recs);
-        let pos: Vec<P> = match &prev {
-            Some(pv) => pos.iter().enumerate().map(|(i, p)| p.unwrap_or(pv[i])).collect(),
-            None => {
-                let missing: Vec<&str> =
-                    pos.iter().enumerate().filter(|(_, p)| p.is_none()).map(|(i, _)| performers[i].id.as_str()).collect();
-                if !missing.is_empty() {
-                    return Err(err(
-                        sa.pos,
-                        format!("最初のセットで位置が決まっていないメンバーがいます: {}", missing.join(", ")),
-                    ));
-                }
-                pos.into_iter().map(|p| p.unwrap()).collect()
-            }
-        };
-        // 他のメンバーの動きを避けるように自動割り当てをやり直す（数回反復）
-        let mut pos = pos;
-        if let Some(pv) = &prev {
-            let cl = a.clearance.unwrap_or(if field.is_football() { 1.0 } else { 0.6 });
-            for _ in 0..3 {
-                let mut changed = false;
-                for si in 0..recs.len() {
-                    if !recs[si].auto {
-                        continue;
-                    }
-                    let r = &recs[si];
-                    let others: Vec<geom::Mv> = (0..n)
-                        .filter(|i| !r.group.contains(i))
-                        .map(|i| geom::Mv { a: pv[i], b: pos[i], w: wait[i], e: end[i], bend: bend[i], route: route[i].as_deref() })
-                        .collect();
-                    let from: Vec<P> = r.group.iter().map(|&i| pv[i]).collect();
-                    let order = geom::assign_avoiding(&from, &r.spots, r.w, r.e, r.bend, &others, sa.counts, cl);
-                    let assigned: Vec<P> = (0..r.group.len()).map(|gi| r.spots[order[gi]]).collect();
-                    if assigned.iter().zip(&r.assigned).any(|(a, b)| geom::dist(*a, *b) > 1e-9) {
-                        changed = true;
-                    }
-                    recs[si].assigned = assigned;
-                    recs[si].order = order;
-                    for (i, p) in compose(&recs).into_iter().enumerate() {
-                        if let Some(p) = p {
-                            pos[i] = p;
-                        }
-                    }
-                }
-                if !changed {
-                    break;
-                }
-            }
-            // グループ内の衝突（同じ線上での追い越しなど）は、2人の行き先を入れ替えて解消を試みる
-            for (si, r) in recs.iter().enumerate() {
-                if r.auto {
-                    let owned: Vec<usize> = r.group.iter().copied().filter(|&i| owner[i].map(|o| o.0) == Some(si)).collect();
-                    untangle(&owned, pv, &mut pos, &Timing { wait: &wait, end: &end, bend: &bend, route: &route }, sa.counts, cl);
-                }
-            }
-        }
-        let counts = if k == 0 { 0.0 } else { sa.counts };
-        if k > 0 && counts == 0.0 {
-            if let Some(pv) = &prev {
-                if pv.iter().zip(&pos).any(|(a, b)| geom::dist(*a, *b) > 1e-6) {
-                    return Err(err(sa.pos, format!("セット{} は counts が0なのに移動があります", set_names[k])));
-                }
-            }
-        }
-        // 向き（最終位置が決まってから）
-        let ang = |v: P| if v.0.hypot(v.1) < 1e-9 { -90.0 } else { v.1.atan2(v.0).to_degrees() };
-        let resolve = |spec: FaceSpec, p: P| -> Option<f64> {
-            match spec {
-                FaceSpec::Auto => None,
-                FaceSpec::Angle(a) => Some(a),
-                FaceSpec::Toward(q) | FaceSpec::Center(q) => Some(ang((q.0 - p.0, q.1 - p.1))),
-                FaceSpec::Out(q) => Some(ang((p.0 - q.0, p.1 - q.1))),
-            }
-        };
-        let mut face: Vec<Option<f64>> = (0..n).map(|i| owner[i].and_then(|(si, _)| resolve(recs[si].face, pos[i]))).collect();
-        let mut touched: Vec<bool> = owner.iter().map(|o| o.is_some()).collect();
-        // 位置を変えない指定: 後に書いたものが優先（その人の位置を決めた文より後なら上書き）
-        for (si, r) in recs.iter().enumerate() {
-            if !r.attr {
-                continue;
-            }
-            let cen = geom::centroid(&r.group.iter().map(|&i| pos[i]).collect::<Vec<_>>());
-            for &i in &r.group {
-                if owner[i].map(|o| o.0 > si).unwrap_or(false) {
-                    continue;
-                }
-                if !touched[i] {
-                    // 位置は前のセットのまま。属性は前のセットから引き継いでから上書き
-                    if let Some(ps) = sets.last() {
-                        face[i] = ps.face[i];
-                        pose[i] = ps.pose[i].clone();
-                        carry[i] = ps.carry[i].clone();
-                    }
-                    touched[i] = true;
-                }
-                if r.face_given {
-                    let spec = match r.face {
-                        FaceSpec::Center(_) => FaceSpec::Center(cen),
-                        FaceSpec::Out(_) => FaceSpec::Out(cen),
-                        f => f,
-                    };
-                    face[i] = resolve(spec, pos[i]);
-                }
-                if r.pose.is_some() {
-                    pose[i] = r.pose.clone();
-                }
-                if r.carry.is_some() {
-                    carry[i] = r.carry.clone();
-                }
-                if r.step.is_some() {
-                    step[i] = r.step.clone();
-                }
-                if r.action.is_some() {
-                    action[i] = r.action.clone();
-                }
-            }
-        }
-        // このセットで触れなかった人は、向きと姿勢を前のセットから引き継ぐ
-        for i in 0..n {
-            if !touched[i] {
-                if let Some(ps) = sets.last() {
-                    face[i] = ps.face[i];
-                    pose[i] = ps.pose[i].clone();
-                    carry[i] = ps.carry[i].clone();
-                }
-            }
-        }
-        cur_tempo = sa.tempo.unwrap_or(cur_tempo);
-        // エディタ用: 文ごとに、各メンバーがその文の隊形の何番目の席（1始まり。空きを含む）にいるか
-        let slots: Vec<Vec<usize>> = recs
-            .iter()
-            .enumerate()
-            .map(|(si, r)| {
-                if r.attr {
-                    return vec![];
-                }
-                (0..r.group.len())
-                    .map(|gi| {
-                        let i = r.group[gi];
-                        let mut j = r.order[gi];
-                        if owner[i] == Some((si, gi)) {
-                            if let Some(q) = r.spots.iter().position(|p| geom::dist(*p, pos[i]) < 1e-9) {
-                                j = q;
-                            }
-                        }
-                        r.keep[j] + 1
-                    })
-                    .collect()
-            })
-            .collect();
-        sets.push(Set {
-            name: set_names[k].clone(),
-            counts,
-            hold: sa.hold,
-            start,
-            pos,
-            wait,
-            end,
-            bend,
-            face,
-            route,
-            step,
-            action,
-            pose,
-            carry,
-            tempo: cur_tempo,
-            mark: sa.mark,
-            sub: sa.sub,
-            line: sa.pos.line,
-            slots,
-        });
-        all_handles.push(set_handles);
-        all_members.push(set_members);
-        all_owner.push(owner.iter().map(|o| o.map(|x| x.0 as i64).unwrap_or(-1)).collect());
-        start += counts + sa.hold;
+    for k in 0..a.sets.len() {
+        let o = build_set(&bx, a, &a.sets[k], k, sets.last())?;
+        sets.push(o.set);
+        all_handles.push(o.handles);
+        all_members.push(o.members);
+        all_owner.push(o.owner);
     }
-
+    let BuildCx { field, sections, performers, secs, ids, .. } = bx;
     // ---- 楽譜パート ----
     let mut parts = vec![];
     let mut part_warnings = vec![];

@@ -260,7 +260,7 @@ pub fn check_text(s: &Show, r: &Report) -> String {
 const THREE_JS: &str = include_str!("../vendor/three.min.js");
 const VIEW3D_JS: &str = include_str!("view3d.js");
 /// 手続き生成の人体モデル（tools/gen_human.js が作る。形式は tools/README.md）
-pub const HUMAN_BIN: &[u8] = include_bytes!("../assets/human.bin");
+pub const HUMAN_BIN: &[u8] = include_bytes!("../assets/human2.bin.gz");
 pub const FIELD2D_JS: &str = include_str!("field2d.js");
 /// 動きの計算 + 楽譜（Bravura・staff.js）+ 音（audio.js）+ MusicXML 取り込み。プレビューとエディタに埋め込む
 pub const MOTION_JS: &str = concat!(
@@ -599,8 +599,27 @@ $('printone').onclick = () => { if (sel >= 0) jkField.print(D, 'member', sel); e
 })();
 draw();
 </script>
-<script>__THREE__</script>
-<script>window.JK_HUMAN="__HUMAN__";</script>
-<script>__VIEW3D__</script>
+<script type="text/plain" id="jk-three">__THREE__</script>
+<script type="text/plain" id="jk-human">__HUMAN__</script>
+<script type="text/plain" id="jk-view3d">__VIEW3D__</script>
+<script>
+/* 3D 部品（three.js・人体データ・view3d.js）は 3D を初めて開くときに読み込む（起動を軽くする） */
+(function () {
+  var btn = document.getElementById('mode3d'), st = 0;
+  function run(code) { var s = document.createElement('script'); s.text = code; document.head.appendChild(s); s.remove(); }
+  function take(id) { var e = document.getElementById(id), t = e.textContent; e.remove(); return t; }
+  window.jkLoad3d = function () {
+    if (st) return st; var label = btn.textContent;
+    btn.textContent = '3D を読み込み中…'; btn.disabled = true;
+    st = new Promise(function (ok) { setTimeout(ok, 30); }).then(function () {
+      run(take('jk-three')); window.JK_HUMAN = take('jk-human').trim(); btn.disabled = false; run(take('jk-view3d'));
+      if (!/(^|&)view=3d(&|$)/.test(location.hash.slice(1))) btn.click();
+    }).catch(function (e) { btn.textContent = '3D は使えません'; btn.title = String(e && e.message || e); });
+    return st;
+  };
+  btn.onclick = window.jkLoad3d;
+  if (/(^|&)(view=3d|rec=1)/.test(location.hash.slice(1))) window.jkLoad3d();
+})();
+</script>
 </body></html>
 "##;
