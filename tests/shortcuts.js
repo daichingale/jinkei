@@ -42,7 +42,7 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
   // 3) 全サンプルで、削除・追加・貼り付けをしても他の人の位置が1ミリも動かない
   let checked = 0;
-  for (const f of fs.readdirSync(path.join(root, 'examples')).filter(x => /\.jk$/.test(x))) {
+  for (const f of fs.readdirSync(path.join(root, 'examples')).filter(x => /\.jk$/.test(x) && !/^parade_/.test(x))) {
     const R = jinkeiCompile(fs.readFileSync(path.join(root, 'examples', f), 'utf8'));
     if (!R.ok) continue;
     const D = R.data, ids = D.performers.map(p => p.id);

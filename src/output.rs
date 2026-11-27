@@ -36,17 +36,18 @@ pub fn json(s: &Show, r: &Report) -> String {
     let mut o = String::new();
     let field = match &s.field.kind {
         FieldKind::Football { level, hash } => {
-            format!("{{\"type\":\"football\",\"level\":{},\"hash\":{},\"bsl\":{}}}", js(level), num(*hash), num(BSL))
+            format!("{{\"type\":\"football\",\"level\":{},\"hash\":{},\"bsl\":{},\"stride_m\":{}}}", js(level), num(*hash), num(BSL), num(s.field.stride_m))
         }
-        FieldKind::Floor { w, d } => format!("{{\"type\":\"floor\",\"w\":{},\"d\":{}}}", num(*w), num(*d)),
+        FieldKind::Floor { w, d } => format!("{{\"type\":\"floor\",\"w\":{},\"d\":{},\"stride_m\":{}}}", num(*w), num(*d), num(s.field.stride_m)),
         FieldKind::Gym { w, d } => format!(
-            "{{\"type\":\"gym\",\"w\":{},\"d\":{},\"margin\":{}}}",
+            "{{\"type\":\"gym\",\"w\":{},\"d\":{},\"margin\":{},\"stride_m\":{}}}",
             num(*w),
             num(*d),
-            num(crate::field::GYM_MARGIN)
+            num(crate::field::GYM_MARGIN),
+            num(s.field.stride_m)
         ),
         FieldKind::Stage { w, d, wing } => {
-            format!("{{\"type\":\"stage\",\"w\":{},\"d\":{},\"wing\":{}}}", num(*w), num(*d), num(*wing))
+            format!("{{\"type\":\"stage\",\"w\":{},\"d\":{},\"wing\":{},\"stride_m\":{}}}", num(*w), num(*d), num(*wing), num(s.field.stride_m))
         }
     };
     let _ = write!(
@@ -385,7 +386,7 @@ tr.cur td{background:#2a2e36}
   aside section{padding:12px}
   td,th{padding:8px 6px}
   .sets tr{height:44px}
-  #who,#partsel,#printall{min-height:44px;font-size:16px}
+  #who,#partsel,#printall,#printone,#printsets{min-height:44px;font-size:16px}
 }
 @media print{
   body{background:#fff;color:#000}
@@ -429,6 +430,7 @@ tr.cur td{background:#2a2e36}
     <section id="scoresec" style="display:none"><h2>楽譜</h2><select id="partsel" style="width:100%;margin-bottom:6px"></select><div id="staff" style="overflow:hidden"></div></section>
     <section><h2>ドットシート</h2>
       <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center"><select id="who" style="flex:1;min-width:0"></select><button id="printall" style="flex:none;white-space:nowrap">全員分を印刷</button></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px"><button id="printone" style="flex:1" title="選んでいる人のドットシート（自分のポイントを丸で囲んだ図つき）を A4 縦で印刷">この人を印刷</button><button id="printsets" style="flex:1" title="セットごとの隊形図（1歩の線・5mポイントつき、白地）を A4 横で印刷">セット図を印刷</button></div>
       <div id="sheet"></div></section>
     <section><h2>セット</h2><table class="sets" id="sets"></table></section>
     <section><h2>チェック</h2><div id="warns"></div></section>
@@ -584,10 +586,9 @@ function select(i) {
   } else $('sheet').innerHTML = '';
   draw();
 }
-$('printall').onclick = () => {
-  $('print').innerHTML = D.performers.map((p, i) => `<div class="sheet"><h3>${esc(p.id)}（${esc(D.sections[p.sec].label)}） — ${esc(D.name)}</h3>${sheetTable(i)}</div>`).join('');
-  window.print();
-};
+$('printall').onclick = () => jkField.print(D, 'members');
+$('printsets').onclick = () => jkField.print(D, 'sets');
+$('printone').onclick = () => { if (sel >= 0) jkField.print(D, 'member', sel); else alert('先にメンバーを選んでください（ドットをクリック）'); };
 // URL の #t=40&p=tp1 で時刻・メンバーを指定して開ける
 (() => {
   const h = new URLSearchParams(location.hash.slice(1));

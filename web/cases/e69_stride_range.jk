@@ -1,0 +1,7 @@
+show "stride bad" {
+  stride 5
+  section a "A" 3
+  set 1 {
+    a : line (0, 0) -> (3, 0)
+  }
+}

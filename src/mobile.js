@@ -202,6 +202,7 @@
     menu.appendChild(el('h3', '', 'つくる・見る'));
     menu.appendChild(item('search', '検索（コマンド）', '機能を名前で探して実行', clickId('scpalbtn')));
     menu.appendChild(item('cube', 'プレビュー（3D）', '新しいタブで2D/3Dを再生', clickId('preview')));
+    menu.appendChild(item('dl', '印刷（隊形図・ドットシート）', 'A4・白地。PDFにも保存できます', clickId('printbtn')));
     const vb = item('video', '3D動画を書き出す', canVideo() ? 'プレビュー画面で録画して保存します' : 'このブラウザは録画に対応していません', () => {
       if (!canVideo()) { if (window.uxToast) uxToast('この端末のブラウザは動画の録画に対応していません。Android の Chrome か、パソコンで書き出してください', 'err'); return; }
       $('video').click();
@@ -225,6 +226,11 @@
     const ss = el('select'); ss.setAttribute('aria-label', '吸着'); ss.innerHTML = $('snap').innerHTML; ss.value = $('snap').value;
     ss.onchange = () => { $('snap').value = ss.value; $('snap').dispatchEvent(new Event('change', {bubbles: true})); };
     sn.appendChild(ss); menu.appendChild(sn);
+    const gr = el('div', 'row', svgI('lasso') + '<span>グリッド（方眼の細かさ）</span>');
+    const gs = el('select'); gs.setAttribute('aria-label', 'グリッド'); gs.innerHTML = $('gridmode').innerHTML; gs.value = $('gridmode').value;
+    gs.onchange = () => { $('gridmode').value = gs.value; $('gridmode').dispatchEvent(new Event('change', {bubbles: true})); };
+    gr.appendChild(gs); menu.appendChild(gr);
+    tg('lasso', $('gridptsl').textContent, '交点に小さな十字（本番のフロアと同じ印）を出します', 'gridpts');
     menu.appendChild(el('div', 'sep'));
     menu.appendChild(el('h3', '', 'そのほか'));
     menu.appendChild(item('home', 'はじめに', 'かんたん作成・サンプル', clickId('homebtn')));

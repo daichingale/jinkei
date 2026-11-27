@@ -378,7 +378,7 @@ function buildModel(o) {
   }));
   return {
     name: o.name || '新しいショー', header: ['# 陣形エディタの「かんたん作成」で作りました'], settings_notes: [], foot: [], field, tempo: Math.round(o.bpm || 120),
-    clearance: null, maxstep: null, look: o.look === 'illust' ? 'illust' : null,
+    clearance: null, maxstep: null, stride: null, look: o.look === 'illust' ? 'illust' : null,
     sections: secs.map(s => ({id: s.id, label: s.label, n: s.n, color: s.color, instrument: s.instrument, note: [], tail: null})), sets, parts: []
   };
 }

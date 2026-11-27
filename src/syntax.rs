@@ -370,6 +370,8 @@ pub struct ShowAst {
     pub tempo: f64,
     pub clearance: Option<f64>,
     pub maxstep: Option<f64>,
+    /// 1歩の長さ（cm）。書かれていなければ None（= 62.5cm = 5m を 8 歩）
+    pub stride: Option<f64>,
     /// 見た目（"real" / "illust"）。書かれていなければ None（= real）
     pub look: Option<String>,
     pub sections: Vec<SectionAst>,
@@ -914,6 +916,7 @@ impl Parser {
             tempo: 120.0,
             clearance: None,
             maxstep: None,
+            stride: None,
             look: None,
             sections: vec![],
             sets: vec![],
@@ -996,6 +999,14 @@ impl Parser {
                 "tempo" => s.tempo = self.num()?,
                 "clearance" => s.clearance = Some(self.num()?),
                 "maxstep" => s.maxstep = Some(self.num()?),
+                "stride" | "歩幅" => {
+                    let sp = self.pos();
+                    let v = self.num()?;
+                    if !(20.0..=150.0).contains(&v) {
+                        return Err(Error::at(sp.line, sp.col, "stride（1歩の長さ）は 20〜150 cm で書いてください（例: stride 62.5）".to_string()));
+                    }
+                    s.stride = Some(v);
+                }
                 "look" | "見た目" => {
                     let lp = self.pos();
                     let name = match self.cur().tok.clone() {
@@ -1069,7 +1080,7 @@ impl Parser {
                     return Err(Error::at(
                         kp.line,
                         kp.col,
-                        format!("不明なキーワード「{}」（field / tempo / section / set / part / clearance / maxstep / look が使えます）", kw),
+                        format!("不明なキーワード「{}」（field / tempo / section / set / part / clearance / maxstep / stride / look が使えます）", kw),
                     ))
                 }
             }

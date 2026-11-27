@@ -163,7 +163,7 @@ pub fn model_json(a: &ShowAst) -> String {
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "{{\"name\":{},\"header\":{},\"settings_notes\":{},\"foot\":{},\"field\":{},\"field_given\":{},\"tempo\":{},\"clearance\":{},\"maxstep\":{},\"look\":{},\"sections\":[{}],\"sets\":[{}],\"parts\":[{}]}}",
+        "{{\"name\":{},\"header\":{},\"settings_notes\":{},\"foot\":{},\"field\":{},\"field_given\":{},\"tempo\":{},\"clearance\":{},\"maxstep\":{},\"stride\":{},\"look\":{},\"sections\":[{}],\"sets\":[{}],\"parts\":[{}]}}",
         js(&a.name),
         strs(&a.header),
         strs(&a.settings_notes),
@@ -173,6 +173,7 @@ pub fn model_json(a: &ShowAst) -> String {
         fmt_num(a.tempo),
         a.clearance.map(fmt_num).map(|x| js(&x)).unwrap_or_else(|| "null".into()),
         a.maxstep.map(fmt_num).map(|x| js(&x)).unwrap_or_else(|| "null".into()),
+        a.stride.map(fmt_num).map(|x| js(&x)).unwrap_or_else(|| "null".into()),
         opt(&a.look),
         sections,
         sets,

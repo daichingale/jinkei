@@ -1,6 +1,6 @@
 // 自動生成（tools/build_pages.js）。内容が変わるとバージョンが変わり、古いキャッシュは消える。
 'use strict';
-const CACHE = 'jinkei-98755122a5';
+const CACHE = 'jinkei-2bd1632b1e';
 const FILES = ["./","index.html","manifest.webmanifest","assets/three.min.js","assets/view3d.js","assets/human.bin.gz","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","icons/apple-touch-icon.png","icons/icon.svg","snare-preview.html"];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

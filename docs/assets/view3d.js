@@ -116,7 +116,7 @@
         }
         g.strokeStyle = ILL ? '#ffffff' : '#fbfbf6'; g.lineWidth = ILL ? 0.11 : 0.09; g.lineJoin = 'miter';
         g.strokeRect(-F.w / 2, -F.d / 2, F.w, F.d);
-        if (F.w >= 25 && F.d >= 25) g.strokeRect(-10, -10, 20, 20);
+        if (F.w >= 22 && F.d >= 22) g.strokeRect(-10, -10, 20, 20);
         g.beginPath(); g.moveTo(0, -F.d / 2); g.lineTo(0, F.d / 2); g.moveTo(-F.w / 2, 0); g.lineTo(F.w / 2, 0); g.stroke();
         g.lineWidth = 0.075;
         for (let x = Math.ceil(-F.w / 10) * 5; x <= F.w / 2; x += 5) for (let z = Math.ceil(-F.d / 10) * 5; z <= F.d / 2; z += 5) {

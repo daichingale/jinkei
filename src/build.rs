@@ -306,12 +306,15 @@ enum FaceSpec {
 }
 
 pub fn build(a: &ShowAst) -> Result<Show> {
-    let field = match &a.field {
+    let mut field = match &a.field {
         FieldAst::Football(k) => Field::football(k),
         FieldAst::Floor { w, d } => Field::floor(*w, *d),
         FieldAst::Gym { w, d } => Field::gym(*w, *d),
         FieldAst::Stage { w, d, wing } => Field::stage(*w, *d, *wing),
     };
+    if let (false, Some(c)) = (field.is_football(), a.stride) {
+        field.stride_m = c / 100.0;
+    }
     let ctx = Ctx { field: &field };
     let mut sections = vec![];
     let mut performers = vec![];

@@ -289,7 +289,7 @@ fn gym_color(hw: f32, hd: f32, fw: f32, fd: f32, ill: bool, x: f32, z: f32, fx: 
         eh.max(ev)
     };
     let mut l = rect(fw / 2.0, fd / 2.0);
-    if fw >= 25.0 && fd >= 25.0 {
+    if fw >= 22.0 && fd >= 22.0 {
         l = l.max(rect(10.0, 10.0));
     }
     l = l.max(cov(x, hl, fx) * cov_range(z, -fd / 2.0, fd / 2.0, fz));

@@ -52,6 +52,7 @@ function printModel(m) {
   L.push(`  tempo ${m.tempo}`);
   if (m.clearance != null && m.clearance !== '') L.push(`  clearance ${m.clearance}`);
   if (m.maxstep != null && m.maxstep !== '') L.push(`  maxstep ${m.maxstep}`);
+  if (m.stride != null && m.stride !== '') L.push(`  stride ${m.stride}`);
   if (m.look) L.push(`  look ${m.look}`);
   L.push('');
   const idw = Math.max(...m.sections.map(s => s.id.length), 2);
