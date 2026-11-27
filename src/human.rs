@@ -1,13 +1,14 @@
 //! 人体アセット (assets/human.bin, 形式 "JKH1") の読み込み・ポーズ計算・スキニング。
 //! ブラウザの 3D ビュー (src/view3d.js) と同じ規則で、クリップのサンプリング・混ぜ方を行う。
-//! 形式は tools/README.md を参照。
+//! 形式は tools/README.md を参照。version 1（そのままの並び）と version 2（量子化・可変長で詰めた版。
+//! 読み込み時に version 1 の並びへ戻す。tools/pack_human.js と src/view3d.js の jkhUnpack と同じ式）の両方を読める。
 use crate::json_mini::{self, J};
 use crate::render::{v3, V3};
 use crate::strike::{sst, va, vc, vd, vl, vm, vma, vn, vsub};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-static BIN: &[u8] = include_bytes!("../assets/human.bin");
+static BIN: &[u8] = include_bytes!("../assets/human2.bin");
 
 #[derive(Clone, Copy)]
 pub struct Mat {
@@ -220,13 +221,112 @@ fn mesh_of(blob: &[u8], d: &J, skinned: bool) -> MeshData {
     m
 }
 
+/// 法線の八面体（oct）符号化の復元。tools/pack_human.js の octDec と同じ式（f64 の + - * / sqrt のみ）。
+fn oct_dec(qx: i8, qy: i8) -> [f64; 3] {
+    let (mut x, mut y) = (qx as f64 / 127.0, qy as f64 / 127.0);
+    let z = 1.0 - x.abs() - y.abs();
+    if z < 0.0 {
+        let (ox, oy) = (x, y);
+        x = (1.0 - oy.abs()) * if ox >= 0.0 { 1.0 } else { -1.0 };
+        y = (1.0 - ox.abs()) * if oy >= 0.0 { 1.0 } else { -1.0 };
+    }
+    let l = (x * x + y * y + z * z).sqrt();
+    let l = if l == 0.0 { 1.0 } else { l };
+    [x / l, y / l, z / l]
+}
+
+/// FNV-1a 64（復元結果の照合用）
+pub fn fnv64(b: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for &c in b {
+        h ^= c as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h
+}
+
+/// version 2 の詰めたデータ（payload）を version 1 の blob へ戻す。
+fn unpack_v2(payload: &[u8], pk: &J) -> Result<Vec<u8>, String> {
+    let size = pk.get("size").ok_or("pack.size がありません")?.usize();
+    let mut out = vec![0u8; size];
+    for op in pk.get("ops").ok_or("pack.ops がありません")?.arr() {
+        let v: Vec<f64> = op.arr().iter().map(|j| j.num()).collect();
+        let (t, dst, n, src) = (v[0] as u32, v[1] as usize, v[2] as usize, v[3] as usize);
+        let put = |out: &mut Vec<u8>, at: usize, x: f64| out[at..at + 4].copy_from_slice(&(x as f32).to_le_bytes());
+        let need = match t { 1 => v[4] as usize, 2 => n * 6, 3 => n * 2, 4 => v[4] as usize, 5 => n * 8, 6 => n * 4, _ => return Err(format!("不明な pack 種別 {}", t)) };
+        if src + need > payload.len() { return Err("pack の範囲が payload を超えています".into()); }
+        match t {
+            1 => out[dst..dst + need].copy_from_slice(&payload[src..src + need]),
+            2 => {
+                for k in 0..3 {
+                    let (lo, sc) = (v[4 + k], (v[7 + k] - v[4 + k]) / 65535.0);
+                    for i in 0..n {
+                        let q = payload[src + k * 2 * n + i] as f64 + payload[src + (k * 2 + 1) * n + i] as f64 * 256.0;
+                        put(&mut out, dst + (i * 3 + k) * 4, lo + q * sc);
+                    }
+                }
+            }
+            3 => {
+                for i in 0..n {
+                    let d = oct_dec(payload[src + i] as i8, payload[src + n + i] as i8);
+                    for k in 0..3 { put(&mut out, dst + i * 12 + k * 4, d[k]); }
+                }
+            }
+            4 => {
+                let (mut p, mut prev) = (src, 0i64);
+                for i in 0..n {
+                    let (mut z, mut s) = (0u64, 0u32);
+                    loop {
+                        let c = *payload.get(p).ok_or("index の可変長が途切れています")?;
+                        p += 1;
+                        z |= ((c & 127) as u64) << s;
+                        s += 7;
+                        if c & 128 == 0 { break; }
+                    }
+                    prev += if z & 1 == 1 { -(((z + 1) >> 1) as i64) } else { (z >> 1) as i64 };
+                    out[dst + i * 2..dst + i * 2 + 2].copy_from_slice(&(prev as u16).to_le_bytes());
+                }
+            }
+            5 => {
+                for k in 0..4 {
+                    for i in 0..n {
+                        let q = payload[src + k * 2 * n + i] as f64 + payload[src + (k * 2 + 1) * n + i] as f64 * 256.0;
+                        put(&mut out, dst + (i * 4 + k) * 4, q / 65535.0);
+                    }
+                }
+            }
+            _ => {
+                for k in 0..2 {
+                    let (lo, sc) = (v[4 + k], (v[6 + k] - v[4 + k]) / 65535.0);
+                    for i in 0..n {
+                        let q = payload[src + k * 2 * n + i] as f64 + payload[src + (k * 2 + 1) * n + i] as f64 * 256.0;
+                        put(&mut out, dst + (i * 2 + k) * 4, lo + q * sc);
+                    }
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 fn load() -> Result<Human, String> {
     if BIN.len() < 8 || &BIN[0..4] != b"JKH1" {
         return Err("人体アセットの形式が不正".into());
     }
     let jl = u32::from_le_bytes(BIN[4..8].try_into().unwrap()) as usize;
     let head = json_mini::parse(std::str::from_utf8(&BIN[8..8 + jl]).map_err(|e| e.to_string())?)?;
-    let blob = &BIN[8 + jl..];
+    let unpacked;
+    let blob: &[u8] = match head.get("pack") {
+        Some(pk) => {
+            unpacked = unpack_v2(&BIN[8 + jl..], pk)?;
+            if let Some(c) = pk.get("check") {
+                let want = u64::from_str_radix(c.str(), 16).map_err(|e| e.to_string())?;
+                if fnv64(&unpacked) != want { return Err("人体アセットの復元結果が一致しません".into()); }
+            }
+            &unpacked
+        }
+        None => &BIN[8 + jl..],
+    };
     let bones = head.get("bones").map(|j| j.arr()).unwrap_or(&[]);
     let nb = bones.len();
     let mut names = HashMap::new();
@@ -1220,5 +1320,35 @@ mod strike_tests {
             }
         }
         assert!(out.lines().count() == 48 && !out.contains("NaN"));
+    }
+}
+
+#[cfg(test)]
+mod asset_tests {
+    use super::*;
+
+    /// version 2 を version 1 の並びへ戻した結果が、元の assets/human.bin と（量子化誤差の範囲で）一致する
+    #[test]
+    fn human_asset_v2_roundtrip() {
+        let v1: &[u8] = include_bytes!("../assets/human.bin");
+        let jl = u32::from_le_bytes(BIN[4..8].try_into().unwrap()) as usize;
+        let head = json_mini::parse(std::str::from_utf8(&BIN[8..8 + jl]).unwrap()).unwrap();
+        let pk = head.get("pack").expect("version 2");
+        let un = unpack_v2(&BIN[8 + jl..], pk).unwrap();
+        assert_eq!(format!("{:016x}", fnv64(&un)), pk.get("check").unwrap().str(), "JS の復元と同じ結果");
+        let jl1 = u32::from_le_bytes(v1[4..8].try_into().unwrap()) as usize;
+        let b1 = &v1[8 + jl1..];
+        assert_eq!(un.len(), b1.len());
+        let h1 = json_mini::parse(std::str::from_utf8(&v1[8..8 + jl1]).unwrap()).unwrap();
+        let d = h1.get("body").unwrap();
+        let (nv, ni) = (d.get("vertices").unwrap().usize(), d.get("indices").unwrap().usize());
+        let (po, io) = (d.get("pos").unwrap().usize(), d.get("index").unwrap().usize());
+        let f = |b: &[u8], o: usize| f32::from_le_bytes(b[o..o + 4].try_into().unwrap());
+        let mut me = 0f32;
+        for i in 0..nv * 3 {
+            me = me.max((f(&un, po + i * 4) - f(b1, po + i * 4)).abs());
+        }
+        assert!(me < 5e-5, "位置の誤差 {}", me);
+        assert_eq!(&un[io..io + ni * 2], &b1[io..io + ni * 2], "三角形の頂点番号は完全一致");
     }
 }

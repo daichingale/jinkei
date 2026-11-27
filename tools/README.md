@@ -1,13 +1,29 @@
 # 人体アセット生成 (tools/gen_human.js)
 
 実行: `node tools/gen_human.js [-v] [--dev]`  (依存なし)
-出力: `assets/human.bin` / `assets/human.json`。`src/output.rs` が `include_bytes!` で埋め込み、
-プレビューHTMLにはbase64 (`window.JK_HUMAN`) として入る。
+出力: `assets/human.bin`（version 1・元の並び）/ `assets/human.json`。続けて `node tools/pack_human.js` で
+軽い版 `assets/human2.bin`（version 2）と `assets/human2.bin.gz` を作る（`--check` で作り直し結果と一致するか確かめる）。
+`src/human.rs` は `human2.bin` を、`src/output.rs` は `human2.bin.gz` を `include_bytes!` で埋め込み、
+プレビューHTMLには gzip のまま base64 (`window.JK_HUMAN`) で入る。3D を初めて開くときに view3d.js が展開する
+（自前の小さな inflate。`DecompressionStream` に頼らない）。Pages では `assets/human2.bin.gz` を別ファイルで取る。
 
 ## フォーマット "JKH1"
 - 先頭4byte `JKH1`、続いて u32 LE の JSON 長、JSON (4byte境界までスペース埋め)、その後ろにリトルエンディアンのblob。
 - JSON内の `pos`/`nor`/`off` などのオフセットは全て blob 先頭からのバイト位置。
 - 単位はメートル、Y上、+Z正面、足裏 y=0、身長 約1.70m。
+
+## "JKH1" version 2（軽い版）
+読み込み側（src/view3d.js の `jkhUnpack`、src/human.rs の `unpack_v2`）が **version 1 のとおりの blob に戻して**使うので、
+JSON の各オフセットはそのまま「戻したあとの並び」を指す。version 1 のファイルも両方の読み込み側がそのまま読める
+（JSON に `pack` が無ければ version 1）。JSON の `version` は 2 で、`pack = {size, ops, check}` が付く。
+- `size`: 戻したあとの blob の大きさ。`check`: 戻した結果の FNV-1a 64（16 進）。読み込み側が照合する。
+- `ops[]`: `[種類, 戻し先のオフセット, 個数, 詰めた側（payload）の位置, ...]`。
+  - 1 そのまま写す（`[1, 戻し先, バイト数, 位置, バイト数]`）。クリップ・顔テクスチャ・材質 ID・スキン番号など。
+  - 2 位置 f32x3 → 軸ごとに u16（メッシュの外接箱 `lo[3], hi[3]` の中で 65535 段階 = 最大誤差 約 0.02mm）。下位バイトの面→上位バイトの面の順。
+  - 3 法線 f32x3 → 八面体（oct）符号化 int8x2（面ごとに x の面→y の面。最大誤差 約 0.6°）。復元は `+ - * / sqrt` だけの式で JS と Rust が同じ結果になる。
+  - 4 三角形の頂点番号 u16 → 前の番号との差を zigzag + 7 ビット可変長（ほぼ 1 バイト）。
+  - 5 スキンの重み f32x4 → u16（1/65535）。6 UV f32x2 → u16（`lo[2], hi[2]` の箱）。
+- 材質 ID・スキン番号・三角形の頂点番号は完全に元と同じ。tests/human_asset.js が誤差の上限と一致を確かめる。
 
 ## JSON
 - `bones[22]`: `{name,parent,pos}` 親相対の静止位置 (回転は単位)。`prop` ボーンは chest の子で楽器用。

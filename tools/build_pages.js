@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // GitHub Pages 用の公開物を docs/ に作る（Cargo 不要）。
 //   docs/index.html            エディタ本体（3D 部品は別ファイル）
-//   docs/assets/*              three.min.js / view3d.js / human.bin.gz（別々にキャッシュされる）
+//   docs/assets/*              three.min.js / view3d.js / human2.bin.gz（別々にキャッシュされる）
 //   docs/sw.js                 オフライン用のサービスワーカー
 //   docs/manifest.webmanifest  「ホーム画面に追加」用
 //   docs/icons/*               192 / 512 / maskable / apple-touch-icon（マスコットの SVG から作る）
@@ -42,7 +42,8 @@ fs.copyFileSync(mascot, (wr('icons/icon.svg', ''), path.join(OUT, 'icons/icon.sv
 // ---- 3D 部品（別ファイル）----
 wr('assets/three.min.js', rd('vendor/three.min.js'));
 wr('assets/view3d.js', rd('src/view3d.js'));
-wr('assets/human.bin.gz', zlib.gzipSync(rd('assets/human.bin'), {level: 9}));
+fs.rmSync(path.join(OUT, 'assets/human.bin.gz'), {force: true});   // 旧形式（version 1）
+wr('assets/human2.bin.gz', fs.readFileSync(path.join(ROOT, 'assets/human2.bin.gz')));
 
 // ---- manifest ----
 wr('manifest.webmanifest', JSON.stringify({
@@ -76,15 +77,17 @@ wr('index.html', html);
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 
 // ---- サービスワーカー（内容のハッシュでキャッシュ名を決める → 更新が自動で入る）----
-const precache = ['./', 'index.html', 'manifest.webmanifest', 'assets/three.min.js', 'assets/view3d.js', 'assets/human.bin.gz',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/icon.svg', 'snare-preview.html'];
+// 起動に要る分だけ先に取り込む。3D の部品（assets/）とスネアのプレビューは初めて使うときに取り込んで残す
+const precache = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/icon.svg'];
+const lazy = ['assets/three.min.js', 'assets/view3d.js', 'assets/human2.bin.gz', 'snare-preview.html'];
 const h = crypto.createHash('sha256');
-for (const f of precache.filter(f => f !== './')) h.update(f).update(fs.readFileSync(path.join(OUT, f)));
+for (const f of precache.concat(lazy).filter(f => f !== './')) h.update(f).update(fs.readFileSync(path.join(OUT, f)));
 const ver = h.digest('hex').slice(0, 10);
 wr('sw.js', `// 自動生成（tools/build_pages.js）。内容が変わるとバージョンが変わり、古いキャッシュは消える。
 'use strict';
 const CACHE = 'jinkei-${ver}';
 const FILES = ${JSON.stringify(precache)};
+const LAZY = ${JSON.stringify(lazy)};   // 初めて取りに行ったときにキャッシュへ入れる
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('jinkei-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -95,7 +98,8 @@ self.addEventListener('fetch', e => {
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(r, {ignoreSearch: true});
-    const net = fetch(r).then(res => { if (res && res.ok && r.mode === 'navigate') c.put(r, res.clone()); return res; });
+    const rel = new URL(r.url).pathname.replace(/^.*\/(?=(assets|snare-preview)[\/.])/, '');
+    const net = fetch(r).then(res => { if (res && res.ok && (r.mode === 'navigate' || LAZY.includes(rel))) c.put(r, res.clone()); return res; });
     if (hit) { if (r.mode === 'navigate') net.catch(() => {}); return hit; }
     try { return await net; } catch (err) { return (r.mode === 'navigate' && await c.match('index.html')) || Response.error(); }
   }));
@@ -103,4 +107,4 @@ self.addEventListener('fetch', e => {
 `);
 const size = f => (fs.statSync(path.join(OUT, f)).size / 1048576).toFixed(2) + ' MiB';
 console.log(OUT, 'キャッシュ版', ver);
-for (const f of ['index.html', 'assets/three.min.js', 'assets/view3d.js', 'assets/human.bin.gz', 'snare-preview.html']) console.log('  ' + f.padEnd(24), size(f));
+for (const f of ['index.html', 'assets/three.min.js', 'assets/view3d.js', 'assets/human2.bin.gz', 'snare-preview.html']) console.log('  ' + f.padEnd(24), size(f));

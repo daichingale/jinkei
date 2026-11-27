@@ -152,13 +152,14 @@ pub fn analyze(s: &Show) -> Report {
         let prev = if k == 0 { &set.pos } else { &s.sets[k - 1].pos };
         let cl = s.clearance;
         let c = set.counts;
-        for a in 0..n {
-            for b in a + 1..n {
-                let (best, best_t) = crate::geom::closest(
-                    &crate::geom::Mv { a: prev[a], b: set.pos[a], w: set.wait[a], e: set.end[a], bend: set.bend[a], route: set.route[a].as_deref() },
-                    &crate::geom::Mv { a: prev[b], b: set.pos[b], w: set.wait[b], e: set.end[b], bend: set.bend[b], route: set.route[b].as_deref() },
-                    c,
-                );
+        let mvs: Vec<crate::geom::Mv> = (0..n)
+            .map(|i| crate::geom::Mv { a: prev[i], b: set.pos[i], w: set.wait[i], e: set.end[i], bend: set.bend[i], route: set.route[i].as_deref() })
+            .collect();
+        let bbs: Vec<_> = mvs.iter().map(|m| m.bbox()).collect();
+        // 外接矩形が cl 以上離れていれば最接近は cl 以上（警告対象外）なので、近い組だけ厳密に計算する
+        {
+            for (a, b) in crate::geom::near_pairs(&bbs, cl) {
+                let (best, best_t) = crate::geom::closest(&mvs[a], &mvs[b], c);
                 if best < cl {
                     let moving = k > 0 && best_t < c - 1e-9;
                     warnings.push(Warning {
@@ -189,4 +190,39 @@ pub fn analyze(s: &Show) -> Report {
     }
     let total_counts = s.sets.last().map(|x| x.start + x.counts + x.hold).unwrap_or(0.0);
     Report { dots, warnings, max_per_count, total_counts }
+}
+
+/// 1セットぶんの警告の件数だけ（文字列を作らない）→ (衝突, ほかの警告)。analyze と同じ条件で数える
+pub fn set_counts(f: &crate::field::Field, cl: f64, maxstep: f64, set: &crate::build::Set, prev_set: Option<&crate::build::Set>) -> (usize, usize) {
+    let n = set.pos.len();
+    let prev: &[crate::geom::P] = prev_set.map(|p| p.pos.as_slice()).unwrap_or(&set.pos);
+    let (mut coll, mut other) = (0, 0);
+    let fb = f.is_football();
+    for i in 0..n {
+        let p = set.pos[i];
+        if prev_set.is_some() {
+            let moved = match &set.route[i] {
+                Some(r) => crate::geom::poly_len(r),
+                None => crate::geom::path_len(prev[i], p, set.bend[i]),
+            };
+            let dur = set.end[i] - set.wait[i];
+            let per = if dur > 0.0 { moved / dur } else { 0.0 };
+            if per > 1e-9 && (if fb { 8.0 / per < maxstep } else { per > maxstep }) {
+                other += 1;
+            }
+        }
+        if !f.in_bounds(p.0, p.1) {
+            other += 1;
+        }
+    }
+    let mvs: Vec<crate::geom::Mv> = (0..n)
+        .map(|i| crate::geom::Mv { a: prev[i], b: set.pos[i], w: set.wait[i], e: set.end[i], bend: set.bend[i], route: set.route[i].as_deref() })
+        .collect();
+    let bbs: Vec<_> = mvs.iter().map(|m| m.bbox()).collect();
+    for (a, b) in crate::geom::near_pairs(&bbs, cl) {
+        if crate::geom::closest(&mvs[a], &mvs[b], set.counts).0 < cl {
+            coll += 1;
+        }
+    }
+    (coll, other)
 }

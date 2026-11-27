@@ -1383,13 +1383,42 @@ function mvBbox(m) {
     }
     return [x0, x1, y0, y1];
   }
-  const pad = Math.abs(m.bend) >= 1e-6 ? dist(m.a, m.b) * 0.5 * Math.min(Math.abs(Math.tan(toRad(Math.min(Math.abs(m.bend), 179.0)) / 2.0)), 50.0) : 0.0;
+  // 円弧は弦から高さ（矢高）= 弦/2·tan(θ/4) より外へは出ない
+  const pad = Math.abs(m.bend) >= 1e-6 ? dist(m.a, m.b) * 0.5 * Math.tan(toRad(Math.min(Math.abs(m.bend), 179.0)) / 4.0) : 0.0;
   return [Math.min(m.a[0], m.b[0]) - pad, Math.max(m.a[0], m.b[0]) + pad, Math.min(m.a[1], m.b[1]) - pad, Math.max(m.a[1], m.b[1]) + pad];
 }
 /** 外接矩形が cl 以上離れていれば、最接近距離は cl 以上（警告対象外）なので厳密判定を省ける */
 function mvFar(m, o, cl) {
   const a = m.bb || (m.bb = mvBbox(m)), b = o.bb || (o.bb = mvBbox(o));
   return a[1] + cl <= b[0] || b[1] + cl <= a[0] || a[3] + cl <= b[2] || b[3] + cl <= a[2];
+}
+/**
+ * 外接矩形が cl 未満まで近い組 (a, b)（a < b）だけを昇順で返す。人数が多いときは x 方向に整列して走査（スイープ）し、
+ * 全組を調べない。mvFar と同じ判定なので、返る組に入らないものは確実に cl 以上離れている。
+ */
+function nearPairs(mvs, cl) {
+  const n = mvs.length;
+  const bb = new Array(n);
+  for (let i = 0; i < n; i++) bb[i] = mvs[i].bb || (mvs[i].bb = mvBbox(mvs[i]));
+  const out = [];
+  if (n < 24) {
+    for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) { const p = bb[a], q = bb[b]; if (!(p[1] + cl <= q[0] || q[1] + cl <= p[0] || p[3] + cl <= q[2] || q[3] + cl <= p[2])) out.push(a * n + b); }
+    return out;
+  }
+  const ord = new Array(n);
+  for (let i = 0; i < n; i++) ord[i] = i;
+  ord.sort((x, y) => bb[x][0] - bb[y][0] || x - y);
+  for (let u = 0; u < n; u++) {
+    const a = ord[u], p = bb[a], lim = p[1] + cl;
+    for (let v = u + 1; v < n; v++) {
+      const b = ord[v], q = bb[b];
+      if (lim <= q[0]) break;
+      if (p[3] + cl <= q[2] || q[3] + cl <= p[2] || q[1] + cl <= p[0]) continue;
+      out.push(a < b ? a * n + b : b * n + a);
+    }
+  }
+  out.sort((x, y) => x - y);
+  return out;
 }
 function mvU(m, t) {
   if (m.e - m.w <= 0.0) return 1.0;
@@ -1441,8 +1470,119 @@ function mvTimes(m, out) {
     for (let j = 1; j < 16; j++) out.push(m.w + (m.e - m.w) * j / 16.0);
   }
 }
+const CUTS = new Float64Array(6);
+let CL_T = 0.0;
+/** 2人とも「直線を等速で進む」（曲線・折れ線でない）か */
+function mvLinear(m) { return m.route === null || m.route === undefined ? (Math.abs(m.bend) < 1e-6 || dist(m.a, m.b) <= 1e-9) : false; }
+/**
+ * closest の、2人とも直線の場合の高速版（配列を作らない）。計算の順序は closest と同じなので結果は完全に一致する。
+ * 返り値は最接近距離、時刻は CL_T に入る。
+ */
+function closestLin(a, b, c) {
+  const cm = Math.max(c, 0.0);
+  const cs = CUTS;
+  let n = 0;
+  cs[n++] = 0.0; cs[n++] = cm;
+  let t = a.w; if (t >= 0.0 && t <= cm) cs[n++] = t;
+  t = a.e; if (t >= 0.0 && t <= cm) cs[n++] = t;
+  t = b.w; if (t >= 0.0 && t <= cm) cs[n++] = t;
+  t = b.e; if (t >= 0.0 && t <= cm) cs[n++] = t;
+  for (let i = 1; i < n; i++) { const v = cs[i]; let j = i - 1; while (j >= 0 && cs[j] > v) { cs[j + 1] = cs[j]; j--; } cs[j + 1] = v; }
+  // 近すぎる区切りは捨てる（closest と同じ規則）
+  let m = 1;
+  for (let i = 1; i < n; i++) if (!(Math.abs(cs[i] - cs[m - 1]) < 1e-12)) cs[m++] = cs[i];
+  const aw = a.w, ae = a.e, bw = b.w, be = b.e;
+  const aa = a.a, ab = a.b, ba = b.a, bb = b.b;
+  const aOk = ae - aw > 0.0, bOk = be - bw > 0.0;
+  const adx = ab[0] - aa[0], ady = ab[1] - aa[1], bdx = bb[0] - ba[0], bdy = bb[1] - ba[1];
+  if (m === 1) {
+    const t0 = cs[0];
+    const ua = aOk ? clamp((t0 - aw) / (ae - aw), 0.0, 1.0) : 1.0, ub = bOk ? clamp((t0 - bw) / (be - bw), 0.0, 1.0) : 1.0;
+    const dx = (aa[0] + adx * ua) - (ba[0] + bdx * ub), dy = (aa[1] + ady * ua) - (ba[1] + bdy * ub);
+    CL_T = t0;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  let best = Number.MAX_VALUE, bestT = c;
+  let ua0 = aOk ? clamp((cs[0] - aw) / (ae - aw), 0.0, 1.0) : 1.0, ub0 = bOk ? clamp((cs[0] - bw) / (be - bw), 0.0, 1.0) : 1.0;
+  let d0x = (aa[0] + adx * ua0) - (ba[0] + bdx * ub0), d0y = (aa[1] + ady * ua0) - (ba[1] + bdy * ub0);
+  for (let i = 0; i + 1 < m; i++) {
+    const t0 = cs[i], t1 = cs[i + 1];
+    const ua1 = aOk ? clamp((t1 - aw) / (ae - aw), 0.0, 1.0) : 1.0, ub1 = bOk ? clamp((t1 - bw) / (be - bw), 0.0, 1.0) : 1.0;
+    const d1x = (aa[0] + adx * ua1) - (ba[0] + bdx * ub1), d1y = (aa[1] + ady * ua1) - (ba[1] + bdy * ub1);
+    const dvx = d1x - d0x, dvy = d1y - d0y;
+    const vv = dvx * dvx + dvy * dvy;
+    const u = vv < 1e-12 ? 1.0 : clamp(-(d0x * dvx + d0y * dvy) / vv, 0.0, 1.0);
+    const ex = d0x + dvx * u, ey = d0y + dvy * u;
+    const d = Math.sqrt(ex * ex + ey * ey);
+    if (d < best - 1e-12) { best = d; bestT = t0 + (t1 - t0) * u; }
+    d0x = d1x; d0y = d1y;
+  }
+  CL_T = bestT;
+  return best;
+}
+const CUTS2 = new Float64Array(48);
+let PX = 0.0, PY = 0.0;
+/** mvAt の座標だけ版（配列を作らない）。結果は PX/PY に入る。route があるものは扱わない */
+function mvAtXY(m, t) {
+  let ap = m.ap;
+  if (ap === undefined) { mvAt(m, t); ap = m.ap; }   // 円弧の定数をキャッシュさせる
+  const u = m.e - m.w <= 0.0 ? 1.0 : clamp((t - m.w) / (m.e - m.w), 0.0, 1.0);
+  if (ap === null) { PX = m.a[0] + (m.b[0] - m.a[0]) * u; PY = m.a[1] + (m.b[1] - m.a[1]) * u; return; }
+  const ph = ap.th * u;
+  const sp = Math.sin(ph), cp = 1.0 - Math.cos(ph);
+  PX = m.a[0] + ap.r * (sp * ap.t00 + cp * ap.n00);
+  PY = m.a[1] + ap.r * (sp * ap.t01 + cp * ap.n01);
+}
+/** closest の、曲線（bend）を含む場合の高速版。折れ線（route）は含まない */
+function closestCurved(a, b, c) {
+  const cm = Math.max(c, 0.0);
+  const cs = CUTS2;
+  let n = 0;
+  cs[n++] = 0.0; cs[n++] = cm;
+  const push = (t) => { if (t >= 0.0 && t <= cm) cs[n++] = t; };
+  for (let q = 0; q < 2; q++) {
+    const m = q === 0 ? a : b;
+    push(m.w); push(m.e);
+    if (mvCurved(m)) for (let j = 1; j < 16; j++) push(m.w + (m.e - m.w) * j / 16.0);
+  }
+  for (let i = 1; i < n; i++) { const v = cs[i]; let j = i - 1; while (j >= 0 && cs[j] > v) { cs[j + 1] = cs[j]; j--; } cs[j + 1] = v; }
+  let k = 1;
+  for (let i = 1; i < n; i++) if (!(Math.abs(cs[i] - cs[k - 1]) < 1e-12)) cs[k++] = cs[i];
+  if (k === 1) {
+    mvAtXY(a, cs[0]); const ax = PX, ay = PY; mvAtXY(b, cs[0]);
+    CL_T = cs[0];
+    return Math.sqrt((ax - PX) * (ax - PX) + (ay - PY) * (ay - PY));
+  }
+  let best = Number.MAX_VALUE, bestT = c;
+  mvAtXY(a, cs[0]); let ax0 = PX, ay0 = PY; mvAtXY(b, cs[0]);
+  let d0x = ax0 - PX, d0y = ay0 - PY;
+  for (let i = 0; i + 1 < k; i++) {
+    const t0 = cs[i], t1 = cs[i + 1];
+    mvAtXY(a, t1); const ax1 = PX, ay1 = PY; mvAtXY(b, t1);
+    const d1x = ax1 - PX, d1y = ay1 - PY;
+    const dvx = d1x - d0x, dvy = d1y - d0y;
+    const vv = dvx * dvx + dvy * dvy;
+    const u = vv < 1e-12 ? 1.0 : clamp(-(d0x * dvx + d0y * dvy) / vv, 0.0, 1.0);
+    const ex = d0x + dvx * u, ey = d0y + dvy * u;
+    const d = Math.sqrt(ex * ex + ey * ey);
+    if (d < best - 1e-12) { best = d; bestT = t0 + (t1 - t0) * u; }
+    d0x = d1x; d0y = d1y;
+  }
+  CL_T = bestT;
+  return best;
+}
+/** 最接近距離だけ欲しいとき */
+function closestDist(a, b, c) {
+  if (!a.route && !b.route) return mvLinear(a) && mvLinear(b) ? closestLin(a, b, c) : closestCurved(a, b, c);
+  return closestSlow(a, b, c)[0];
+}
 /** 2人の動きの最接近距離と時刻 [距離, 時刻] */
 function closest(a, b, c) {
+  if (!a.route && !b.route) { const d = mvLinear(a) && mvLinear(b) ? closestLin(a, b, c) : closestCurved(a, b, c); return [d, CL_T]; }
+  return closestSlow(a, b, c);
+}
+/** 折れ線（フォロー）を含む場合や、元の計算（照合用） */
+function closestSlow(a, b, c) {
   let cuts = [0.0, Math.max(c, 0.0)];
   mvTimes(a, cuts);
   mvTimes(b, cuts);
@@ -1485,7 +1625,7 @@ function assignAvoiding(from, to, w, e, bend, others, c, clearance) {
     for (let oi = 0; oi < others.length; oi++) {
       const ob = obox[oi];
       if (ob[1] < minx || ob[0] > maxx || ob[3] < miny || ob[2] > maxy) continue;
-      const dd = closest(me, others[oi], c)[0];
+      const dd = closestDist(me, others[oi], c);
       if (dd < clearance) cst += 1000.0 * (1.0 + clearance - dd);
     }
     return cst;
@@ -1568,7 +1708,7 @@ function pathCost(i, mvs, c, cl) {
   for (let k = 0; k < mvs.length; k++) {
     if (k === i) continue;
     if (mvFar(me, mvs[k], cl)) continue;
-    const d = closest(me, mvs[k], c)[0];
+    const d = closestDist(me, mvs[k], c);
     if (d < cl) cost += 1000.0 * (1.0 + cl - d);
   }
   return cost;
@@ -1582,7 +1722,7 @@ function untangle(group, pv, pos, tm, c, cl) {
       for (let y = x + 1; y < group.length; y++) {
         const a = group[x], b = group[y];
         if (mvFar(mvs[a], mvs[b], cl)) continue;
-        const d = closest(mvs[a], mvs[b], c)[0];
+        const d = closestDist(mvs[a], mvs[b], c);
         if (d >= cl) continue;
         const before = pathCost(a, mvs, c, cl) + pathCost(b, mvs, c, cl);
         let t = pos[a]; pos[a] = pos[b]; pos[b] = t;
@@ -1675,40 +1815,87 @@ function setDisplayNames(sets) {
   }
   return out;
 }
-function build(a) {
-  const field = mkField(a.field);
-  if (!isFootball(field) && a.stride !== null) field.stride_m = a.stride / 100.0;
-  const ev = (e) => evalE(field, e);
-  const pt = (p) => evalPt(field, p);
-  const sections = [];
-  const performers = [];
-  const secs = new Map();
-  const ids = new Map();
-  a.sections.forEach((s, si) => {
-    if (secs.has(s.id)) throw at_(s.pos.line, s.pos.col, `セクション「${s.id}」が重複しています`);
-    secs.set(s.id, si);
-    sections.push({ id: s.id, label: s.label, color: s.color !== null ? s.color : PALETTE[si % PALETTE.length], color_given: s.color !== null, instrument: s.instrument !== null ? s.instrument : detectInstrument(s.label, s.id) });
-    for (let k = 1; k <= s.n; k++) {
-      const id = `${s.id}${k}`;
-      if (ids.has(id)) throw at_(s.pos.line, s.pos.col, `メンバー名「${id}」が重複します（セクション名を変えてください）`);
-      ids.set(id, performers.length);
-      performers.push({ id, section: si });
-    }
-  });
-  if (performers.length === 0) throw at_(0, 0, 'section がありません');
-  if (a.sets.length === 0) throw at_(0, 0, 'set がありません');
 
-  const n = performers.length;
-  const setNames = setDisplayNames(a.sets);
-  const sets = [];
-  const allHandles = [], allMembers = [], allOwner = [];
-  let curTempo = a.tempo;
-  let start = 0.0;
-  const fb = isFootball(field);
-  for (let k = 0; k < a.sets.length; k++) {
+// ---- 組み立ての使い回し（差分コンパイル）----
+// 1セットの結果は「そのセットの AST」と「直前のセットの結果」だけで決まる。だから、同じ入力なら前回の結果をそのまま返せる。
+// 一部の文だけ変えて再計算する（ドラッグ・自動修正の候補・人の追加の試行）ときは、変えたセットだけが組み立て直しになり、
+// そのあとのセットも「直前の結果が前回と同じ」なら使い回される（値が同じかどうかを比べるので、結果は毎回まったく同じ）。
+const BUILD_MEMO = new Map();      // gid → Map(セットASTのキー文字列 → [{prev, name, first, res, gen}])
+const GKEY_IDS = new Map();
+const AST_KEY = new WeakMap();
+const MEMO = { gen: 0, cells: 0, limit: 240000, hits: 0, miss: 0, evals: 0 };
+function setKeyOf(sa) {
+  let k = AST_KEY.get(sa);
+  if (k === undefined) { k = JSON.stringify(sa); AST_KEY.set(sa, k); }
+  return k;
+}
+function gidOf(a) {
+  const g = JSON.stringify([a.field, a.stride, a.clearance, a.tempo, a.sections.map((x) => [x.id, x.n, x.pos.line, x.pos.col])]);
+  let id = GKEY_IDS.get(g);
+  if (id === undefined) { id = GKEY_IDS.size + 1; GKEY_IDS.set(g, id); }
+  return id;
+}
+function eqPos(p, q) {
+  if (p === q) return true;
+  if (p.length !== q.length) return false;
+  for (let i = 0; i < p.length; i++) { const a = p[i], b = q[i]; if (a !== b && (a[0] !== b[0] || a[1] !== b[1])) return false; }
+  return true;
+}
+function eqArr(p, q) {
+  if (p === q) return true;
+  for (let i = 0; i < p.length; i++) if (p[i] !== q[i]) return false;
+  return true;
+}
+/** 次のセットの組み立てに影響する、直前のセットの中身が同じか */
+function sameIn(p, q) {
+  if (p === q) return true;
+  if (p === null || q === null) return false;
+  return p.tempo === q.tempo && p.start === q.start && p.counts === q.counts && p.hold === q.hold &&
+    eqArr(p.face, q.face) && eqArr(p.pose, q.pose) && eqArr(p.carry, q.carry) && eqPos(p.pos, q.pos);
+}
+function buildSetMemo(bc, gid, k, prevSet) {
+  const sa = bc.a.sets[k], key = setKeyOf(sa), name = bc.setNames[k], first = k === 0;
+  let m = BUILD_MEMO.get(gid);
+  if (m === undefined) { m = new Map(); BUILD_MEMO.set(gid, m); }
+  let list = m.get(key);
+  if (list !== undefined) {
+    for (const e of list) {
+      if (e.name === name && e.first === first && sameIn(e.prev, prevSet)) { e.gen = MEMO.gen; MEMO.hits++; return e.res; }
+    }
+  } else { list = []; m.set(key, list); }
+  MEMO.miss++;
+  const res = buildSetBody(bc, k, prevSet);
+  list.push({ prev: prevSet, name, first, res, gen: MEMO.gen });
+  MEMO.cells += bc.n;
+  return res;
+}
+function memoPrune() {
+  if (MEMO.cells <= MEMO.limit) return;
+  const gens = [];
+  for (const m of BUILD_MEMO.values()) for (const list of m.values()) for (const e of list) gens.push(e.gen);
+  gens.sort((x, y) => x - y);
+  const cut = gens[Math.floor(gens.length / 2)];
+  let cells = 0;
+  for (const [gid, m] of BUILD_MEMO) {
+    for (const [key, list] of m) {
+      const keep = list.filter((e) => e.gen > cut);
+      cells += keep.length * (keep.length ? keep[0].res.set.pos.length : 0);
+      if (keep.length) m.set(key, keep); else m.delete(key);
+    }
+    if (m.size === 0) BUILD_MEMO.delete(gid);
+  }
+  MEMO.cells = cells;
+}
+function memoClear() { BUILD_MEMO.clear(); MEMO.cells = 0; }
+
+/** 1セットぶんの組み立て。入力は AST のセットと直前のセットの結果だけ（なので結果を使い回せる）。 */
+function buildSetBody(bc, k, prevSet) {
+  const { a, field, ev, pt, performers, secs, ids, n, setNames, fb } = bc;
     const sa = a.sets[k];
     if (sa.sub && k === 0) throw at_(sa.pos.line, sa.pos.col, '最初のセットはサブセットにできません（前の本セットがありません）');
-    const prev = sets.length ? sets[sets.length - 1].pos : null;
+    const prev = prevSet ? prevSet.pos : null;
+    let curTempo = prevSet ? prevSet.tempo : a.tempo;
+    const start = prevSet ? prevSet.start + (prevSet.counts + prevSet.hold) : 0.0;
     const recs = [];
     const setHandles = [], setMembers = [];
     for (const st of sa.stmts) {
@@ -1993,7 +2180,7 @@ function build(a) {
         default: faceArr.push(angf([p[0] - f.v[0], p[1] - f.v[1]]));
       }
     }
-    const lastSet = sets.length ? sets[sets.length - 1] : null;
+    const lastSet = prevSet;
     const touched = owner.map((o) => o !== null);
     // 位置を変えない指定: 後に書いたものが優先（その人の位置を決めた文より後なら上書き）
     recs.forEach((r, si) => {
@@ -2039,18 +2226,55 @@ function build(a) {
       });
     });
     curTempo = sa.tempo !== null ? sa.tempo : curTempo;
-    sets.push({
+    const setObj = {
       name: setNames[k], sub: sa.sub, counts, hold: sa.hold, start, pos, wait, end, bend, face: faceArr, route, step, action, pose, carry,
       tempo: curTempo, mark: sa.mark, line: sa.pos.line, slots,
-    });
-    allHandles.push(setHandles);
-    allMembers.push(setMembers);
-    allOwner.push(owner.map((o) => (o ? o[0] : -1)));
-    start += counts + sa.hold;
+    };
+    return { set: setObj, handles: setHandles, members: setMembers, owner: owner.map((o) => (o ? o[0] : -1)) };
+}
+
+function build(a, noParts) {
+  const field = mkField(a.field);
+  if (!isFootball(field) && a.stride !== null) field.stride_m = a.stride / 100.0;
+  const ev = (e) => evalE(field, e);
+  const pt = (p) => evalPt(field, p);
+  const sections = [];
+  const performers = [];
+  const secs = new Map();
+  const ids = new Map();
+  a.sections.forEach((s, si) => {
+    if (secs.has(s.id)) throw at_(s.pos.line, s.pos.col, `セクション「${s.id}」が重複しています`);
+    secs.set(s.id, si);
+    sections.push({ id: s.id, label: s.label, color: s.color !== null ? s.color : PALETTE[si % PALETTE.length], color_given: s.color !== null, instrument: s.instrument !== null ? s.instrument : detectInstrument(s.label, s.id) });
+    for (let k = 1; k <= s.n; k++) {
+      const id = `${s.id}${k}`;
+      if (ids.has(id)) throw at_(s.pos.line, s.pos.col, `メンバー名「${id}」が重複します（セクション名を変えてください）`);
+      ids.set(id, performers.length);
+      performers.push({ id, section: si });
+    }
+  });
+  if (performers.length === 0) throw at_(0, 0, 'section がありません');
+  if (a.sets.length === 0) throw at_(0, 0, 'set がありません');
+
+  const n = performers.length;
+  const setNames = setDisplayNames(a.sets);
+  const sets = [];
+  const allHandles = [], allMembers = [], allOwner = [];
+  const fb = isFootball(field);
+  const bc = { a, field, ev, pt, performers, secs, ids, n, setNames, fb };
+  const gid = gidOf(a);
+  MEMO.gen++;
+  for (let k = 0; k < a.sets.length; k++) {
+    const r = buildSetMemo(bc, gid, k, sets.length ? sets[sets.length - 1] : null);
+    sets.push(r.set);
+    allHandles.push(r.handles);
+    allMembers.push(r.members);
+    allOwner.push(r.owner);
   }
+  memoPrune();
   // ---- 楽譜パート ----
   const parts = [], partWarnings = [];
-  for (const pa of a.parts) {
+  for (const pa of noParts ? [] : a.parts) {
     const members = resolveGroup(pa.group, performers, secs, ids);
     const b = pa.body;
     let pstart = 0.0;
@@ -2077,7 +2301,7 @@ function build(a) {
     const showEnd = lastSet.start + lastSet.counts + lastSet.hold;
     let partEnd = 0.0;
     for (const p of parts) partEnd = Math.max(partEnd, p.end);
-    if (partEnd > showEnd + 1e-6) lastSet.hold += Math.ceil((partEnd - showEnd) * 1000.0) / 1000.0;
+    if (partEnd > showEnd + 1e-6) sets[sets.length - 1] = Object.assign({}, lastSet, { hold: lastSet.hold + Math.ceil((partEnd - showEnd) * 1000.0) / 1000.0 });
   }
   return {
     name: a.name, field, tempo: a.tempo,
@@ -2097,15 +2321,14 @@ const POSE_TXT = {
 const CARRY_TXT = { play: '・構え: 演奏', right: '・構え: 右手に持つ', left: '・構え: 左手に持つ', front: '・構え: 正面', diag: '・構え: 斜め' };
 const ACTION_TXT = { spin: '・動作: スピン', toss: '・動作: トス', swing: '・動作: スイング', rest: '・動作: レスト' };
 
-function analyze(s) {
+/** 1セットぶんの解析（歩幅・場外・衝突）。set k の中身と直前のセットの位置だけで決まる */
+function analyzeSetBody(s, k) {
   const f = s.field;
   const n = s.performers.length;
   const u = unitName(f);
   const warnings = [];
-  const dots = [];
-  for (let i = 0; i < n; i++) dots.push([]);
-  const maxPerCount = [];
-  for (let k = 0; k < s.sets.length; k++) {
+  const dotsK = [];
+  {
     const set = s.sets[k];
     let mx = 0.0;
     for (let i = 0; i < n; i++) {
@@ -2128,7 +2351,7 @@ function analyze(s) {
       stepS += set.pose[i] !== null && has(POSE_TXT, set.pose[i]) ? POSE_TXT[set.pose[i]] : '';
       stepS += set.carry[i] !== null && has(CARRY_TXT, set.carry[i]) ? CARRY_TXT[set.carry[i]] : '';
       stepS += set.action[i] !== null && has(ACTION_TXT, set.action[i]) ? ACTION_TXT[set.action[i]] : '';
-      dots[i].push({ x: p[0], y: p[1], h: describeX(f, p[0]), v: describeY(f, p[1]), step: stepS, face: describeFace(f, set.face[i]), moved });
+      dotsK.push({ x: p[0], y: p[1], h: describeX(f, p[0]), v: describeY(f, p[1]), step: stepS, face: describeFace(f, set.face[i]), moved });
       if (k > 0 && per > 1e-9) {
         const tooBig = isFootball(f) ? 8.0 / per < s.maxstep : per > s.maxstep;
         if (tooBig) {
@@ -2147,28 +2370,53 @@ function analyze(s) {
         });
       }
     }
-    maxPerCount.push(mx);
     const prev = k === 0 ? set.pos : s.sets[k - 1].pos;
     const cl = s.clearance;
     const c = set.counts;
     const mvs = [];
     for (let i = 0; i < n; i++) mvs.push({ a: prev[i], b: set.pos[i], w: set.wait[i], e: set.end[i], bend: set.bend[i], route: set.route[i] });
-    for (let a = 0; a < n; a++) {
-      for (let b = a + 1; b < n; b++) {
-        if (mvFar(mvs[a], mvs[b], cl)) continue;
-        const [best, bestT] = closest(mvs[a], mvs[b], c);
-        if (best < cl) {
-          const moving = k > 0 && bestT < c - 1e-9;
-          warnings.push({
-            set: k, kind: '衝突',
-            msg: moving
-              ? `セット${set.name}への移動中（${rfixed(bestT, 1)}カウント目）: ${s.performers[a].id} と ${s.performers[b].id} が ${rfixed(best, 2)}${u} まで接近`
-              : `セット${set.name}: ${s.performers[a].id} と ${s.performers[b].id} の間隔が ${rfixed(best, 2)}${u} しかありません（最低 ${fdisp(cl)}${u}）`,
-            who: [a, b], at: set.start + (moving ? bestT : c),
-          });
-        }
+    for (const code of nearPairs(mvs, cl)) {
+      const a = Math.floor(code / n), b = code - a * n;
+      const [best, bestT] = closest(mvs[a], mvs[b], c);
+      if (best < cl) {
+        const moving = k > 0 && bestT < c - 1e-9;
+        warnings.push({
+          set: k, kind: '衝突',
+          msg: moving
+            ? `セット${set.name}への移動中（${rfixed(bestT, 1)}カウント目）: ${s.performers[a].id} と ${s.performers[b].id} が ${rfixed(best, 2)}${u} まで接近`
+            : `セット${set.name}: ${s.performers[a].id} と ${s.performers[b].id} の間隔が ${rfixed(best, 2)}${u} しかありません（最低 ${fdisp(cl)}${u}）`,
+          who: [a, b], at: set.start + (moving ? bestT : c),
+        });
       }
     }
+    return { dots: dotsK, warnings, mx };
+  }
+}
+/** 解析の使い回し: セットの中身・直前の位置・基準（歩幅の上限と間隔）が同じなら前回の結果をそのまま返す */
+const AN_MEMO = new WeakMap();
+function anMemo(s, k, kind, body) {
+  const set = s.sets[k];
+  const prevPos = k === 0 ? set.pos : s.sets[k - 1].pos;
+  let list = AN_MEMO.get(set);
+  if (list === undefined) { list = []; AN_MEMO.set(set, list); }
+  // set は組み立ての使い回しの単位で作られるので、同じ set なら会場・メンバー・単位も同じ
+  let ent = null;
+  for (const e of list) if (e.k === k && e.maxstep === s.maxstep && e.clearance === s.clearance && eqPos(e.prevPos, prevPos)) { ent = e; break; }
+  if (ent === null) { ent = { k, maxstep: s.maxstep, clearance: s.clearance, prevPos }; list.push(ent); }
+  if (ent[kind] === undefined) ent[kind] = body(s, k);
+  return ent[kind];
+}
+function analyze(s) {
+  const n = s.performers.length;
+  const warnings = [];
+  const dots = [];
+  for (let i = 0; i < n; i++) dots.push([]);
+  const maxPerCount = [];
+  for (let k = 0; k < s.sets.length; k++) {
+    const r = anMemo(s, k, 'full', analyzeSetBody);
+    for (let i = 0; i < n; i++) dots[i].push(r.dots[i]);
+    for (const w of r.warnings) warnings.push(w);
+    maxPerCount.push(r.mx);
   }
   // 楽譜パート: 拍子の合わない小節
   for (const w of s.partWarnings) {
@@ -2179,6 +2427,35 @@ function analyze(s) {
   const last = s.sets.length ? s.sets[s.sets.length - 1] : null;
   const totalCounts = last ? last.start + last.counts + last.hold : 0.0;
   return { dots, warnings, max_per_count: maxPerCount, total_counts: totalCounts };
+}
+
+/** 警告の「件数」だけ（文字列を作らない）。analyzeSetBody と同じ条件で数える → [衝突, ほかの警告] */
+function setCountsBody(s, k) {
+  const f = s.field;
+  const n = s.performers.length;
+  const set = s.sets[k];
+  let other = 0, coll = 0;
+  const fb = isFootball(f);
+  const prev = k === 0 ? set.pos : s.sets[k - 1].pos;
+  for (let i = 0; i < n; i++) {
+    const p = set.pos[i];
+    if (k > 0) {
+      const moved = set.route[i] ? polyLen(set.route[i]) : pathLen(prev[i], p, set.bend[i]);
+      const dur = set.end[i] - set.wait[i];
+      const per = dur > 0.0 ? moved / dur : 0.0;
+      if (per > 1e-9 && (fb ? 8.0 / per < s.maxstep : per > s.maxstep)) other++;
+    }
+    if (!inBounds(f, p[0], p[1])) other++;
+  }
+  const cl = s.clearance;
+  const c = set.counts;
+  const mvs = [];
+  for (let i = 0; i < n; i++) mvs.push({ a: prev[i], b: set.pos[i], w: set.wait[i], e: set.end[i], bend: set.bend[i], route: set.route[i] });
+  for (const code of nearPairs(mvs, cl)) {
+    const a = Math.floor(code / n), b = code - a * n;
+    if (closestDist(mvs[a], mvs[b], c) < cl) coll++;
+  }
+  return [coll, other];
 }
 
 // ============================================================ output（データJSON）
@@ -2302,14 +2579,18 @@ function modelJson(a) {
 }
 
 // ============================================================ fix
-function fixScore(ast) {
+/** 衝突の数・ほかの警告の数・セットごとの衝突数。パートの拍子警告は文の wait/in/bend では変わらないので、最初の1回だけ数える */
+function fixScore(ast, partOther) {
+  MEMO.evals++;
   let show;
-  try { show = build(ast); } catch (e) { if (e instanceof JkErr) return null; throw e; }
-  const r = analyze(show);
+  try { show = build(ast, partOther !== undefined); } catch (e) { if (e instanceof JkErr) return null; throw e; }
   const perSet = new Array(show.sets.length).fill(0);
-  let coll = 0;
-  for (const w of r.warnings) if (w.kind === '衝突') { coll++; perSet[w.set]++; }
-  return [coll, r.warnings.length - coll, perSet];
+  let coll = 0, other = partOther === undefined ? show.partWarnings.length : partOther;
+  for (let k = 0; k < show.sets.length; k++) {
+    const c = anMemo(show, k, 'cnt', setCountsBody);
+    perSet[k] = c[0]; coll += c[0]; other += c[1];
+  }
+  return [coll, other, perSet, show.partWarnings.length, show];
 }
 function editText(e) {
   switch (e.t) {
@@ -2338,57 +2619,199 @@ function withStmt(ast, k, si, st) {
   sets[k] = set;
   return Object.assign({}, ast, { sets });
 }
-function autoFix(ast) {
+// ---------------------------------------------------------------- 判断AI（候補の並べ替え）
+// 自動修正は、1つの文に「待つ・早着き・カーブ」を足した候補を1つずつ組み立て直して比べる（総当たり）。
+// その候補を「直せそうな順」に並べるための小さな学習モデル（勾配ブースティング木、約 8KB）。
+// 並べるだけ: 衝突がそのセットで全部消える候補が見つかった時点で打ち切る。見つからなければ全部試す（総当たりに戻る）。
+// モデルは tools/train_fix_ai.js が作り、assets/fix_model.json と下の印の間に書き込む（Rust 版も同じ JSON を読む）。
+/*FIXMODEL*/
+const FIX_MODEL = {"v":1,"nf":30,"base":0.0071,"trees":[{"f":[27,6,6,20,27,9,14,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.02138,0,0,0.48426,0.69876,0.59725,0.69325,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0129,-0.0444,-0.0052,0.0224,-0.0267,-0.0063,0.1225,0.0076]},{"f":[27,6,6,21,27,9,15,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.02138,0.5,0,0,0.60579,0.64864,0.06866,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0078,-0.0303,-0.0038,0.0329,-0.0211,-0.0035,-0.0242,0.0952]},{"f":[27,6,6,11,27,6,14,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.02138,0.5,0.5,0.2,0.39378,0,0.8789,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0086,-0.0426,-0.0053,0.0225,-0.0117,0.0364,0.1038,-0.0197]},{"f":[27,29,6,6,9,6,14,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.02138,0.00222,0.5,0,0.59725,0,0.33562,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0101,0.003,-0.03,-0.0086,-0.0093,0.0292,-0.0343,0.0826]},{"f":[27,17,6,27,9,15,15,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.02138,0.32189,0.5,0.60579,0.73241,0.49603,0.49603,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0009,0.0226,-0.0143,0.0059,0.018,-0.0153,0.0759,-0.0003]},{"f":[27,17,6,6,9,14,14,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.22933,0.38918,0,0.5,0.7993,0.48869,0.90792,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0021,0.0139,-0.0146,0.0051,-0.0195,-0.0044,0.0525,-0.0352]},{"f":[14,20,15,13,9,6,21,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.45718,0.48426,0.49603,0.66321,0.69315,0.5,0,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0092,0.0222,-0.0325,-0.007,0.0027,0.0419,0.0007,-0.0226]},{"f":[27,21,29,13,9,14,4,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.80639,0,-0.10513,0.4255,0.69315,0.53611,0.375,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0028,0.0046,-0.0242,0.0055,0.0409,-0.0042,-0.0225,0.0103]},{"f":[6,11,27,27,9,15,10,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0,0.33333,0.69876,0.12784,0.53648,0.06866,0.66667,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0026,-0.011,-0.0704,-0.0301,-0.0101,0.0003,-0.0307,0.026]},{"f":[17,19,9,21,29,21,27,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.38918,0.57346,0.87969,0,-0.10513,0,0.60579,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0027,-0.0112,0.0316,-0.0032,-0.0028,-0.0189,0.0008,0.0215]},{"f":[27,11,14,14,13,6,6,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.22933,0.125,0.08221,0.42059,0.66321,0,0,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0082,0.0023,-0.019,0.0321,-0.0038,-0.0613,-0.0012,0.0289]},{"f":[14,29,20,12,27,13,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.53611,-0.15795,0.43492,0.78571,0.19844,0.80477,0.73241,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0056,0.026,0.001,-0.0118,-0.004,0.0161,-0.016,0.001]},{"f":[17,27,9,11,6,27,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.38918,0.60579,0.73241,0.33333,0.5,0.19844,1.04516,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0008,-0.0447,0.0027,0.0334,0.0006,-0.0167,0.0007,0.0193]},{"f":[10,27,27,11,9,13,6,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.8421,0.19844,0.69876,0.33333,0.73241,0.80477,0.5,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0007,-0.0811,-0.0258,-0.0016,-0.0021,0.0243,0.0034,0.0266]},{"f":[9,17,17,27,20,16,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.59725,0.13863,0.41589,0.29019,0.48426,0.4375,1.04516,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0003,0.0335,-0.0009,-0.0127,0.0046,0.0293,-0.0033,0.0138]},{"f":[14,29,10,6,14,22,14,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.53611,-0.32639,0.8421,0.5,0.45718,0,0.93074,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0047,0.0297,-0.0065,0.0018,-0.0192,-0.0014,-0.0002,-0.0105]},{"f":[10,27,17,11,12,14,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.8421,0.29019,0.27726,0.05882,0.5,0.84054,0.59725,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0002,-0.0218,-0.0226,-0.002,0.0216,-0.0085,-0.0051,0.005]},{"f":[19,20,15,27,9,6,17,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.64075,0.54174,0.06866,0.60579,0.4621,0,0.41589,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.001,0.0058,-0.03,-0.0013,0.0071,-0.0292,0.0173,-0.0005]},{"f":[17,27,28,11,6,15,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.38918,0.39378,0,0.33333,0,0.28485,0.69315,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0015,-0.0537,-0.0045,0.0152,0.0729,0.0011,-0.0094,0.0002]},{"f":[10,27,13,6,9,9,16,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.8421,0.29019,0.80477,0.5,0.69315,0.59725,0.70833,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0022,-0.0039,-0.0193,-0.0021,-0.0029,0.0055,0.0171,0.0988]},{"f":[15,6,14,9,27,12,13,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.06866,0.5,0.51991,0.3662,0.61418,0.9,0.98389,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0124,-0.0005,-0.008,-0.0372,-0.0008,0.0142,-0.0031,0.0575]},{"f":[17,27,13,11,6,12,16,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.38918,0.39378,0.56463,0.33333,0.5,0.5,0.70833,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.001,-0.0452,0.0007,0.0176,-0.0191,-0.003,0.0016,0.0511]},{"f":[17,16,28,19,6,10,22,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.51299,0.625,0,0.71199,0.5,0.8421,0,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0008,0.0067,0.0097,0.0339,-0.008,0.053,-0.0146,-0.0021]},{"f":[9,13,27,29,16,13,17,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.59725,0.4255,0.60579,-0.32639,0.70833,0.16906,0.38918,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.001,-0.0121,0.001,0.0323,-0.002,0.002,0.0166,0.0011]},{"f":[9,21,17,13,19,16,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.59725,0,0.47958,0.4255,0.50781,0.5625,1.04516,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0033,0.0036,-0.0267,-0.0016,0.0023,0.0196,-0.0066,0.0075]},{"f":[12,27,17,11,12,14,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.85714,0.19844,0.21972,0.33333,0.5,0.84054,0.59725,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0003,0.0391,-0.0119,-0.0013,0.0191,-0.0053,-0.0032,0.0043]},{"f":[4,10,27,11,13,11,9,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.33333,0.90909,0.19844,0.05882,0.80477,0.33333,0.3662,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0006,-0.0094,0.0014,0.0176,-0.0016,0.0504,-0.0293,-0.0044]},{"f":[15,27,19,9,6,21,20,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.06866,0.69876,0.71199,0.3662,0,0,0.68251,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0105,-0.0004,0.0023,-0.0283,0.001,-0.0046,-0.1133,0.0075]},{"f":[14,6,0,11,10,27,19,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.93074,0,0,0.33333,0.90909,0.19844,0.50781,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0016,-0.0276,-0.0031,0.0066,0.0001,-0.0373,0.0053,0.0208]},{"f":[14,13,14,9,15,12,17,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.45718,0.66321,0.51991,0.3662,0.06866,0.85714,0.13863,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0145,-0.0024,-0.0097,0.0233,-0.0001,0.0121,0.0093,-0.0026]},{"f":[17,16,9,14,12,16,15,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.54161,0.70833,0.23105,0.45718,0.85714,0.70833,0.23648,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0033,0.0011,0.0811,0.0174,-0.0339,0.0355,-0.0004,-0.0145]},{"f":[4,16,9,17,17,21,17,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.16667,0.4375,0.59725,0.27726,0.41589,0,0.43944,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0029,-0.002,0.0078,0.0009,-0.0009,-0.0105,0.0027,-0.0043]},{"f":[9,13,27,17,14,11,6,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.90268,0.21956,0.41032,0.27726,0.93074,0.33333,0.5,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0046,-0.004,0.002,-0.0068,-0.0015,0.0623,0.0061,0.0214]},{"f":[9,13,27,12,15,6,17,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.59725,0.2504,0.41032,0.71429,0.06866,0,0.38918,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0194,-0.0035,-0.0068,0.0015,0.0019,-0.0028,0.0106,0.0004]},{"f":[16,11,17,18,14,6,28,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.5,0.33333,0.46052,0.375,0.13626,0.5,0,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0015,0.0033,0.1635,-0.0174,0.0033,0.0172,0.0145,-0.0047]},{"f":[9,4,27,10,27,10,6,-1,-1,-1,-1,-1,-1,-1,-1],"t":[1.04516,0.375,0.12784,0.90909,0.19844,0.77273,0,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.0016,0.0014,-0.001,-0.0092,0.0001,-0.01,0.0038,0.0181]},{"f":[9,20,16,19,19,14,17,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.59725,0.48426,0.31818,0.50781,0.50781,0.53611,0.38918,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0005,-0.1182,-0.0172,-0.0004,-0.0003,-0.006,0.0131,0.0002]},{"f":[19,20,20,13,9,8,14,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.71199,0.60783,0.68251,0.14731,0.23105,0.51699,0.03755,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,-0.002,0.0013,-0.0271,-0.0017,-0.0117,-0.0883,-0.0197,0.0044]},{"f":[15,29,0,13,7,27,13,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.9117,-0.24579,0,0.80477,0.26667,0.19844,0.56463,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0015,0.0203,0.0027,-0.0024,0.0003,-0.0334,0.0125,-0.0023]},{"f":[9,13,27,17,15,14,16,-1,-1,-1,-1,-1,-1,-1,-1],"t":[0.73241,0.21956,0.60579,0.27726,0.95919,0.33562,0.31818,0,0,0,0,0,0,0,0],"l":[1,3,5,7,9,11,13,0,0,0,0,0,0,0,0],"r":[2,4,6,8,10,12,14,0,0,0,0,0,0,0,0],"v":[0,0,0,0,0,0,0,0.0042,-0.0051,0.0012,-0.0085,0.0033,-0.0019,-0.0037,0.0088]}]};
+/*ENDFIXMODEL*/
+const q6 = (x) => Math.round(x * 1e6) / 1e6;
+const FIX_NF = 30;
+/** 1つのセット k について、特徴量の計算に使う共通の情報 */
+function fixContext(show, k) {
+  const set = show.sets[k], prev = show.sets[k - 1].pos, n = show.performers.length, cl = show.clearance, c = set.counts;
+  const lim = isFootball(show.field) ? 8.0 / show.maxstep : show.maxstep;
+  const owner = show.owner[k];
+  const moved = new Array(n), mvs = [];
+  for (let i = 0; i < n; i++) {
+    moved[i] = set.route[i] ? polyLen(set.route[i]) : pathLen(prev[i], set.pos[i], set.bend[i]);
+    mvs.push({ a: prev[i], b: set.pos[i], w: set.wait[i], e: set.end[i], bend: set.bend[i], route: set.route[i] });
+  }
+  const pairs = [];
+  for (const code of nearPairs(mvs, cl)) {
+    const a = Math.floor(code / n), b = code - a * n;
+    const r = closest(mvs[a], mvs[b], c);
+    if (r[0] < cl) pairs.push({ a, b, d: r[0], t: r[1] });
+  }
+  const stmts = show.members[k].map((_, si) => {
+    const own = [];
+    for (let i = 0; i < n; i++) if (owner[i] === si) own.push(i);
+    return own;
+  });
+  return { show, set, k, n, cl, c, lim, owner, moved, mvs, pairs, stmts, movingStmts: stmts.filter((o) => o.some((i) => moved[i] > 1e-9)).length };
+}
+const bendFactor = (b) => { const th = toRad(Math.min(Math.abs(b), 179.0)); return th / (2.0 * Math.sin(th / 2.0)); };
+/** 候補（文 si に edit e を足す）の特徴量。ぜんぶ現在の組み立て結果から安く求まるもの */
+function fixFeatures(cx, si, st, e, cost) {
+  const { set, n, cl, c, lim, owner, moved, mvs, pairs, stmts } = cx;
+  const own = stmts[si];
+  const f = new Array(FIX_NF).fill(0);
+  f[e.t === 'wait' ? 0 : e.t === 'in' ? 1 : e.t === 'bend' ? 2 : 3] = 1;
+  const w = e.t === 'wait' ? e.v : e.t === 'wb' ? e.w : 0.0;
+  const d = e.t === 'in' ? e.v : c - w;
+  const bnd = e.t === 'bend' ? e.v : e.t === 'wb' ? e.b : 0.0;
+  f[4] = w / c;
+  f[5] = e.t === 'in' ? e.v / c : 0.0;
+  f[6] = Math.abs(bnd) / 60.0;
+  f[7] = cost / 12.0;
+  f[8] = Math.log2(Math.max(c, 1.0)) / 5.0;
+  f[9] = Math.log(1.0 + pairs.length) / 3.0;
+  let nS = 0, nBoth = 0, nOne = 0, minD = 1.0, sumT = 0.0, minT = 1.0, partnerMov = 0.0;
+  for (const p of pairs) {
+    const ia = owner[p.a] === si, ib = owner[p.b] === si;
+    if (!ia && !ib) continue;
+    nS++;
+    if (ia && ib) nBoth++; else { nOne++; partnerMov += moved[ia ? p.b : p.a] > 1e-9 ? 1.0 : 0.0; }
+    minD = Math.min(minD, p.d / cl);
+    const tt = p.t / c;
+    sumT += tt; minT = Math.min(minT, tt);
+  }
+  const np = Math.max(pairs.length, 1);
+  f[10] = nS / np;
+  f[11] = nBoth / np;
+  f[12] = nOne / np;
+  f[13] = minD;
+  f[14] = nS ? sumT / nS : 0.5;
+  f[15] = nS ? minT : 0.5;
+  f[16] = own.length / n;
+  f[17] = Math.log(1.0 + own.length) / 5.0;
+  f[18] = cx.movingStmts / 8.0;
+  let r0 = 0.0, r1 = 0.0, mv = 0.0;
+  for (const i of own) {
+    const dur = set.end[i] - set.wait[i];
+    r0 = Math.max(r0, dur > 0.0 ? moved[i] / dur / lim : 0.0);
+    const m1 = moved[i] * (e.t === 'bend' || e.t === 'wb' ? bendFactor(bnd) : 1.0);
+    r1 = Math.max(r1, d > 0.0 ? m1 / d / lim : 0.0);
+    mv += moved[i];
+  }
+  f[19] = Math.min(r0, 4.0) / 2.0;
+  f[20] = Math.min(r1, 4.0) / 2.0;
+  f[21] = r1 > 1.0 ? 1.0 : 0.0;
+  const sk = st.shape.k;
+  f[sk === 'same' ? 22 : sk === 'line' ? 23 : sk === 'arc' || sk === 'circle' ? 24 : sk === 'block' ? 25 : 26] = 1;
+  f[27] = Math.min(own.length ? mv / own.length / cl : 0.0, 60.0) / 30.0;
+  f[28] = nOne ? partnerMov / nOne : 0.0;
+  f[29] = nS ? ((e.t === 'wait' || e.t === 'wb' ? w : e.t === 'in' ? d : 0.0) / c - sumT / nS) : 0.0;
+  for (let i = 0; i < FIX_NF; i++) f[i] = q6(f[i]);
+  return f;
+}
+function modelScore(m, x) {
+  let v = m.base;
+  for (const t of m.trees) {
+    let i = 0;
+    while (t.f[i] >= 0) i = x[t.f[i]] <= t.t[i] ? t.l[i] : t.r[i];
+    v += t.v[i];
+  }
+  return v;
+}
+function fixCands(cur, k, st, si) {
+  const counts = cur.sets[k].counts;
+  const cands = [];
+  if (st.wait === null && st.within === null) {
+    for (const w of [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]) if (w <= counts * 0.6) cands.push({ t: 'wait', v: w });
+    for (const f of [0.5, 0.625, 0.75]) {
+      const d = rround(counts * f);
+      if (d >= 2.0 && d < counts) cands.push({ t: 'in', v: d });
+    }
+  }
+  if (st.bend === null && st.shape.k !== 'follow') {
+    for (const b of [30.0, -30.0, 60.0, -60.0]) {
+      cands.push({ t: 'bend', v: b });
+      if (st.wait === null && st.within === null) {
+        for (const w of [2.0, 4.0, 8.0]) if (w <= counts * 0.6) cands.push({ t: 'wb', w, b });
+      }
+    }
+  }
+  return cands;
+}
+const candCost = (e, counts) => {
+  switch (e.t) {
+    case 'wb': return e.w + Math.abs(e.b) / 10.0 + 1.0;
+    case 'wait': return e.v;
+    case 'in': return (counts - e.v) * 0.8;
+    default: return Math.abs(e.v) / 10.0;
+  }
+};
+function candStmt(st, e) {
+  const s2 = Object.assign({}, st);
+  switch (e.t) {
+    case 'wb': s2.wait = numE(e.w); s2.bend = numE(e.b); break;
+    case 'wait': s2.wait = numE(e.v); break;
+    case 'in': s2.within = numE(e.v); break;
+    default: s2.bend = numE(e.v);
+  }
+  return s2;
+}
+/**
+ * mode: 'exhaustive'（総当たり。従来どおり）| 'guided'（モデルで並べて、そのセットの衝突が全部消える候補が見つかったら打ち切る）
+ * opts.trace(rec) があれば、各候補の特徴量と結果を渡す（学習データ作り用。総当たりで動く）
+ */
+function autoFixRun(ast, opts, guided) {
   const sc0 = fixScore(ast);
   if (sc0 === null) return null;
-  const c0 = sc0[0], o0 = sc0[1];
+  const c0 = sc0[0], o0 = sc0[1], partN = sc0[3];
   let cur = ast;
-  let cc = c0, co = o0, perSet = sc0[2];
+  let cc = c0, co = o0, perSet = sc0[2], curShow = sc0[4];
   const notes = [];
+  const stat = { evals: 0, early: 0, sets: 0, firstPerfectAt: [] };
+  const wsum = (c_, o_) => c_ * 10 + o_;
   for (let k = 1; k < cur.sets.length; k++) {
     let tries = 0;
     while ((perSet[k] === undefined ? 0 : perSet[k]) > 0 && tries < 4) {
       tries++;
+      if (opts.onProgress) opts.onProgress(k, cur.sets.length, notes.length);
+      if (opts.shouldCancel && opts.shouldCancel()) return { ast: cur, notes, before: [c0, o0], after: [cc, co], stat, cancelled: true };
       const counts = cur.sets[k].counts;
-      let best = null; // {c,o,cost,si,e,a,ps}
+      const cx = fixContext(curShow, k);
+      const all = [];
       for (let si = 0; si < cur.sets[k].stmts.length; si++) {
         const st = cur.sets[k].stmts[si];
-        if (st.shape.k === 'attr' || (st.shape.k === 'same' && st.xf.length === 0)) continue;
-        const cands = [];
-        if (st.wait === null && st.within === null) {
-          for (const w of [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]) if (w <= counts * 0.6) cands.push({ t: 'wait', v: w });
-          for (const f of [0.5, 0.625, 0.75]) {
-            const d = rround(counts * f);
-            if (d >= 2.0 && d < counts) cands.push({ t: 'in', v: d });
-          }
-        }
-        if (st.bend === null && st.shape.k !== 'follow') {
-          for (const b of [30.0, -30.0, 60.0, -60.0]) {
-            cands.push({ t: 'bend', v: b });
-            if (st.wait === null && st.within === null) {
-              for (const w of [2.0, 4.0, 8.0]) if (w <= counts * 0.6) cands.push({ t: 'wb', w, b });
-            }
-          }
-        }
-        for (const e of cands) {
-          const s2 = Object.assign({}, st);
-          let cost;
-          switch (e.t) {
-            case 'wb': s2.wait = numE(e.w); s2.bend = numE(e.b); cost = e.w + Math.abs(e.b) / 10.0 + 1.0; break;
-            case 'wait': s2.wait = numE(e.v); cost = e.v; break;
-            case 'in': s2.within = numE(e.v); cost = (counts - e.v) * 0.8; break;
-            default: s2.bend = numE(e.v); cost = Math.abs(e.v) / 10.0;
-          }
-          const a = withStmt(cur, k, si, s2);
-          const sc = fixScore(a);
-          if (sc === null) continue;
-          const c = sc[0], o = sc[1], ps = sc[2];
-          const wsum = (c_, o_) => c_ * 10 + o_;
-          if (c >= cc || wsum(c, o) >= wsum(cc, co)) continue;
-          const better = best === null || wsum(c, o) < wsum(best.c, best.o) || (wsum(c, o) === wsum(best.c, best.o) && cost < best.cost);
-          if (better) best = { c, o, cost, si, e, a, ps };
+        if (st.shape.k === 'attr' || (st.shape.k === 'same' && st.xf.length === 0)) continue; // 動かない文
+        for (const e of fixCands(cur, k, st, si)) {
+          const cost = candCost(e, counts);
+          all.push({ si, e, cost, idx: all.length, x: null, sc: 0.0 });
         }
       }
+      let order = all;
+      if ((guided || opts.trace) && all.length) {
+        for (const cd of all) cd.x = fixFeatures(cx, cd.si, cur.sets[k].stmts[cd.si], cd.e, cd.cost);
+        if (guided && FIX_MODEL) {
+          for (const cd of all) cd.sc = modelScore(FIX_MODEL, cd.x);
+          order = all.slice().sort((p, q) => q.sc - p.sc || p.idx - q.idx);
+        }
+      }
+      const floor = wsum(cc - perSet[k], co);
+      let best = null; // {c,o,cost,idx,si,e,a,ps,show}
+      let tried = 0, perfectAt = -1;
+      for (const cd of order) {
+        const st = cur.sets[k].stmts[cd.si];
+        const a = withStmt(cur, k, cd.si, candStmt(st, cd.e));
+        const sc = fixScore(a, partN);
+        tried++;
+        if (sc === null) { if (opts.trace) opts.trace({ x: cd.x, y: -1.0, perfect: false, k, idx: cd.idx, setCounts: counts, cost: cd.cost }); continue; }
+        const c = sc[0], o = sc[1], ps = sc[2];
+        if (opts.trace) opts.trace({ x: cd.x, y: Math.max(-1.0, Math.min(1.0, (wsum(cc, co) - wsum(c, o)) / (10.0 * perSet[k]))), perfect: wsum(c, o) <= floor && c < cc, k, idx: cd.idx, setCounts: counts, cost: cd.cost });
+        if (c >= cc || wsum(c, o) >= wsum(cc, co)) continue;
+        const better = best === null || wsum(c, o) < wsum(best.c, best.o) || (wsum(c, o) === wsum(best.c, best.o) && (cd.cost < best.cost || (cd.cost === best.cost && cd.idx < best.idx)));
+        if (better) best = { c, o, cost: cd.cost, idx: cd.idx, si: cd.si, e: cd.e, a, ps, show: sc[4] };
+        if (wsum(c, o) <= floor && perfectAt < 0) perfectAt = tried;
+        if (guided && wsum(c, o) <= floor) break;   // これ以上は望めない（そのセットの衝突が全部消え、ほかの警告も増えない）
+      }
+      stat.evals += tried; stat.sets++;
+      if (perfectAt > 0) stat.firstPerfectAt.push(perfectAt);
+      if (guided && best !== null && tried < order.length) stat.early++;
       if (best === null) break;
       const st = best.a.sets[k].stmts[best.si];
       const group = st.group.map(groupTermStr).join(' + ');
@@ -2399,9 +2822,26 @@ function autoFix(ast) {
       cc = best.c;
       co = best.o;
       perSet = best.ps;
+      curShow = best.show;
     }
   }
-  return { ast: cur, notes, before: [c0, o0], after: [cc, co] };
+  return { ast: cur, notes, before: [c0, o0], after: [cc, co], stat };
+}
+/**
+ * 自動修正。既定は「判断AIで並べて早く終わる」版。次の場合は総当たりでもやり直して、良いほうを返す（= 総当たり以上の結果を保証する）:
+ *  ・並べ替えで打ち切った（early）うえで、衝突が残った／ほかの警告が増えた
+ */
+function autoFix(ast, opts) {
+  opts = opts || {};
+  if (opts.exhaustive || opts.trace || !FIX_MODEL) return autoFixRun(ast, opts, false);
+  const g = autoFixRun(ast, opts, true);
+  if (g === null || g.cancelled) return g;
+  if (!opts.noVerify && g.stat.early > 0 && (g.after[0] > 0 || g.after[1] > g.before[1])) {
+    const x = autoFixRun(ast, opts, false);
+    if (x !== null && !x.cancelled && x.after[0] * 10 + x.after[1] < g.after[0] * 10 + g.after[1]) { x.stat.fallback = true; x.stat.guidedEvals = g.stat.evals; return x; }
+    if (x !== null) g.stat.verifyEvals = x.stat.evals;   // 結果は同じだった確認のための総当たりで使った評価数（統計用）
+  }
+  return g;
 }
 
 // ============================================================ 公開API
@@ -2425,11 +2865,14 @@ function jinkeiCompile(src) {
     handles: show.handles, members: show.members, owner: show.owner, min_counts: mins,
   };
 }
-function jinkeiFix(src) {
+function jinkeiFix(src, opts) {
   let r = null;
-  try { const ast = parse(src); r = autoFix(ast); } catch (e) { if (!(e instanceof JkErr)) throw e; }
+  try { const ast = parse(src); r = autoFix(ast, opts); } catch (e) { if (!(e instanceof JkErr)) throw e; }
   if (r === null) return { ok: false, error: 'エラーを直してから実行してください' };
-  return { ok: true, model: modelJson(r.ast), notes: r.notes, before: r.before[0], after: r.after[0], others: [r.before[1], r.after[1]] };
+  const out = { ok: true, model: modelJson(r.ast), notes: r.notes, before: r.before[0], after: r.after[0], others: [r.before[1], r.after[1]] };
+  if (r.cancelled) out.cancelled = true;
+  if (opts && opts.stats) out.stat = r.stat;
+  return out;
 }
 function jinkeiModel(src) {
   try { return modelJson(parse(src)); } catch (e) {
@@ -2438,7 +2881,8 @@ function jinkeiModel(src) {
   }
 }
 
-const api = { jinkeiCompile, jinkeiFix, jinkeiModel };
+const api = { jinkeiCompile, jinkeiFix, jinkeiModel, jinkeiFixTrace: (src, trace) => { const ast = parse(src); return autoFix(ast, { trace }); }, jinkeiMemoClear: memoClear, jinkeiStats: () => ({ memoHits: MEMO.hits, memoMiss: MEMO.miss, memoCells: MEMO.cells, fixEvals: MEMO.evals }) };
+root.jinkeiMemoClear = memoClear;
 root.jinkeiCompile = jinkeiCompile;
 root.jinkeiFix = jinkeiFix;
 root.jinkeiModel = jinkeiModel;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // 人体モデル・楽器・ポーズ・歩行アニメを手続き生成して assets/human.bin / human.json に書き出す。
+// （書き出したあとに node tools/pack_human.js で軽い版 human2.bin(.gz) を作り直す）
 // 使い方: node tools/gen_human.js    （形式は tools/README.md）
 const fs = require('fs');
 const path = require('path');

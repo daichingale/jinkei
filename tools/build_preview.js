@@ -18,26 +18,34 @@ const values = {
   '__FIELD2D__': read('src/field2d.js'),
   '__MOTION__': motion,
   '__THREE__': read('vendor/three.min.js'),
-  '__HUMAN__': fs.readFileSync(path.join(ROOT, 'assets/human.bin')).toString('base64'),
+  '__HUMAN__': fs.readFileSync(path.join(ROOT, 'assets/human2.bin.gz')).toString('base64'),
   '__VIEW3D__': read('src/view3d.js'),
 };
 // 3D 部品（three.js・人体データ・view3d.js）を別ファイルにして読み込む版（Pages 用）
 const PAGES_TAIL = `<script>
+/* 3D 部品（three.js・人体データ・view3d.js）は 3D を初めて開くときに別ファイルから読み込む。
+   assets/ は初回に取り込んだあと sw.js がキャッシュする（オフラインでも開ける） */
 (function () {
-  var btn = document.getElementById('mode3d'); btn.disabled = true;
+  var btn = document.getElementById('mode3d'), st = 0;
   function sc(src) { return new Promise(function (ok, ng) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ng; document.head.appendChild(s); }); }
-  var human = fetch('assets/human.bin.gz').then(function (r) {
-    if (!r.ok) throw new Error('human'); if (!window.DecompressionStream) throw new Error('DecompressionStream');
-    return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
-  });
-  Promise.all([sc('assets/three.min.js'), human]).then(function (r) { window.JK_HUMAN_BIN = new Uint8Array(r[1]); btn.disabled = false; return sc('assets/view3d.js'); })
-    .catch(function (e) { btn.textContent = '3D は使えません'; btn.title = String(e && e.message || e); });
+  window.jkLoad3d = function () {
+    if (st) return st; btn.textContent = '3D を読み込み中…'; btn.disabled = true;
+    var human = fetch('assets/human2.bin.gz').then(function (r) { if (!r.ok) throw new Error('human'); return r.arrayBuffer(); });
+    st = Promise.all([sc('assets/three.min.js'), human]).then(function (r) {
+      window.JK_HUMAN_BIN = new Uint8Array(r[1]); btn.disabled = false; return sc('assets/view3d.js');
+    }).then(function () {
+      if (!/(^|&)view=3d(&|$)/.test(location.hash.slice(1))) btn.click();
+    }).catch(function (e) { st = 0; btn.disabled = false; btn.textContent = '3D で見る'; btn.title = '3D を読み込めませんでした: ' + String(e && e.message || e); });
+    return st;
+  };
+  btn.onclick = window.jkLoad3d;
+  if (/(^|&)(view=3d|rec=1)/.test(location.hash.slice(1))) window.jkLoad3d();
 })();
 </script>`;
 function previewTemplate(opts) {
   let html = mat[1];
   if (opts && opts.pages) {
-    html = html.replace(/<script>__THREE__<\/script>\n<script>window\.JK_HUMAN="__HUMAN__";<\/script>\n<script>__VIEW3D__<\/script>/, () => PAGES_TAIL)
+    html = html.replace(/<script type="text\/plain" id="jk-three">__THREE__<\/script>\n<script type="text\/plain" id="jk-human">__HUMAN__<\/script>\n<script type="text\/plain" id="jk-view3d">__VIEW3D__<\/script>\n<script>\n\/\* 3D 部品[\s\S]*?<\/script>/, () => PAGES_TAIL)
       .replace('<head><meta charset="utf-8">', '<head><meta charset="utf-8"><base href="__JK_BASE__">');
     if (html.includes('__THREE__')) throw new Error('Pages 用のテンプレート置換に失敗しました');
   }
