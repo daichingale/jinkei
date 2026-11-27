@@ -1,0 +1,705 @@
+# # 吹奏楽連盟マーチングコンテストの規定課題を、パレード自動作成で作ったショー（体育館 30m×30m）
+# # ①四角形ラインを反時計回りに一周（順次ピンホイール 8 拍）→ ②センターラインで180°ターン（カウンターマーチ）→ ③客席向きで32歩足踏み
+# # 先頭はドラムメジャー（dm）。直進は縦横そろった直線、角は拍を決めて回る。外側の列は20mラインの外側を通る
+show "マーチングコンテスト規定課題（36人）" {
+  field gym
+  tempo 120
+
+  section fl "フルート" 6 color "#ff9ff3"
+  section tp "トランペット" 8 color "#ffd23f"
+  section cl "クラリネット" 8 color "#48dbfb"
+  section tb "トロンボーン" 6 color "#ee5253"
+  section sn "スネア" 4 instrument snare color "#ff9f43"
+  section bd "バスドラム" 3 instrument bass_drum color "#c8d6e5"
+  section dm "ドラムメジャー" 1 color "#e63946"
+
+  set 整列 {
+    fl1..fl3       : line (2.1875, -8.75) -> (2.1875, -11.25) assign keep step glide
+    fl4..fl6       : line (0.9375, -8.75) -> (0.9375, -11.25) assign keep step glide
+    tp1..tp3       : line (-0.3125, -8.75) -> (-0.3125, -11.25) assign keep step glide
+    tp4..tp6       : line (-1.5625, -8.75) -> (-1.5625, -11.25) assign keep step glide
+    tp7..tp8 + cl1 : line (-2.8125, -8.75) -> (-2.8125, -11.25) assign keep step glide
+    cl2..cl4       : line (-4.0625, -8.75) -> (-4.0625, -11.25) assign keep step glide
+    cl5..cl7       : line (-5.3125, -8.75) -> (-5.3125, -11.25) assign keep step glide
+    cl8 + tb1..tb2 : line (-6.5625, -8.75) -> (-6.5625, -11.25) assign keep step glide
+    tb3..tb5       : line (-7.8125, -8.75) -> (-7.8125, -11.25) assign keep step glide
+    tb6 + sn1..sn2 : line (-9.0625, -8.75) -> (-9.0625, -11.25) assign keep step glide
+    sn3..sn4 + bd1 : line (-10.3125, -8.75) -> (-10.3125, -11.25) assign keep step glide
+    bd2..bd3       : line (-11.5625, -8.75) -> (-11.5625, -10) assign keep step glide
+    dm             : at (4.6875, -10) step glide
+  }
+
+  set "①1" counts 4 {   # 直進
+    all : same shift (2.5, 0) step glide
+  }
+
+  set sub counts 4 {
+    fl + tp + cl + tb + sn + bd : same shift (2.5, 0) step glide
+    dm                          : same rotate 45 about (7.1875, -7.1875) bend -45 step glide
+  }
+
+  set "①2" counts 2 {   # 先頭が①角1でピンホイール
+    fl1..fl3 + dm                     : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    fl4..fl6 + tp + cl + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + dm                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tp + cl + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tp4..tp8 + cl + tb + sn + bd : same shift (1.25, 0) step glide
+    dm                           : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tp7..tp8 + cl + tb + sn + bd : same shift (1.25, 0) step glide
+    dm                           : same shift (0, 1.25) step glide
+  }
+
+  set "①3" counts 2 {   # 直進
+    fl1..fl3 + dm           : same shift (0, 1.25) step glide
+    fl4..fl6 + tp + cl1     : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    cl2..cl8 + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + dm                 : same shift (0, 1.25) step glide
+    tp + cl1..cl4           : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    cl5..cl8 + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3 + dm  : same shift (0, 1.25) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    cl8 + tb + sn + bd  : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6 + dm       : same shift (0, 1.25) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tb3..tb6 + sn + bd       : same shift (1.25, 0) step glide
+  }
+
+  set "①4" counts 2 {   # 直進
+    fl + tp + cl1 + dm  : same shift (0, 1.25) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tb6 + sn + bd       : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl4 + dm  : same shift (0, 1.25) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    sn3..sn4 + bd            : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl7 + dm : same shift (0, 1.25) step glide
+    cl8 + tb + sn + bd1     : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    bd2..bd3                : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb2 + dm : same shift (0, 1.25) step glide
+    tb3..tb6 + sn + bd           : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+  }
+
+  set "①5" counts 2 {   # 最後尾が①角1を回り終える、先頭が①角2でピンホイール
+    fl + tp + cl + tb1..tb5 + dm : same shift (0, 1.25) step glide
+    tb6 + sn + bd                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn1..sn2 + dm : same shift (0, 0.625) step glide
+    sn3..sn4 + bd                     : same rotate 11.25 about (7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn1..sn2 : same shift (0, 0.625) step glide
+    sn3..sn4 + bd                : same rotate 11.25 about (7.1875, -7.1875) bend -11.25 step glide
+    dm                           : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb + sn + bd1 : same shift (0, 1.25) step glide
+    bd2..bd3                     : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    dm                           : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn + bd : same shift (0, 0.625) step glide
+    dm                          : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 1 {
+    fl1..fl3 + dm                     : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    fl4..fl6 + tp + cl + tb + sn + bd : same shift (0, 0.625) step glide
+  }
+
+  set "①6" counts 1 {   # 直進
+    fl1..fl3 + dm                     : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    fl4..fl6 + tp + cl + tb + sn + bd : same shift (0, 0.625) step glide
+  }
+
+  set sub counts 2 {
+    fl + dm                : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    tp + cl + tb + sn + bd : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3                : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    tp4..tp8 + cl + tb + sn + bd : same shift (0, 1.25) step glide
+    dm                           : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6                : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    tp7..tp8 + cl + tb + sn + bd : same shift (0, 1.25) step glide
+    dm                           : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 1 {
+    fl1..fl3 + dm           : same shift (-0.625, 0) step glide
+    fl4..fl6 + tp + cl1     : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    cl2..cl8 + tb + sn + bd : same shift (0, 0.625) step glide
+  }
+
+  set "①7" counts 1 {   # 直進
+    fl1..fl3 + dm           : same shift (-0.625, 0) step glide
+    fl4..fl6 + tp + cl1     : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    cl2..cl8 + tb + sn + bd : same shift (0, 0.625) step glide
+  }
+
+  set sub counts 2 {
+    fl + dm                 : same shift (-1.25, 0) step glide
+    tp + cl1..cl4           : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    cl5..cl8 + tb + sn + bd : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3 + dm  : same shift (-1.25, 0) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    cl8 + tb + sn + bd  : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6 + dm       : same shift (-1.25, 0) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    tb3..tb6 + sn + bd       : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl1 + dm  : same shift (-0.625, 0) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    tb6 + sn + bd       : same shift (0, 0.625) step glide
+  }
+
+  set "①8" counts 1 {   # 直進
+    fl + tp + cl1 + dm  : same shift (-0.625, 0) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    tb6 + sn + bd       : same shift (0, 0.625) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl4 + dm  : same shift (-1.25, 0) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    sn3..sn4 + bd            : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl7 + dm : same shift (-1.25, 0) step glide
+    cl8 + tb + sn + bd1     : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    bd2..bd3                : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb2 + dm : same shift (-1.25, 0) step glide
+    tb3..tb6 + sn + bd           : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb1..tb5 + dm : same shift (-0.625, 0) step glide
+    tb6 + sn + bd                : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set "①9" counts 1 {   # 最後尾が①角2を回り終える、先頭が①角3でピンホイール
+    fl + tp + cl + tb1..tb5 + dm : same shift (-0.625, 0) step glide
+    tb6 + sn + bd                : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn1..sn2 + dm : same shift (-0.625, 0) step glide
+    sn3..sn4 + bd                     : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn1..sn2 : same shift (-0.625, 0) step glide
+    sn3..sn4 + bd                : same rotate 11.25 about (7.1875, 7.1875) bend -11.25 step glide
+    dm                           : same rotate 11.25 about (-7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb + sn + bd1 : same shift (-1.25, 0) step glide
+    bd2..bd3                     : same rotate 22.5 about (7.1875, 7.1875) bend -22.5 step glide
+    dm                           : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn + bd : same shift (-0.625, 0) step glide
+    dm                          : same rotate 11.25 about (-7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl1..fl3 + dm                     : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    fl4..fl6 + tp + cl + tb + sn + bd : same shift (-1.25, 0) step glide
+  }
+
+  set "①10" counts 2 {   # 直進
+    fl + dm                : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    tp + cl + tb + sn + bd : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3                : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    tp4..tp8 + cl + tb + sn + bd : same shift (-1.25, 0) step glide
+    dm                           : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6                : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    tp7..tp8 + cl + tb + sn + bd : same shift (-1.25, 0) step glide
+    dm                           : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl1..fl3 + dm           : same shift (0, -1.25) step glide
+    fl4..fl6 + tp + cl1     : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    cl2..cl8 + tb + sn + bd : same shift (-1.25, 0) step glide
+  }
+
+  set "①11" counts 2 {   # 直進
+    fl + dm                 : same shift (0, -1.25) step glide
+    tp + cl1..cl4           : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    cl5..cl8 + tb + sn + bd : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3 + dm  : same shift (0, -1.25) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    cl8 + tb + sn + bd  : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6 + dm       : same shift (0, -1.25) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    tb3..tb6 + sn + bd       : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1 + dm  : same shift (0, -1.25) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    tb6 + sn + bd       : same shift (-1.25, 0) step glide
+  }
+
+  set "①12" counts 2 {   # 直進
+    fl + tp + cl1..cl4 + dm  : same shift (0, -1.25) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    sn3..sn4 + bd            : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl7 + dm : same shift (0, -1.25) step glide
+    cl8 + tb + sn + bd1     : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    bd2..bd3                : same shift (-1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb2 + dm : same shift (0, -1.25) step glide
+    tb3..tb6 + sn + bd           : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb5 + dm : same shift (0, -1.25) step glide
+    tb6 + sn + bd                : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+  }
+
+  set "①13" counts 1 {   # 最後尾が①角3を回り終える、先頭が①角4でピンホイール
+    fl + tp + cl + tb + sn1..sn2 + dm : same shift (0, -0.625) step glide
+    sn3..sn4 + bd                     : same rotate 11.25 about (-7.1875, 7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn1..sn2 : same shift (0, -0.625) step glide
+    sn3..sn4 + bd                : same rotate 11.25 about (-7.1875, 7.1875) bend -11.25 step glide
+    dm                           : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb + sn + bd1 : same shift (0, -1.25) step glide
+    bd2..bd3                     : same rotate 22.5 about (-7.1875, 7.1875) bend -22.5 step glide
+    dm                           : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn + bd : same shift (0, -0.625) step glide
+    dm                          : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl1..fl3 + dm                     : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    fl4..fl6 + tp + cl + tb + sn + bd : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 1 {
+    fl + dm                : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    tp + cl + tb + sn + bd : same shift (0, -0.625) step glide
+  }
+
+  set "①14" counts 1 {   # 直進
+    fl + dm                : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    tp + cl + tb + sn + bd : same shift (0, -0.625) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3                : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    tp4..tp8 + cl + tb + sn + bd : same shift (0, -1.25) step glide
+    dm                           : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6                : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    tp7..tp8 + cl + tb + sn + bd : same shift (0, -1.25) step glide
+    dm                           : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl1..fl3 + dm           : same shift (1.25, 0) step glide
+    fl4..fl6 + tp + cl1     : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    cl2..cl8 + tb + sn + bd : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 1 {
+    fl + dm                 : same shift (0.625, 0) step glide
+    tp + cl1..cl4           : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    cl5..cl8 + tb + sn + bd : same shift (0, -0.625) step glide
+  }
+
+  set "①15" counts 1 {   # 直進
+    fl + dm                 : same shift (0.625, 0) step glide
+    tp + cl1..cl4           : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    cl5..cl8 + tb + sn + bd : same shift (0, -0.625) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp3 + dm  : same shift (1.25, 0) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    cl8 + tb + sn + bd  : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6 + dm       : same shift (1.25, 0) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    tb3..tb6 + sn + bd       : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1 + dm  : same shift (1.25, 0) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    tb6 + sn + bd       : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl1..cl4 + dm  : same shift (0.625, 0) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    sn3..sn4 + bd            : same shift (0, -0.625) step glide
+  }
+
+  set "①16" counts 1 {   # 先頭が出発位置に戻る（①おわり）
+    fl + tp + cl1..cl4 + dm  : same shift (0.625, 0) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    sn3..sn4 + bd            : same shift (0, -0.625) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl7 + dm : same shift (1.25, 0) step glide
+    cl8 + tb + sn + bd1     : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    bd2..bd3                : same shift (0, -1.25) step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb1..tb2 + dm : same shift (0.625, 0) step glide
+    tb3..tb6 + sn + bd           : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb1..tb2 + dm : same shift (0.625, 0) step glide
+    tb3..tb6 + sn + bd           : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb5 + dm : same shift (1.25, 0) step glide
+    tb6 + sn + bd                : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn1..sn2 + dm : same shift (0.625, 0) step glide
+    sn3..sn4 + bd                     : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set "②1" counts 1 {   # 最後尾が①角4を回り終える、先頭が②角1でピンホイール
+    fl + tp + cl + tb + sn1..sn2 : same shift (0.625, 0) step glide
+    sn3..sn4 + bd                : same rotate 11.25 about (-7.1875, -7.1875) bend -11.25 step glide
+    dm                           : same rotate 11.25 about (7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb + sn + bd1 : same shift (1.25, 0) step glide
+    bd2..bd3                     : same rotate 22.5 about (-7.1875, -7.1875) bend -22.5 step glide
+    dm                           : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+  }
+
+  set sub counts 1 {
+    fl + tp + cl + tb + sn + bd : same shift (0.625, 0) step glide
+    dm                          : same rotate 11.25 about (7.1875, -7.1875) bend -11.25 step glide
+  }
+
+  set sub counts 2 {
+    fl1..fl3 + dm                     : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    fl4..fl6 + tp + cl + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 2 {
+    fl + dm                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tp + cl + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set "②2" counts 2 {   # 直進
+    fl + tp1..tp3                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tp4..tp8 + cl + tb + sn + bd : same shift (1.25, 0) step glide
+    dm                           : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp1..tp6                : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    tp7..tp8 + cl + tb + sn + bd : same shift (1.25, 0) step glide
+    dm                           : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl1..fl3 + dm           : same shift (0, 1.25) step glide
+    fl4..fl6 + tp + cl1     : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    cl2..cl8 + tb + sn + bd : same shift (1.25, 0) step glide
+  }
+
+  set sub counts 0.5 {
+    fl + dm                 : same shift (0, 0.3125) step glide
+    tp + cl1..cl4           : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+    cl5..cl8 + tb + sn + bd : same shift (0.3125, 0) step glide
+  }
+
+  set sub counts 1.5 {
+    fl                      : same shift (0, 0.9375) step glide
+    tp + cl1..cl4           : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+    cl5..cl8 + tb + sn + bd : same shift (0.9375, 0) step glide
+    dm                      : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+  }
+
+  set "②3" counts 2 {   # 先頭が②角2でピンホイール
+    fl + tp1..tp3       : same shift (0, 1.25) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 22.5 about (7.1875, -7.1875) bend -22.5 step glide
+    cl8 + tb + sn + bd  : same shift (1.25, 0) step glide
+    dm                  : same rotate 22.5 about (7.1875, -3.125) bend -22.5 step glide
+  }
+
+  set sub counts 0.5 {
+    fl + tp1..tp6            : same shift (0, 0.3125) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+    tb3..tb6 + sn + bd       : same shift (0.3125, 0) step glide
+    dm                       : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+  }
+
+  set sub counts 1.5 {
+    fl1..fl3 + dm            : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    fl4..fl6 + tp1..tp6      : same shift (0, 0.9375) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+    tb3..tb6 + sn + bd       : same shift (0.9375, 0) step glide
+  }
+
+  set sub counts 0.5 {
+    fl1..fl3 + dm       : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    fl4..fl6 + tp + cl1 : same shift (0, 0.3125) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+    tb6 + sn + bd       : same shift (0.3125, 0) step glide
+  }
+
+  set sub counts 1.5 {
+    fl + dm             : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    tp + cl1            : same shift (0, 0.9375) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+    tb6 + sn + bd       : same shift (0.9375, 0) step glide
+  }
+
+  set sub counts 0.5 {
+    fl + dm                  : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    tp + cl1..cl4            : same shift (0, 0.3125) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+    sn3..sn4 + bd            : same shift (0.3125, 0) step glide
+  }
+
+  set sub counts 1.5 {
+    fl + tp1..tp3            : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    tp4..tp8 + cl1..cl4      : same shift (0, 0.9375) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+    sn3..sn4 + bd            : same shift (0.9375, 0) step glide
+    dm                       : same shift (-0.9375, 0) step glide
+  }
+
+  set "②4" counts 0.5 {   # 直進
+    fl + tp1..tp3       : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    tp4..tp8 + cl1..cl7 : same shift (0, 0.3125) step glide
+    cl8 + tb + sn + bd1 : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+    bd2..bd3            : same shift (0.3125, 0) step glide
+    dm                  : same shift (-0.3125, 0) step glide
+  }
+
+  set sub counts 1.5 {
+    fl + tp1..tp6       : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    tp7..tp8 + cl1..cl7 : same shift (0, 0.9375) step glide
+    cl8 + tb + sn + bd1 : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+    bd2..bd3            : same shift (0.9375, 0) step glide
+    dm                  : same shift (-0.9375, 0) step glide
+  }
+
+  set sub counts 0.5 {
+    fl + tp1..tp6            : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    tp7..tp8 + cl + tb1..tb2 : same shift (0, 0.3125) step glide
+    tb3..tb6 + sn + bd       : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+    dm                       : same shift (-0.3125, 0) step glide
+  }
+
+  set sub counts 1.5 {
+    fl1..fl3 + dm       : same shift (-0.9375, 0) step glide
+    fl4..fl6 + tp + cl1 : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    cl2..cl8 + tb1..tb2 : same shift (0, 0.9375) step glide
+    tb3..tb6 + sn + bd  : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+  }
+
+  set sub counts 0.5 {
+    fl1..fl3 + dm       : same shift (-0.3125, 0) step glide
+    fl4..fl6 + tp + cl1 : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    cl2..cl8 + tb1..tb5 : same shift (0, 0.3125) step glide
+    tb6 + sn + bd       : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+  }
+
+  set sub counts 1.5 {
+    fl + dm             : same shift (-0.9375, 0) step glide
+    tp + cl1..cl4       : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    cl5..cl8 + tb1..tb5 : same shift (0, 0.9375) step glide
+    tb6 + sn + bd       : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+  }
+
+  set sub counts 0.5 {
+    fl + dm                  : same shift (-0.3125, 0) step glide
+    tp + cl1..cl4            : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    cl5..cl8 + tb + sn1..sn2 : same shift (0, 0.3125) step glide
+    sn3..sn4 + bd            : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+  }
+
+  set sub counts 1.5 {
+    fl + tp1..tp3 + dm  : same shift (-0.9375, 0) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    cl8 + tb + sn1..sn2 : same shift (0, 0.9375) step glide
+    sn3..sn4 + bd       : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+  }
+
+  set "②5" counts 0.5 {   # 最後尾が②角1を回り終える
+    fl + tp1..tp3 + dm  : same shift (-0.3125, 0) step glide
+    tp4..tp8 + cl1..cl7 : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    cl8 + tb + sn + bd1 : same shift (0, 0.3125) step glide
+    bd2..bd3            : same rotate 5.625 about (7.1875, -7.1875) bend -5.625 step glide
+  }
+
+  set sub counts 1.5 {
+    fl + tp1..tp6 + dm       : same shift (-0.9375, 0) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    tb3..tb6 + sn + bd1      : same shift (0, 0.9375) step glide
+    bd2..bd3                 : same rotate 16.875 about (7.1875, -7.1875) bend -16.875 step glide
+  }
+
+  set sub counts 0.5 {
+    fl + tp1..tp6 + dm       : same shift (-0.3125, 0) step glide
+    tp7..tp8 + cl + tb1..tb2 : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    tb3..tb6 + sn + bd       : same shift (0, 0.3125) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1 + dm  : same shift (-1.25, 0) step glide
+    cl2..cl8 + tb1..tb5 : same rotate 22.5 about (7.1875, -3.125) bend -22.5 step glide
+    tb6 + sn + bd       : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl1..cl4 + dm  : same shift (-1.25, 0) step glide
+    cl5..cl8 + tb + sn1..sn2 : same rotate 22.5 about (7.1875, -3.125) bend -22.5 step glide
+    sn3..sn4 + bd            : same shift (0, 1.25) step glide
+  }
+
+  set sub counts 1.5 {
+    fl + tp + cl1..cl7 + dm : same shift (-0.9375, 0) step glide
+    cl8 + tb + sn + bd1     : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+    bd2..bd3                : same shift (0, 0.9375) step glide
+  }
+
+  set "②6" counts 0.5 {   # 直進
+    fl + tp + cl1..cl7 + dm : same shift (-0.3125, 0) step glide
+    cl8 + tb + sn + bd1     : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+    bd2..bd3                : same shift (0, 0.3125) step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb2 + dm : same shift (-1.25, 0) step glide
+    tb3..tb6 + sn + bd           : same rotate 22.5 about (7.1875, -3.125) bend -22.5 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb1..tb5 + dm : same shift (-1.25, 0) step glide
+    tb6 + sn + bd                : same rotate 22.5 about (7.1875, -3.125) bend -22.5 step glide
+  }
+
+  set sub counts 2 {
+    fl + tp + cl + tb + sn1..sn2 + dm : same shift (-1.25, 0) step glide
+    sn3..sn4 + bd                     : same rotate 22.5 about (7.1875, -3.125) bend -22.5 step glide
+  }
+
+  set sub counts 1.5 {
+    fl + tp + cl + tb + sn + bd1 + dm : same shift (-0.9375, 0) step glide
+    bd2..bd3                          : same rotate 16.875 about (7.1875, -3.125) bend -16.875 step glide
+  }
+
+  set "②7" counts 0.5 {   # 最後尾が②角2を回り終える
+    fl + tp + cl + tb + sn + bd1 + dm : same shift (-0.3125, 0) step glide
+    bd2..bd3                          : same rotate 5.625 about (7.1875, -3.125) bend -5.625 step glide
+  }
+
+  set sub counts 7.5 {
+    all : same shift (-4.6875, 0) step glide
+  }
+
+  set "②Uターン" counts 40 {
+    fl3 + fl6 + tp3 + tp6 + cl1 + cl4 + cl7 + tb2 + tb5 + sn2 + bd1       : follow (-11.25, 0.9375) -> (-15, 0.9375) -> (-15.080881, 0.948148) -> (-15.15625, 0.979367) -> (-15.220971, 1.029029) -> (-15.270633, 1.09375) -> (-15.301852, 1.169119) -> (-15.3125, 1.25) -> (-15.301852, 1.330881) -> (-15.270633, 1.40625) -> (-15.220971, 1.470971) -> (-15.15625, 1.520633) -> (-15.080881, 1.551852) -> (-15, 1.5625) -> (1.25, 1.5625) spacing 1.25 assign keep step glide
+    fl2 + fl5 + tp2 + tp5 + tp8 + cl3 + cl6 + tb1 + tb4 + sn1 + sn4 + bd3 : follow (-11.25, -0.3125) -> (-15, -0.3125) -> (-15.080881, -0.301852) -> (-15.15625, -0.270633) -> (-15.220971, -0.220971) -> (-15.270633, -0.15625) -> (-15.301852, -0.080881) -> (-15.3125, 0) -> (-15.301852, 0.080881) -> (-15.270633, 0.15625) -> (-15.220971, 0.220971) -> (-15.15625, 0.270633) -> (-15.080881, 0.301852) -> (-15, 0.3125) -> (1.25, 0.3125) spacing 1.25 assign keep step glide
+    fl1 + fl4 + tp1 + tp4 + tp7 + cl2 + cl5 + cl8 + tb3 + tb6 + sn3 + bd2 : follow (-11.25, -1.5625) -> (-15, -1.5625) -> (-15.080881, -1.551852) -> (-15.15625, -1.520633) -> (-15.220971, -1.470971) -> (-15.270633, -1.40625) -> (-15.301852, -1.330881) -> (-15.3125, -1.25) -> (-15.301852, -1.169119) -> (-15.270633, -1.09375) -> (-15.220971, -1.029029) -> (-15.15625, -0.979367) -> (-15.080881, -0.948148) -> (-15, -0.9375) -> (1.25, -0.9375) spacing 1.25 assign keep step glide
+    dm                                                                    : follow (-13.75, -0.3125) -> (-15, -0.3125) -> (-15.080881, -0.301852) -> (-15.15625, -0.270633) -> (-15.220971, -0.220971) -> (-15.270633, -0.15625) -> (-15.301852, -0.080881) -> (-15.3125, 0) -> (-15.301852, 0.080881) -> (-15.270633, 0.15625) -> (-15.220971, 0.220971) -> (-15.15625, 0.270633) -> (-15.080881, 0.301852) -> (-15, 0.3125) -> (1.25, 0.3125) -> (3.75, 0.3125) spacing 1.25 assign keep step glide
+  }
+
+  set "③客席へ向き直る" counts 24 {
+    all : same rotate -90 about (-4.375, 0.3125) bend 90 step glide
+  }
+
+  set "③足踏み32歩" hold 32 mark {
+    all : face front
+  }
+}

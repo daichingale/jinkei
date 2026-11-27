@@ -297,7 +297,9 @@ __BOOT__
       <button id="playset" title="前のセットからこのセットへの動きを再生">▶ 動きを再生</button>
       <label><input type="checkbox" id="showprev" checked> 前のセット</label>
       <label><input type="checkbox" id="shownames"> 名前</label>
-      <label title="ドラッグ時のマス目（Shift を押しながらで自由に）">吸着 <select id="snap"><option value="0.25">0.25</option><option value="0.5" selected>0.5</option><option value="1">1</option><option value="0">なし</option></select></label>
+      <label title="ドラッグ時のマス目（Shift を押しながらで自由に）。線の間隔にぴったり合います">吸着 <select id="snap"><option value="0.25">0.25</option><option value="0.5" selected>0.5</option><option value="1">1</option><option value="2.5">2.5</option><option value="5">5</option><option value="0">なし</option></select></label>
+      <label title="下の方眼の細かさ。拡大するほど細かい線が出ます">グリッド <select id="gridmode"><option value="fine">細かい</option><option value="normal">普通</option><option value="off">オフ</option></select></label>
+      <label title="5m ごとの交点に小さな十字（本番のフロアと同じ印）を出します"><input type="checkbox" id="gridpts" checked> <span id="gridptsl">5mポイント</span></label>
       <span id="info"></span>
     </div>
   </div>
@@ -618,12 +620,27 @@ function poseIcon(name) {
 }
 
 // ================= 描画 =================
+// グリッド設定（表示メニュー）と、吸着の刻み（格子の間隔に合わせる）
+function syncGridUI() {
+  const fb = isFB(), cfg = jkField.cfg;
+  $('gridmode').value = cfg.mode; $('gridpts').checked = !!cfg.pts;
+  $('gridptsl').textContent = fb ? '8歩ポイント' : '5mポイント';
+  const sn = $('snap'), cur = sn.value, vals = fb ? ['0.5', '1', '2', '4', '8'] : ['0.25', '0.5', '1', '2.5', '5'];
+  if (sn.dataset.fb !== String(fb)) {
+    sn.dataset.fb = String(fb);
+    sn.innerHTML = vals.map(v => `<option value="${v}">${v}${fb ? '歩' : 'm'}</option>`).join('') + '<option value="0">なし</option>';
+    sn.value = vals.includes(cur) || cur === '0' ? cur : '0.5';
+  }
+}
+$('gridmode').onchange = () => { jkField.setGrid({mode: $('gridmode').value}); };
+$('gridpts').onchange = () => { jkField.setGrid({pts: $('gridpts').checked}); };
 function ensureField() {
   const key = JSON.stringify(R.data.field);
   if (key === fieldKey) return;
   fieldKey = key;
   svg.innerHTML = '';
   FLD = jkField(svg, R.data.field);
+  syncGridUI();
   for (const k of ['ghost', 'paths', 'dots', 'shape', 'handles', 'draw']) layers[k] = FLD.el('g', {id: 'L' + k});
 }
 function refresh(full) {

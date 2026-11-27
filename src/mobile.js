@@ -225,6 +225,11 @@
     const ss = el('select'); ss.setAttribute('aria-label', '吸着'); ss.innerHTML = $('snap').innerHTML; ss.value = $('snap').value;
     ss.onchange = () => { $('snap').value = ss.value; $('snap').dispatchEvent(new Event('change', {bubbles: true})); };
     sn.appendChild(ss); menu.appendChild(sn);
+    const gr = el('div', 'row', svgI('lasso') + '<span>グリッド（方眼の細かさ）</span>');
+    const gs = el('select'); gs.setAttribute('aria-label', 'グリッド'); gs.innerHTML = $('gridmode').innerHTML; gs.value = $('gridmode').value;
+    gs.onchange = () => { $('gridmode').value = gs.value; $('gridmode').dispatchEvent(new Event('change', {bubbles: true})); };
+    gr.appendChild(gs); menu.appendChild(gr);
+    tg('lasso', $('gridptsl').textContent, '交点に小さな十字（本番のフロアと同じ印）を出します', 'gridpts');
     menu.appendChild(el('div', 'sep'));
     menu.appendChild(el('h3', '', 'そのほか'));
     menu.appendChild(item('home', 'はじめに', 'かんたん作成・サンプル', clickId('homebtn')));
