@@ -17,6 +17,10 @@ const SC_CORE_JS: &str = include_str!("shortcuts_core.js");
 const SC_JS: &str = include_str!("shortcuts.js");
 const PARADE_JS: &str = include_str!("parade.js");
 const PARADE_UI_JS: &str = include_str!("parade_ui.js");
+const CMD_CORE_JS: &str = include_str!("cmd_core.js");
+const CMD_UI_JS: &str = include_str!("cmd_ui.js");
+/// 日本語で指示する判断AIの重み（tools/train_cmd_ai.js が作る。約 290KB）
+const CMD_MODEL_JSON: &str = include_str!("cmd_model.json");
 const UI_ICONS_JS: &str = include_str!(concat!(env!("OUT_DIR"), "/ui_icons.js"));
 const EXAMPLES_JS: &str = include_str!(concat!(env!("OUT_DIR"), "/examples.js"));
 
@@ -33,7 +37,7 @@ pub fn editor_page() -> String {
         .replace("__SC_CORE__", SC_CORE_JS)
         .replace("__UX__", UX_JS)
         // パレード自動作成（parade.js → parade_ui.js）を、ショートカットより先に読み込む
-        .replace("__SC__", &format!("{PARADE_JS}\n</script>\n<script>/* parade ui */\n{PARADE_UI_JS}\n</script>\n<script>/* shortcuts (2) */\n{SC_JS}"))
+        .replace("__SC__", &format!("{PARADE_JS}\n</script>\n<script>/* parade ui */\n{PARADE_UI_JS}\n</script>\n<script>/* shortcuts (2) */\n{SC_JS}\n</script>\n<script>/* 日本語で指示する: 判断 */\n{CMD_CORE_JS}\nJKCMD.loadModel({CMD_MODEL_JSON});\n</script>\n<script>/* 日本語で指示する: 画面 */\n{CMD_UI_JS}"))
 }
 pub const PRINTER_JS: &str = include_str!("printer.js");
 

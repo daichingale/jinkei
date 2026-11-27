@@ -30,7 +30,7 @@ let html = read('src/editor.html')
   .replaceAll('__BOOT__', () => read('src/boot.html'))
   .replaceAll('__HEAD_LINKS__', () => opts.headLinks || '')
   .replaceAll('__UX__', () => read('src/ux.js'))
-  .replaceAll('__SC__', () => read('src/parade.js') + '\n</script>\n<script>/* parade ui */\n' + read('src/parade_ui.js') + '\n</script>\n<script>/* shortcuts (2) */\n' + read('src/shortcuts.js'));
+  .replaceAll('__SC__', () => read('src/parade.js') + '\n</script>\n<script>/* parade ui */\n' + read('src/parade_ui.js') + '\n</script>\n<script>/* shortcuts (2) */\n' + read('src/shortcuts.js') + '\n</script>\n<script>/* cmd core */\n' + read('src/cmd_core.js') + '\nJKCMD.loadModel(' + read('src/cmd_model.json').trim() + ');\n</script>\n<script>/* cmd ui */\n' + read('src/cmd_ui.js'));
 const server = read('src/server.rs');
 const def = server.match(/pub const TEMPLATE_SHOW: &str = r##"([\s\S]*?)"##;/);
 if (!def) throw new Error('TEMPLATE_SHOW が見つかりません');
